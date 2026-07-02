@@ -1,0 +1,24 @@
+# dependencies
+node_modules/
+.expo/
+.expo-shared/
+
+# env / secrets
+.env
+.env.local
+.env.*.local
+google-services.json
+GoogleService-Info.plist
+
+# build
+dist/
+build/
+web-build/
+.next/
+
+# logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
