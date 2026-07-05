@@ -53,7 +53,8 @@ export async function POST(request) {
       .single()
 
     if (instError) {
-      return NextResponse.json({ success: false, error: instError.message }, { status: 500 })
+      console.error('INSTITUTION INSERT ERROR:', JSON.stringify(instError, null, 2))
+      return NextResponse.json({ success: false, error: instError.message || JSON.stringify(instError) }, { status: 500 })
     }
 
     // 2. Create the institution_admin auth account, pre-linked to this institution
@@ -69,9 +70,10 @@ export async function POST(request) {
     })
 
     if (authError) {
+      console.error('AUTH USER CREATE ERROR:', JSON.stringify(authError, null, 2))
       // Roll back the institution if admin creation fails
       await supabaseAdmin.from('institutions').delete().eq('id', institution.id)
-      return NextResponse.json({ success: false, error: authError.message }, { status: 500 })
+      return NextResponse.json({ success: false, error: authError.message || JSON.stringify(authError) }, { status: 500 })
     }
 
     return NextResponse.json({
@@ -83,6 +85,10 @@ export async function POST(request) {
       verificationCode
     })
   } catch (err) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 })
+    console.error('UNEXPECTED ERROR:', err)
+    console.error('ERROR NAME:', err.name)
+    console.error('ERROR MESSAGE:', err.message)
+    console.error('ERROR STACK:', err.stack)
+    return NextResponse.json({ success: false, error: err.message || 'Unknown error', errorName: err.name || 'Unknown' }, { status: 500 })
   }
 }
