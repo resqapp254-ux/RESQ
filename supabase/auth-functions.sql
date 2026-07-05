@@ -16,7 +16,7 @@ begin
   insert into public.profiles (id, role, institution_id, full_name, phone, email)
   values (
     new.id,
-    coalesce((new.raw_user_meta_data->>'role')::user_role, 'user'),
+    coalesce((new.raw_user_meta_data->>'role')::public.user_role, 'user'::public.user_role),
     nullif(new.raw_user_meta_data->>'institution_id', '')::uuid,
     new.raw_user_meta_data->>'full_name',
     new.raw_user_meta_data->>'phone',
@@ -24,7 +24,7 @@ begin
   );
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public, auth, pg_temp;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
@@ -73,7 +73,7 @@ begin
 
   return json_build_object('success', true, 'institution_name', inst.name);
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public, auth, pg_temp;
 
 -- ------------------------------------------------------------
 -- 3. USERS — join institution by code
@@ -109,7 +109,7 @@ begin
 
   return json_build_object('success', true, 'institution_name', inst.name);
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public, auth, pg_temp;
 
 -- ------------------------------------------------------------
 -- 4. Helper the frontend calls right after login to know
@@ -149,4 +149,4 @@ begin
 
   return json_build_object('role', null, 'next_step', 'unknown');
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public, auth, pg_temp;

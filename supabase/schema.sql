@@ -5,10 +5,27 @@
 -- ============================================================
 
 -- ------------------------------------------------------------
+-- CLEANUP (safe to re-run this whole script from any state)
+-- ------------------------------------------------------------
+drop table if exists notification_log cascade;
+drop table if exists emergency_messages cascade;
+drop table if exists emergencies cascade;
+drop table if exists responder_shifts cascade;
+drop table if exists profiles cascade;
+drop table if exists institutions cascade;
+
+drop type if exists user_role cascade;
+drop type if exists institution_status cascade;
+drop type if exists emergency_status cascade;
+drop type if exists subscription_tier cascade;
+
+-- ------------------------------------------------------------
 -- EXTENSIONS
 -- ------------------------------------------------------------
 create extension if not exists "uuid-ossp";
-create extension if not exists postgis; -- for real geolocation (lat/lng distance queries)
+-- Note: we use plain double precision lat/lng columns below,
+-- so PostGIS is not required. Removed to avoid extension
+-- availability issues on some Supabase plans.
 
 -- ------------------------------------------------------------
 -- ENUM TYPES
@@ -133,11 +150,11 @@ alter table notification_log enable row level security;
 -- Helper: get current user's role + institution without recursive RLS lookups
 create or replace function auth_role() returns user_role as $$
   select role from profiles where id = auth.uid();
-$$ language sql stable security definer;
+$$ language sql stable security definer set search_path = public, auth, pg_temp;
 
 create or replace function auth_institution_id() returns uuid as $$
   select institution_id from profiles where id = auth.uid();
-$$ language sql stable security definer;
+$$ language sql stable security definer set search_path = public, auth, pg_temp;
 
 -- ---------------- INSTITUTIONS ----------------
 create policy "super_admin full access on institutions"

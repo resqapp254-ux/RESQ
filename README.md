@@ -84,6 +84,30 @@ curl -X POST http://localhost:3000/api/admin/create-institution \
 ```
 The response includes the `institutionCode` and `verificationCode` — save these, you'll need the verification code to log in as that institution_admin and activate the institution.
 
+## Day 3 — Real Super Admin Dashboard (done)
+
+No more PowerShell scripts for creating institutions — there's a real UI now.
+
+**What's new:**
+- `/super-admin` — dashboard listing all institutions: status, subscription tier, both codes, and actions (suspend/reactivate, change tier, delete)
+- `/super-admin/create` — a form to create a new institution + its first institution_admin account in one step
+- The `create-institution` API route is now protected — it verifies the caller is actually logged in as super_admin before doing anything (previously anyone could call it)
+
+**To use it:**
+1. Log in at `/login` with your super_admin account
+2. You'll land on `/super-admin` — click "+ New Institution"
+3. Fill in the institution's details and its first admin's login details
+4. Submit — you'll see the generated institution code and verification code to send to that institution
+
+**Note:** the old `test-create-institution.ps1` script will now return "Not authorized" since the route requires a real super_admin session — that's expected, it's no longer needed now that the UI exists.
+
+**You don't have a super_admin account yet** — until now we've only tested institution_admin. Let's create one directly in Supabase:
+1. Supabase → **Authentication** → **Users** → **Add user** → **Create new user**
+2. Enter your email + a password, check "Auto Confirm User"
+3. After creation, go to **Table Editor** → `profiles` → find the row with your new user's `id`
+4. Edit that row: set `role` to `super_admin`, leave `institution_id` blank
+5. Log in at `/login` with that email/password — you should land on `/super-admin`
+
 ## Daily roadmap (compressed from weeks)
 
 | Day | Focus |

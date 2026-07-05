@@ -4,11 +4,31 @@
 // Creates the institution row AND the first institution_admin
 // account for it in one step, using the secret service_role key.
 //
-// TODO (Day 3): wrap this route in a check that confirms the
-// caller is actually logged in as super_admin before allowing it.
+// Protected: verifies the caller's access token belongs to an
+// actual super_admin before doing anything.
 
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
+
+async function verifySuperAdmin(request) {
+  const authHeader = request.headers.get('authorization') || ''
+  const token = authHeader.replace('Bearer ', '')
+
+  if (!token) return false
+
+  const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token)
+  if (userError || !userData.user) return false
+
+  const { data: profile, error: profileError } = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('id', userData.user.id)
+    .single()
+
+  if (profileError || !profile) return false
+
+  return profile.role === 'super_admin'
+}
 
 function generateCode(prefix, length = 6) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // no ambiguous chars (0/O, 1/I)
@@ -21,6 +41,11 @@ function generateCode(prefix, length = 6) {
 
 export async function POST(request) {
   try {
+    const isSuperAdmin = await verifySuperAdmin(request)
+    if (!isSuperAdmin) {
+      return NextResponse.json({ success: false, error: 'Not authorized. Super admin login required.' }, { status: 403 })
+    }
+
     const body = await request.json()
     const {
       institutionName,
