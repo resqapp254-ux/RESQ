@@ -108,6 +108,19 @@ No more PowerShell scripts for creating institutions — there's a real UI now.
 4. Edit that row: set `role` to `super_admin`, leave `institution_id` blank
 5. Log in at `/login` with that email/password — you should land on `/super-admin`
 
+## Day 4 — Institution Admin Dashboard (done)
+
+**What's new:**
+- `/institution-admin` — shows institution name/code/status, lists all responders, shows each responder's upcoming shifts, and has an inline form to schedule new shifts
+- `/institution-admin/add-responder` — form to create a new responder account (their login + phone number for future SMS alerts)
+- New protected API route: `create-responder` — verifies the caller is an institution_admin and automatically scopes the new responder to the caller's own institution (they can't create staff for a different institution)
+
+**To test:**
+1. Log in as an institution_admin (one you created via the super admin dashboard, verification code already redeemed)
+2. Click "+ Add Responder", fill in their details, submit
+3. Back on the dashboard, use "Schedule a Shift" to assign them a shift
+4. Confirm the shift shows up under their name in the responder table
+
 ## Daily roadmap (compressed from weeks)
 
 | Day | Focus |
