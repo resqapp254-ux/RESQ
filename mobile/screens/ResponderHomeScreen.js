@@ -4,8 +4,9 @@
 // or existing ones change status (e.g. claimed by another responder).
 
 import React, { useEffect, useState, useCallback } from 'react'
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native'
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, Alert, Linking, Platform } from 'react-native'
 import { supabase } from '../lib/supabase'
+import { registerForPushNotifications } from '../lib/notifications'
 
 const STATUS_LABELS = {
   triggered: 'NEW — Unclaimed',
@@ -31,6 +32,18 @@ export default function ResponderHomeScreen({ navigation }) {
   useEffect(() => {
     let channel
     async function init() {
+      const token = await registerForPushNotifications()
+      if (!token && Platform.OS === 'android') {
+        Alert.alert(
+          'Enable Emergency Alerts',
+          'To make sure you never miss an emergency — even on silent — RESQ needs Do Not Disturb access. Please enable it in the settings screen that opens.',
+          [
+            { text: 'Not now', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() }
+          ]
+        )
+      }
+
       const { data: userData } = await supabase.auth.getUser()
       const { data: profile } = await supabase
         .from('profiles')

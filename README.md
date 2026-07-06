@@ -191,6 +191,33 @@ Then run the mobile app (`npx expo start`), log in as a responder for that insti
 3. You should see AI advice appear within a few seconds
 4. On a second device (or the same phone after logging in as a responder in a separate session), claim the emergency and confirm chat + location work both directions
 
+## Day 7 — Siren & Critical Alerts, QR Codes (done)
+
+**What's new:**
+- Responders now register for push notifications automatically when they open their home screen, and get prompted to grant "Do Not Disturb access" (Android) so alerts can ring even on silent
+- The moment a user triggers an emergency, all responders in that institution with a registered device get a high-priority push notification
+- Super admin dashboard now shows a scannable QR code per institution (links to a simple join page showing that institution's code)
+
+**Important limitations to understand:**
+- **Android DND-bypass requires manual, one-time user approval** — no app can silently grant itself this permission. Responders must tap through the settings prompt the app shows them.
+- **iOS Critical Alerts still require Apple's special entitlement** (unchanged from Day 1 — this needs a formal request to Apple, not something we can code around).
+- **A true lock-screen "incoming call"-style alarm** (like ride-share driver apps have) needs a custom native build via EAS, not just Expo Go. What we've built today (high-priority notification + bypass-DND channel + loud sound + vibration) is the strongest version achievable without that extra step. We can pursue the EAS custom build path later if the notification-based version isn't loud/persistent enough in practice.
+
+**Setup required:**
+1. Run `supabase/day7-push-tokens.sql` in Supabase SQL Editor
+2. Install new mobile dependencies:
+   ```
+   cd mobile
+   npx expo install expo-notifications expo-device
+   ```
+3. Push notifications need a real device build to fully test (Expo Go has partial support) — test on your phone as usual, but know that some notification behaviors only fully work in a standalone/EAS build
+
+**To test:**
+1. Log in as a responder — you should get prompted about Do Not Disturb access. Tap "Open Settings" and enable it for RESQ (Android: Settings → Notifications → Do Not Disturb access → RESQ → Allow)
+2. From a user account, trigger a test emergency
+3. The responder's phone should get a push notification, even if the app is backgrounded
+4. Check the super admin dashboard — you should now see a small QR code next to each institution
+
 ## Daily roadmap (compressed from weeks)
 
 | Day | Focus |

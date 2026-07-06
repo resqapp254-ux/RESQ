@@ -137,6 +137,7 @@ export default function SuperAdminPage() {
               <th style={{ padding: 10 }}>Tier</th>
               <th style={{ padding: 10 }}>Institution Code</th>
               <th style={{ padding: 10 }}>Verification Code</th>
+              <th style={{ padding: 10 }}>QR Code</th>
               <th style={{ padding: 10 }}>Actions</th>
             </tr>
           </thead>
@@ -167,6 +168,16 @@ export default function SuperAdminPage() {
                   ) : (
                     inst.verification_code
                   )}
+                </td>
+                <td style={{ padding: 10 }}>
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(
+                      `${typeof window !== 'undefined' ? window.location.origin : ''}/join/${inst.institution_code}`
+                    )}`}
+                    alt={`QR code for ${inst.name}`}
+                    width={80}
+                    height={80}
+                  />
                 </td>
                 <td style={{ padding: 10 }}>
                   <button onClick={() => toggleStatus(inst)} style={{ marginRight: 8 }}>

@@ -3,6 +3,7 @@
     "name": "RESQ",
     "slug": "resq-mobile",
     "version": "1.0.0",
+    "scheme": "resq",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "plugins": [
@@ -13,6 +14,12 @@
           "locationWhenInUsePermission": "RESQ needs your location to send accurate help to your exact position during an emergency.",
           "isAndroidBackgroundLocationEnabled": false
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#cc0000"
+        }
       ]
     ],
     "ios": {
@@ -22,7 +29,20 @@
       }
     },
     "android": {
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
-    }
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_NOTIFICATION_POLICY",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "package": "com.resqapp254.resqmobile"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "90e12016-b617-4fc0-8f59-2d6f5d47cf35"
+      }
+    },
+    "owner": "resqapp254"
   }
 }

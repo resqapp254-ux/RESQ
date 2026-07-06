@@ -60,19 +60,24 @@ export default function UserHomeScreen({ navigation }) {
         return
       }
 
-      // 4. Ask the server to generate AI advice (fire, then navigate — don't block on it)
-      console.log('Calling AI advice endpoint:', `${API_BASE_URL}/api/emergency/generate-advice`)
+      // 4. Ask the server to generate AI advice AND notify responders (fire, don't block navigation)
       fetch(`${API_BASE_URL}/api/emergency/generate-advice`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ emergencyId: emergency.id })
       })
-        .then((res) => {
-          console.log('AI advice response status:', res.status)
-          return res.json()
-        })
-        .then((data) => console.log('AI advice response body:', JSON.stringify(data)))
+        .then((res) => res.json())
+        .then((data) => console.log('AI advice response:', JSON.stringify(data)))
         .catch((err) => console.log('AI advice fetch FAILED:', err.message))
+
+      fetch(`${API_BASE_URL}/api/emergency/notify-responders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emergencyId: emergency.id })
+      })
+        .then((res) => res.json())
+        .then((data) => console.log('Notify responders response:', JSON.stringify(data)))
+        .catch((err) => console.log('Notify responders fetch FAILED:', err.message))
 
       setSending(false)
       navigation.replace('UserEmergencyActive', { emergencyId: emergency.id })
