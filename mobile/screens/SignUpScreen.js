@@ -21,6 +21,9 @@ export default function SignUpScreen({ navigation }) {
 
     setLoading(true)
 
+    // Make sure no stale session from a previous account interferes
+    await supabase.auth.signOut()
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -37,6 +40,17 @@ export default function SignUpScreen({ navigation }) {
 
     if (error) {
       Alert.alert('Sign up failed', error.message)
+      return
+    }
+
+    // Supabase silently returns no error AND no new session if this email
+    // already has an account — catch that case explicitly.
+    if (!data.session) {
+      Alert.alert(
+        'Account already exists',
+        'This email is already registered. Please log in instead.'
+      )
+      navigation.replace('Login')
       return
     }
 

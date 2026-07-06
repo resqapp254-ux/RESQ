@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "RESQ",
+    "slug": "resq-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "RESQ needs your location to send accurate help to your exact position during an emergency.",
+          "locationWhenInUsePermission": "RESQ needs your location to send accurate help to your exact position during an emergency.",
+          "isAndroidBackgroundLocationEnabled": false
+        }
+      ]
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "RESQ needs your location to send accurate help to your exact position during an emergency."
+      }
+    },
+    "android": {
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+    }
+  }
+}

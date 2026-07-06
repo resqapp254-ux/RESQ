@@ -121,6 +121,76 @@ No more PowerShell scripts for creating institutions — there's a real UI now.
 3. Back on the dashboard, use "Schedule a Shift" to assign them a shift
 4. Confirm the shift shows up under their name in the responder table
 
+## Day 5 — Responder App Core (done)
+
+**What's new (mobile app):**
+- `ResponderHomeScreen` — live list of active emergencies for the responder's institution, updates automatically via Supabase Realtime (no refresh needed)
+- `EmergencyDetailScreen` — claim an emergency, view its location (opens in Maps app), call the user, update status (claimed → in progress → resolved), and live chat
+- Login now routes responders straight to their home screen instead of a placeholder
+
+**Enable Realtime first** — run `supabase/day5-realtime.sql` in Supabase's SQL Editor (safe to re-run).
+
+**To test** (since the user-side "trigger emergency" button isn't built until Day 6), simulate one directly in Supabase's SQL Editor:
+```sql
+-- Replace 'RESQ-3TKGB2' with any real institution code from your super admin dashboard
+insert into emergencies (institution_id, triggered_by, lat, lng, ai_advice_to_user)
+select
+  p.institution_id,
+  p.id,
+  -1.2921,   -- example latitude (Nairobi)
+  36.8219,   -- example longitude
+  'Stay calm. Help is on the way. If you are able to move to a safe, visible location, please do so.'
+from profiles p
+where p.institution_id = (select id from institutions where institution_code = 'RESQ-3TKGB2')
+limit 1;
+```
+Then run the mobile app (`npx expo start`), log in as a responder for that institution, and you should see the emergency appear instantly on the home screen — try claiming it, viewing the location, and sending a chat message.
+
+## Day 6 — User App Core (done)
+
+**What's new (mobile app):**
+- `UserHomeScreen` — the big red "SEND EMERGENCY" button. Captures live GPS location, creates the emergency, and triggers AI advice generation
+- `UserEmergencyActiveScreen` — shows the AI advice immediately, live status updates as a responder claims/works the case, the responder's info once claimed (with a call button), live chat, and keeps sending fresh location updates every ~15 seconds in the background
+
+**What's new (admin-dashboard, used as a backend for this):**
+- `generate-advice` API route — calls Claude to generate calm, brief safety guidance and saves it to the emergency record
+
+**Setup required:**
+
+1. **Run the new RLS fix**: Supabase → SQL Editor → paste `supabase/day6-rls.sql` → Run
+
+2. **Get a free Groq API key** (needed for AI advice — no credit card required):
+   - Go to https://console.groq.com → sign up/log in → **API Keys** → **Create API Key**
+   - Copy it into `admin-dashboard/.env.local` as `GROQ_API_KEY=...`
+   - This is genuinely free with generous limits — no payment info needed
+
+3. **Install the new mobile dependency**:
+   ```
+   cd mobile
+   npx expo install expo-location
+   ```
+
+4. **Find your computer's LAN IP** (so your phone can reach the AI advice route):
+   - Windows: run `ipconfig` in PowerShell, look for "IPv4 Address" (something like `192.168.1.42`)
+   - Add it to `mobile/.env` as: `EXPO_PUBLIC_API_BASE_URL=http://192.168.1.42:3000`
+   - Your phone and computer must be on the same WiFi network
+
+5. **Run both servers** (two terminals):
+   ```
+   cd admin-dashboard
+   npm run dev
+   ```
+   ```
+   cd mobile
+   npx expo start --clear
+   ```
+
+**To test:**
+1. Sign up a brand new user in the mobile app (or use an existing one), enter a real institution code
+2. Tap the big red button — grant location permission when asked
+3. You should see AI advice appear within a few seconds
+4. On a second device (or the same phone after logging in as a responder in a separate session), claim the emergency and confirm chat + location work both directions
+
 ## Daily roadmap (compressed from weeks)
 
 | Day | Focus |
