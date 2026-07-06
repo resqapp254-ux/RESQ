@@ -32,7 +32,9 @@ export default function LoginScreen({ navigation }) {
 
     if (data.role === 'user' && data.next_step === 'enter_institution_code') {
       navigation.replace('EnterInstitutionCode')
-    } else if (data.role === 'user' || data.role === 'responder') {
+    } else if (data.role === 'responder') {
+      navigation.replace('ResponderHome')
+    } else if (data.role === 'user') {
       navigation.replace('Home')
     } else {
       Alert.alert('Wrong app', 'This account type should use the RESQ admin dashboard, not the mobile app.')
