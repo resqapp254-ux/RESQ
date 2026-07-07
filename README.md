@@ -218,6 +218,38 @@ Then run the mobile app (`npx expo start`), log in as a responder for that insti
 3. The responder's phone should get a push notification, even if the app is backgrounded
 4. Check the super admin dashboard — you should now see a small QR code next to each institution
 
+## Day 8 — USSD/SMS Offline Emergency Path (done)
+
+**What's new:**
+- `/api/ussd` — handles Africa's Talking USSD menu flow: dial code → enter institution code → confirm → emergency created, no smartphone or data needed
+- `/api/sms` — handles a plain-text fallback: texting `SOS <institution_code>` to a shortcode creates an emergency the same way
+- Both feed into the same `emergencies` table responders already see — they show up with "No GPS — phone: ..." instead of a map pin, and the responder can call that number directly
+- Schema updated: `triggered_by` and `lat`/`lng` are now nullable (USSD/SMS has no app account or GPS), with a new `triggered_by_phone` column
+
+**Run the new SQL** — Supabase → SQL Editor → paste `supabase/day8-offline.sql` → Run
+
+**Set up Africa's Talking (free sandbox):**
+1. Go to https://account.africastalking.com/auth/register → sign up (free, no card)
+2. You'll land in **Sandbox** mode — this is free and fully functional for testing, using a shared test USSD code and shortcode
+3. Go to **USSD** in the sidebar → note your sandbox service code (something like `*384*XXXXX#`)
+4. Go to **SMS** in the sidebar → note your sandbox shortcode
+
+**Expose your local server to the internet for testing (ngrok — free):**
+1. Go to https://ngrok.com → sign up free → download for Windows
+2. Unzip it, then in a terminal in that folder:
+   ```
+   ngrok config add-authtoken YOUR_TOKEN_FROM_NGROK_DASHBOARD
+   ngrok http 3000
+   ```
+3. It'll show a forwarding URL like `https://abcd1234.ngrok-free.app` — this is a temporary public URL pointing at your local `admin-dashboard` server
+4. In Africa's Talking dashboard: set your USSD callback URL to `https://abcd1234.ngrok-free.app/api/ussd`, and your SMS callback URL to `https://abcd1234.ngrok-free.app/api/sms`
+
+**To test:**
+- Africa's Talking's sandbox includes a simulator (in their dashboard) where you can "dial" your USSD code and "send" SMS messages without needing a real phone — use a real institution code from your super admin dashboard
+- Confirm the emergency appears on a responder's home screen with "No GPS" and the correct phone number
+
+**Note:** ngrok's free tier gives you a new random URL every time you restart it — you'll need to update the callback URL in Africa's Talking each time during testing. Once we deploy to a real hosting provider (Day 10), this becomes a permanent URL and this step goes away entirely.
+
 ## Daily roadmap (compressed from weeks)
 
 | Day | Focus |

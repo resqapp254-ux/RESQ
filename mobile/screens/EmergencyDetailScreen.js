@@ -58,8 +58,13 @@ export default function EmergencyDetailScreen({ route, navigation }) {
     const { data, error } = await supabase.from('emergencies').select('*').eq('id', emergencyId).single()
     if (!error) {
       setEmergency(data)
-      const { data: prof } = await supabase.from('profiles').select('full_name, phone').eq('id', data.triggered_by).single()
-      setTriggeredByProfile(prof)
+      if (data.triggered_by) {
+        const { data: prof } = await supabase.from('profiles').select('full_name, phone').eq('id', data.triggered_by).single()
+        setTriggeredByProfile(prof)
+      } else {
+        // USSD/SMS-triggered — no app account, just a raw phone number
+        setTriggeredByProfile({ full_name: `Phone caller (no app account)`, phone: data.triggered_by_phone })
+      }
     }
   }
 
@@ -99,7 +104,10 @@ export default function EmergencyDetailScreen({ route, navigation }) {
   }
 
   function openInMaps() {
-    if (!emergency) return
+    if (!emergency || emergency.lat == null || emergency.lng == null) {
+      Alert.alert('No location available', 'This emergency was triggered without GPS (likely via USSD/SMS). Use the phone number to reach them instead.')
+      return
+    }
     const url = `https://www.google.com/maps?q=${emergency.lat},${emergency.lng}`
     Linking.openURL(url)
   }

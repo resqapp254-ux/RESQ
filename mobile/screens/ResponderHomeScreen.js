@@ -32,24 +32,36 @@ export default function ResponderHomeScreen({ navigation }) {
   useEffect(() => {
     let channel
     async function init() {
-      const token = await registerForPushNotifications()
-      if (!token && Platform.OS === 'android') {
-        Alert.alert(
-          'Enable Emergency Alerts',
-          'To make sure you never miss an emergency — even on silent — RESQ needs Do Not Disturb access. Please enable it in the settings screen that opens.',
-          [
-            { text: 'Not now', style: 'cancel' },
-            { text: 'Open Settings', onPress: () => Linking.openSettings() }
-          ]
-        )
+      try {
+        const token = await registerForPushNotifications()
+        if (!token && Platform.OS === 'android') {
+          Alert.alert(
+            'Enable Emergency Alerts',
+            'To make sure you never miss an emergency — even on silent — RESQ needs Do Not Disturb access. Please enable it in the settings screen that opens.',
+            [
+              { text: 'Not now', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => Linking.openSettings() }
+            ]
+          )
+        }
+      } catch (err) {
+        console.log('PUSH NOTIFICATION REGISTRATION FAILED (non-fatal):', err.message)
       }
 
       const { data: userData } = await supabase.auth.getUser()
-      const { data: profile } = await supabase
+      console.log('Logged in as user id:', userData.user?.id, userData.user?.email)
+
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('institution_id')
         .eq('id', userData.user.id)
         .single()
+
+      if (profileError) {
+        console.log('PROFILE FETCH ERROR:', JSON.stringify(profileError))
+        return
+      }
+      console.log('Responder institution_id:', profile.institution_id)
 
       setInstitutionId(profile.institution_id)
       await loadEmergencies(profile.institution_id)
@@ -72,6 +84,7 @@ export default function ResponderHomeScreen({ navigation }) {
   }, [])
 
   async function loadEmergencies(instId) {
+    console.log('Loading emergencies for institution:', instId)
     const { data, error } = await supabase
       .from('emergencies')
       .select('*')
@@ -79,7 +92,12 @@ export default function ResponderHomeScreen({ navigation }) {
       .in('status', ['triggered', 'claimed', 'in_progress'])
       .order('created_at', { ascending: false })
 
-    if (!error) setEmergencies(data)
+    if (error) {
+      console.log('LOAD EMERGENCIES ERROR:', JSON.stringify(error))
+    } else {
+      console.log('Loaded emergencies count:', data.length)
+      setEmergencies(data)
+    }
     setRefreshing(false)
   }
 
@@ -113,7 +131,9 @@ export default function ResponderHomeScreen({ navigation }) {
               </Text>
               <Text style={styles.time}>{new Date(item.created_at).toLocaleTimeString()}</Text>
             </View>
-            <Text style={styles.location}>Lat: {item.lat.toFixed(5)}, Lng: {item.lng.toFixed(5)}</Text>
+            <Text style={styles.location}>
+              {item.lat != null ? `Lat: ${item.lat.toFixed(5)}, Lng: ${item.lng.toFixed(5)}` : `No GPS — phone: ${item.triggered_by_phone || 'unknown'}`}
+            </Text>
             {item.triggered_via !== 'app' && (
               <Text style={styles.badge}>via {item.triggered_via.toUpperCase()}</Text>
             )}

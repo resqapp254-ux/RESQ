@@ -25,18 +25,24 @@ export default function LoginScreen({ navigation }) {
     const { data, error: statusError } = await supabase.rpc('get_onboarding_status')
     setLoading(false)
 
+    console.log('LOGIN - onboarding status:', JSON.stringify(data), 'error:', JSON.stringify(statusError))
+
     if (statusError) {
       Alert.alert('Error', 'Could not load account status.')
       return
     }
 
     if (data.role === 'user' && data.next_step === 'enter_institution_code') {
+      console.log('LOGIN - routing to EnterInstitutionCode')
       navigation.replace('EnterInstitutionCode')
     } else if (data.role === 'responder') {
+      console.log('LOGIN - routing to ResponderHome')
       navigation.replace('ResponderHome')
     } else if (data.role === 'user') {
+      console.log('LOGIN - routing to Home')
       navigation.replace('Home')
     } else {
+      console.log('LOGIN - unrecognized role, showing alert')
       Alert.alert('Wrong app', 'This account type should use the RESQ admin dashboard, not the mobile app.')
     }
   }
