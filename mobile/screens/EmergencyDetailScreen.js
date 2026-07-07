@@ -78,16 +78,24 @@ export default function EmergencyDetailScreen({ route, navigation }) {
   }
 
   async function handleClaim() {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('emergencies')
       .update({ status: 'claimed', claimed_by: myId, claimed_at: new Date().toISOString() })
       .eq('id', emergencyId)
       .eq('status', 'triggered') // prevents double-claiming a race condition
+      .select()
 
     if (error) {
       Alert.alert('Could not claim', error.message)
       return
     }
+
+    if (!data || data.length === 0) {
+      Alert.alert('Already claimed', 'Another responder just claimed this emergency first.')
+      await loadEmergency()
+      return
+    }
+
     await loadEmergency()
   }
 

@@ -250,6 +250,17 @@ Then run the mobile app (`npx expo start`), log in as a responder for that insti
 
 **Note:** ngrok's free tier gives you a new random URL every time you restart it — you'll need to update the callback URL in Africa's Talking each time during testing. Once we deploy to a real hosting provider (Day 10), this becomes a permanent URL and this step goes away entirely.
 
+## Day 9 — Testing, RLS Hardening, Edge Cases (done)
+
+**Security gaps closed:**
+- **Shifts table**: previously any account in an institution (even a responder or a plain user) could create/edit/delete shift schedules. Now only institution_admin (or super_admin) can write to it — everyone in the institution can still view shifts.
+- **Emergency tampering**: previously a responder or institution_admin could change *any* field on an emergency via a direct update — including reassigning it to a different institution, overwriting who triggered it, or altering which phone/channel it came from. A database trigger now locks those fields permanently after creation, no matter what the client sends. It also blocks nonsensical status changes (e.g. un-resolving a resolved emergency).
+- **Claim race condition**: if two responders tapped "Claim" on the same emergency at the exact same moment, both could previously believe they succeeded. The app now detects when a claim attempt loses that race and tells the responder clearly instead of silently succeeding.
+
+**Run the hardening SQL** — Supabase → SQL Editor → paste `supabase/day9-rls-hardening.sql` → Run
+
+**On test data**: no need to delete anything — your test institutions/accounts don't interfere with real usage. When you're ready for a truly clean slate before real users arrive, the super admin dashboard's "Delete" button on an institution cascades and removes all of its admins, responders, users, and emergencies in one action.
+
 ## Daily roadmap (compressed from weeks)
 
 | Day | Focus |
