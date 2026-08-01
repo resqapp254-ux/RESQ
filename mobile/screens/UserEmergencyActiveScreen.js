@@ -6,7 +6,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
-  Linking, Alert, KeyboardAvoidingView, Platform
+  Linking, Alert, Platform, Keyboard
 } from 'react-native'
 import * as Location from 'expo-location'
 import { supabase } from '../lib/supabase'
@@ -26,8 +26,27 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
   const [messages, setMessages] = useState([])
   const [messageText, setMessageText] = useState('')
   const [myId, setMyId] = useState(null)
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
   const listRef = useRef(null)
   const locationWatchRef = useRef(null)
+  const advicePollRef = useRef(null)
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height)
+    })
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0)
+    })
+
+    return () => {
+      showSub.remove()
+      hideSub.remove()
+    }
+  }, [])
 
   useEffect(() => {
     let emergencyChannel, messageChannel
@@ -36,10 +55,8 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
       const { data: userData } = await supabase.auth.getUser()
       setMyId(userData.user.id)
 
-      await loadEmergency()
-      await loadMessages()
-      startLocationUpdates()
-
+      // Set up realtime FIRST, before loading anything — so we never
+      // miss an update that lands while we're still fetching/rendering.
       emergencyChannel = supabase
         .channel(`user-emergency-${emergencyId}`)
         .on(
@@ -67,6 +84,11 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
           (payload) => setMessages((prev) => [...prev, payload.new])
         )
         .subscribe()
+
+      await loadEmergency()
+      await loadMessages()
+      startLocationUpdates()
+      startAdvicePollFallback()
     }
     init()
 
@@ -74,8 +96,33 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
       if (emergencyChannel) supabase.removeChannel(emergencyChannel)
       if (messageChannel) supabase.removeChannel(messageChannel)
       if (locationWatchRef.current) locationWatchRef.current.remove()
+      if (advicePollRef.current) clearInterval(advicePollRef.current)
     }
   }, [emergencyId])
+
+  // Belt-and-braces fallback: realtime *should* deliver the AI advice
+  // update, but if that update lands before our subscription finishes
+  // connecting, the event gets missed entirely. Poll every 2s until
+  // advice shows up (or give up after 30s so we're not polling forever
+  // if generate-advice genuinely failed).
+  function startAdvicePollFallback() {
+    let attempts = 0
+    advicePollRef.current = setInterval(async () => {
+      attempts += 1
+      const { data } = await supabase
+        .from('emergencies')
+        .select('ai_advice_to_user')
+        .eq('id', emergencyId)
+        .single()
+
+      if (data?.ai_advice_to_user) {
+        setEmergency((prev) => (prev ? { ...prev, ai_advice_to_user: data.ai_advice_to_user } : prev))
+        clearInterval(advicePollRef.current)
+      } else if (attempts >= 15) {
+        clearInterval(advicePollRef.current)
+      }
+    }, 2000)
+  }
 
   async function loadEmergency() {
     const { data, error } = await supabase.from('emergencies').select('*').eq('id', emergencyId).single()
@@ -146,7 +193,7 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <View style={[styles.container, { paddingBottom: keyboardHeight }]}>
       <Text style={styles.statusHeader}>{STATUS_LABELS[emergency.status]}</Text>
 
       {emergency.ai_advice_to_user ? (
@@ -194,7 +241,7 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
           <Text style={{ color: 'white' }}>Send</Text>
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   )
 }
 

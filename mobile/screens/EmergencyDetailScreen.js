@@ -5,10 +5,20 @@
 import React, { useEffect, useState, useRef } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet, FlatList, TextInput,
-  Linking, Alert, KeyboardAvoidingView, Platform
+  Linking, Alert, Platform, Image, Keyboard
 } from 'react-native'
 import { supabase } from '../lib/supabase'
 import { API_BASE_URL } from '../lib/config'
+
+const EMERGENCY_TYPE_LABELS = {
+  medical: '🏥 Medical',
+  fire: '🔥 Fire',
+  accident: '🚑 Accident',
+  security: '🛡️ Security',
+  gbv: '🤝 GBV',
+  mental_health: '🧠 Mental Health',
+  other: '⚠️ Other'
+}
 
 export default function EmergencyDetailScreen({ route, navigation }) {
   const { emergencyId } = route.params
@@ -17,7 +27,25 @@ export default function EmergencyDetailScreen({ route, navigation }) {
   const [messages, setMessages] = useState([])
   const [messageText, setMessageText] = useState('')
   const [myId, setMyId] = useState(null)
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
   const listRef = useRef(null)
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height)
+    })
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0)
+    })
+
+    return () => {
+      showSub.remove()
+      hideSub.remove()
+    }
+  }, [])
 
   useEffect(() => {
     let emergencyChannel, messageChannel
@@ -25,9 +53,6 @@ export default function EmergencyDetailScreen({ route, navigation }) {
     async function init() {
       const { data: userData } = await supabase.auth.getUser()
       setMyId(userData.user.id)
-
-      await loadEmergency()
-      await loadMessages()
 
       emergencyChannel = supabase
         .channel(`emergency-${emergencyId}`)
@@ -46,6 +71,9 @@ export default function EmergencyDetailScreen({ route, navigation }) {
           (payload) => setMessages((prev) => [...prev, payload.new])
         )
         .subscribe()
+
+      await loadEmergency()
+      await loadMessages()
     }
     init()
 
@@ -57,10 +85,12 @@ export default function EmergencyDetailScreen({ route, navigation }) {
 
   async function loadEmergency() {
     const { data, error } = await supabase.from('emergencies').select('*').eq('id', emergencyId).single()
+    console.log('EMERGENCY LOAD:', JSON.stringify({ error, triggered_by: data?.triggered_by, triggered_by_phone: data?.triggered_by_phone, photo_url: data?.photo_url }))
     if (!error) {
       setEmergency(data)
       if (data.triggered_by) {
-        const { data: prof } = await supabase.from('profiles').select('full_name, phone').eq('id', data.triggered_by).single()
+        const { data: prof, error: profError } = await supabase.from('profiles').select('full_name, phone').eq('id', data.triggered_by).single()
+        console.log('TRIGGERED-BY PROFILE FETCH:', JSON.stringify({ prof, profError }))
         setTriggeredByProfile(prof)
       } else {
         // USSD/SMS-triggered — no app account, just a raw phone number
@@ -183,15 +213,30 @@ export default function EmergencyDetailScreen({ route, navigation }) {
 
   const isMine = emergency.claimed_by === myId
   const isUnclaimed = emergency.status === 'triggered'
+  const typeLabel = EMERGENCY_TYPE_LABELS[emergency.emergency_type] || EMERGENCY_TYPE_LABELS.other
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <View style={[styles.container, { paddingBottom: keyboardHeight }]}>
       <View style={styles.header}>
         <Text style={styles.title}>Emergency</Text>
         <Text style={styles.status}>{emergency.status.toUpperCase().replace('_', ' ')}</Text>
       </View>
 
-      <Text style={styles.person}>Triggered by: {triggeredByProfile?.full_name || 'Unknown'}</Text>
+      <View style={styles.typeBadge}>
+        <Text style={styles.typeBadgeText}>{typeLabel}</Text>
+      </View>
+
+      <Text style={styles.person}>
+        Triggered by: {triggeredByProfile?.full_name || 'Unknown'}
+        {triggeredByProfile?.phone ? ` · ${triggeredByProfile.phone}` : ' · No phone on file'}
+      </Text>
+
+      {emergency.photo_url && (
+        <View style={styles.photoBox}>
+          <Text style={styles.photoLabel}>Photo from the scene:</Text>
+          <Image source={{ uri: emergency.photo_url }} style={styles.photo} resizeMode="cover" />
+        </View>
+      )}
 
       {emergency.ai_advice_to_user && (
         <View style={styles.aiBox}>
@@ -258,7 +303,7 @@ export default function EmergencyDetailScreen({ route, navigation }) {
           <Text style={{ color: 'white' }}>Send</Text>
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   )
 }
 
@@ -267,7 +312,12 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { fontSize: 22, fontWeight: 'bold' },
   status: { fontWeight: 'bold', color: '#cc0000' },
+  typeBadge: { alignSelf: 'flex-start', backgroundColor: '#eee', paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, marginTop: 8 },
+  typeBadgeText: { fontWeight: 'bold', fontSize: 13, color: '#444' },
   person: { marginTop: 8, marginBottom: 8, color: '#333' },
+  photoBox: { marginBottom: 10 },
+  photoLabel: { fontWeight: 'bold', fontSize: 12, color: '#555', marginBottom: 6 },
+  photo: { width: '100%', height: 200, borderRadius: 10, backgroundColor: '#eee' },
   aiBox: { backgroundColor: '#eef6ff', padding: 10, borderRadius: 8, marginBottom: 8 },
   aiLabel: { fontWeight: 'bold', fontSize: 12, color: '#1a5fb4' },
   aiWarnBox: { backgroundColor: '#fff4e5', padding: 10, borderRadius: 8, marginBottom: 8 },

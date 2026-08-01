@@ -20,6 +20,13 @@
         {
           "color": "#cc0000"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "RESQ needs access to your photos to attach evidence to an emergency.",
+          "cameraPermission": "RESQ needs camera access to let you photograph the situation during an emergency."
+        }
       ]
     ],
     "ios": {
@@ -30,6 +37,7 @@
     },
     "android": {
       "package": "com.resqapp254.resqmobile",
+      "softwareKeyboardLayoutMode": "resize",
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "ACCESS_FINE_LOCATION",
@@ -46,3 +54,6 @@
     }
   }
 }
+
+
+
