@@ -261,6 +261,85 @@ Then run the mobile app (`npx expo start`), log in as a responder for that insti
 
 **On test data**: no need to delete anything — your test institutions/accounts don't interfere with real usage. When you're ready for a truly clean slate before real users arrive, the super admin dashboard's "Delete" button on an institution cascades and removes all of its admins, responders, users, and emergencies in one action.
 
+## Cleanup Pass — Closing Gaps From the Original Spec (done)
+
+Five things from the original request that got missed along the way:
+
+**1. AI safety check on responder messages** — every time a responder sends a chat message, it's now checked by AI in the background. If it looks unsafe or clearly wrong, a warning banner appears on both the responder's and user's screens (reusing the `ai_flag_to_responder` field from Day 1). New route: `check-responder-message`.
+
+**2. Institution admin notifications** — now actually wired up:
+   - **SMS the moment an emergency triggers** (via Africa's Talking, same account as USSD/SMS)
+   - **Email when an emergency is resolved** (via Resend — free, 100 emails/day, no domain setup needed for testing)
+   - Both log to the `notification_log` table from Day 1
+
+**3. General app-download QR code** — a small QR code now sits at the top of the super admin dashboard, separate from any institution's join code, pointing to a general `/download` landing page.
+
+**4. Shift-aware notifications** — when an emergency triggers, RESQ now checks who's actually on shift right now and notifies only them. If nobody has a shift scheduled at that moment, it falls back to notifying every responder in the institution so nothing gets missed due to a scheduling gap.
+
+**Setup required:**
+
+1. **Get a free Resend API key**: https://resend.com → sign up → **API Keys** → create one → add to `.env.local` as `RESEND_API_KEY=...`
+
+2. **Get your Africa's Talking API key** (different from your account login — needed for *sending* SMS, not just receiving webhooks):
+   - Africa's Talking dashboard → **Settings** → **API Key** → generate/copy it
+   - Add to `.env.local`: `AFRICASTALKING_API_KEY=...` and `AFRICASTALKING_USERNAME=sandbox`
+
+3. **Test institution admin notifications**: trigger a test emergency and check the institution admin's phone for an SMS; mark it resolved and check their email for the resolution notice (check spam folder too — Resend's default sending address sometimes lands there until you set up a custom domain)
+
+4. **Test the AI flag**: as a responder, send a deliberately concerning message in the chat (e.g. something contradicting basic safety) and confirm a warning banner appears
+
+**5. On re-enabling email confirmation** (currently off since Day 8 for testing convenience): before real users start signing up, go back to Supabase → Authentication → Sign In/Providers → Email → turn **"Confirm email"** back on. This means new signups will need to click a link in their inbox before logging in — the right behavior for production, just slower for our own testing, which is why we left it off until now.
+
+## Day 10 — Deployment
+
+Getting off your laptop and onto permanent, real internet addresses.
+
+### 1. Deploy the admin dashboard to Vercel (free)
+
+1. Go to https://vercel.com → sign up with your GitHub account (`resqapp254-ux`)
+2. Click **"Add New" → "Project"**
+3. Import your `RESQ` repository
+4. **Important**: set **Root Directory** to `admin-dashboard` (since your repo has multiple folders — Vercel needs to know which one is the actual Next.js app)
+5. Under **Environment Variables**, add these (same values as your local `.env.local`):
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `GROQ_API_KEY`
+6. Click **Deploy**
+7. Once done, you'll get a permanent URL like `https://resq-app.vercel.app`
+
+### 2. Point Africa's Talking at the permanent URL
+
+1. Go back to Africa's Talking → USSD → your channel → update Callback URL to:
+   `https://YOUR-VERCEL-URL.vercel.app/api/ussd`
+2. Do the same for SMS callback:
+   `https://YOUR-VERCEL-URL.vercel.app/api/sms`
+3. You can now close ngrok forever — it was only needed for local testing
+
+### 3. Point the mobile app at the permanent URL
+
+1. Open `mobile/.env`
+2. Change `EXPO_PUBLIC_API_BASE_URL` from your LAN IP to:
+   `EXPO_PUBLIC_API_BASE_URL=https://YOUR-VERCEL-URL.vercel.app`
+3. Restart Expo: `npx expo start --dev-client`
+
+This also means the app now works from **any WiFi or mobile data**, not just your home network — a real step toward "actually usable by real people."
+
+### 4. Build a shareable version of the mobile app (no Expo Go needed)
+
+This creates a standalone APK anyone can install directly, without needing a developer setup:
+```
+cd mobile
+eas build --profile preview --platform android
+```
+Once it finishes (~15-30 min), you'll get a link/QR code — anyone can scan it to download and install RESQ directly, no Expo account or dev tools required on their end.
+
+### 5. (Later, when ready for the public) Publishing to app stores
+- **Google Play**: one-time $25 registration fee, then `eas submit` uploads your build
+- **Apple App Store**: $99/year developer account, plus the Critical Alerts entitlement request mentioned back on Day 1 for true DND-bypass on iPhone
+
+Both are real costs when you're ready to go fully public — everything up to this point has been achievable for free.
+
 ## Daily roadmap (compressed from weeks)
 
 | Day | Focus |

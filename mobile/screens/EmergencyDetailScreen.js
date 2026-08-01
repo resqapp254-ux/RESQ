@@ -8,6 +8,7 @@ import {
   Linking, Alert, KeyboardAvoidingView, Platform
 } from 'react-native'
 import { supabase } from '../lib/supabase'
+import { API_BASE_URL } from '../lib/config'
 
 export default function EmergencyDetailScreen({ route, navigation }) {
   const { emergencyId } = route.params
@@ -100,10 +101,28 @@ export default function EmergencyDetailScreen({ route, navigation }) {
   }
 
   async function updateStatus(newStatus) {
-    const updates = { status: newStatus }
-    if (newStatus === 'resolved') updates.resolved_at = new Date().toISOString()
+    if (newStatus === 'resolved') {
+      // Goes through the server so we can also email the institution admin
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/emergency/mark-resolved`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ emergencyId })
+        })
+        const data = await res.json()
+        if (!data.success) {
+          Alert.alert('Update failed', data.error || 'Unknown error')
+          return
+        }
+      } catch (err) {
+        Alert.alert('Update failed', err.message)
+        return
+      }
+      await loadEmergency()
+      return
+    }
 
-    const { error } = await supabase.from('emergencies').update(updates).eq('id', emergencyId)
+    const { error } = await supabase.from('emergencies').update({ status: newStatus }).eq('id', emergencyId)
     if (error) {
       Alert.alert('Update failed', error.message)
       return
@@ -140,7 +159,22 @@ export default function EmergencyDetailScreen({ route, navigation }) {
       message: text
     })
 
-    if (error) Alert.alert('Failed to send', error.message)
+    if (error) {
+      Alert.alert('Failed to send', error.message)
+      return
+    }
+
+    // Non-blocking safety check on what was just sent
+    fetch(`${API_BASE_URL}/api/emergency/check-responder-message`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emergencyId, message: text })
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.flagged) loadEmergency() // refresh to pick up the new ai_flag_to_responder
+      })
+      .catch(() => {})
   }
 
   if (!emergency) {

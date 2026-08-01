@@ -29,7 +29,20 @@
       }
     },
     "android": {
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "ACCESS_NOTIFICATION_POLICY"]
+      "package": "com.resqapp254.resqmobile",
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_NOTIFICATION_POLICY",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
+    },
+    "extra": {
+      "eas": {
+        "projectId": "90e12016-b617-4fc0-8f59-2d6f5d47cf35"
+      }
     }
   }
 }

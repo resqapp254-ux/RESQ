@@ -113,8 +113,19 @@ export default function SuperAdminPage() {
     <div style={{ padding: 40, fontFamily: 'sans-serif', maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1>RESQ Super Admin</h1>
-        <div>
-          <Link href="/super-admin/create" style={{ marginRight: 16, padding: '10px 16px', background: '#cc0000', color: 'white', textDecoration: 'none', borderRadius: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+          <div style={{ textAlign: 'center' }}>
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(
+                `${typeof window !== 'undefined' ? window.location.origin : ''}/download`
+              )}`}
+              alt="Download RESQ"
+              width={60}
+              height={60}
+            />
+            <div style={{ fontSize: 11, color: '#666' }}>Download RESQ</div>
+          </div>
+          <Link href="/super-admin/create" style={{ padding: '10px 16px', background: '#cc0000', color: 'white', textDecoration: 'none', borderRadius: 6 }}>
             + New Institution
           </Link>
           <button onClick={handleLogout} style={{ padding: '10px 16px' }}>Log Out</button>
