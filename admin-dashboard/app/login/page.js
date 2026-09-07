@@ -1,6 +1,5 @@
 // app/login/page.js
-// Shared login for super_admin and institution_admin.
-// After login, redirects based on get_onboarding_status().
+// Shared sign-in for every role. After login, redirects based on get_onboarding_status().
 
 'use client'
 
@@ -47,8 +46,14 @@ export default function LoginPage() {
       } else {
         router.replace('/institution-admin')
       }
+    } else if (data.role === 'responder') {
+      router.replace('/user')
+    } else if (data.role === 'user' && data.next_step === 'enter_institution_code') {
+      router.replace('/join-institution')
+    } else if (data.role === 'user') {
+      router.replace('/user')
     } else {
-      setError('This login is for super admins and institution admins only.')
+      setError('Account role could not be determined. Contact support.')
     }
   }
 
@@ -62,7 +67,7 @@ export default function LoginPage() {
               <img src="/icon.svg" alt="RESQ" width="120" height="120" />
             </div>
           </div>
-          <h1 className="resq-h1" style={{ fontSize: 28, marginBottom: 24 }}>RESQ Admin Login</h1>
+          <h1 className="resq-h1" style={{ fontSize: 28, marginBottom: 24 }}>RESQ Sign In</h1>
           <form onSubmit={handleLogin}>
         <div style={{ marginBottom: 12 }}>
           <label className="resq-subtle">Email</label><br />
@@ -90,7 +95,7 @@ export default function LoginPage() {
         </button>
           </form>
           <p className="resq-subtle" style={{ marginTop: 16 }}>
-            <a href="/user-login">User sign in</a> · <a href="/signup">Create user account</a> · <a href="/forgot-password">Forgot password?</a>
+            <a href="/signup">Create account</a> · <a href="/forgot-password">Forgot password?</a>
           </p>
         </div>
       </div>
