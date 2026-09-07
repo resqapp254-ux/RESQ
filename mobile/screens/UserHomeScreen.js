@@ -146,9 +146,11 @@ export default function UserHomeScreen({ navigation }) {
       }
 
       // 4. Fire-and-forget: AI advice, notify responders, and photo upload (don't block navigation)
+      const { data: sessionData } = await supabase.auth.getSession()
+      const authHeaders = { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData.session?.access_token || ''}` }
       fetch(`${API_BASE_URL}/api/emergency/generate-advice`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders,
         body: JSON.stringify({ emergencyId: emergency.id })
       })
         .then((res) => res.json())
@@ -157,7 +159,7 @@ export default function UserHomeScreen({ navigation }) {
 
       fetch(`${API_BASE_URL}/api/emergency/notify-responders`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders,
         body: JSON.stringify({ emergencyId: emergency.id })
       })
         .then((res) => res.json())
@@ -176,6 +178,9 @@ export default function UserHomeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity style={styles.guardiansLink} onPress={() => navigation.navigate('ManageGuardians')} disabled={sending}>
+        <Text style={styles.guardiansLinkText}>Trusted Contacts</Text>
+      </TouchableOpacity>
       <Text style={styles.title}>RESQ</Text>
       <Text style={styles.subtitle}>What's happening?</Text>
 
@@ -228,6 +233,8 @@ export default function UserHomeScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: '#fff' },
+  guardiansLink: { position: 'absolute', top: 50, right: 20, padding: 8 },
+  guardiansLinkText: { color: '#1a5fb4', fontWeight: '600', fontSize: 13 },
   title: { fontSize: 32, fontWeight: 'bold', color: '#cc0000', marginBottom: 8 },
   subtitle: { textAlign: 'center', color: '#666', marginBottom: 16, fontSize: 15, fontWeight: '600' },
   typeRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginBottom: 16, gap: 10 },

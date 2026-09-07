@@ -7,6 +7,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
+import GlobeBackground from '../../components/GlobeBackground'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -39,12 +40,12 @@ export default function LoginPage() {
     }
 
     if (data.role === 'super_admin') {
-      router.push('/super-admin')
+      router.replace('/super-admin')
     } else if (data.role === 'institution_admin') {
       if (data.next_step === 'enter_verification_code') {
-        router.push('/institution-admin/verify')
+        router.replace('/institution-admin/verify')
       } else {
-        router.push('/institution-admin')
+        router.replace('/institution-admin')
       }
     } else {
       setError('This login is for super admins and institution admins only.')
@@ -52,34 +53,42 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{ maxWidth: 400, margin: '80px auto', fontFamily: 'sans-serif' }}>
-      <h1>RESQ Admin Login</h1>
-      <form onSubmit={handleLogin}>
+    <div className="resq-shell">
+      <GlobeBackground />
+      <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div className="glass-card" style={{ width: '100%', maxWidth: 400 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+            <img src="/icon.svg" alt="RESQ" width="64" height="64" />
+          </div>
+          <h1 className="resq-h1" style={{ fontSize: 28, marginBottom: 24 }}>RESQ Admin Login</h1>
+          <form onSubmit={handleLogin}>
         <div style={{ marginBottom: 12 }}>
-          <label>Email</label><br />
+          <label className="resq-subtle">Email</label><br />
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            style={{ width: '100%', padding: 8 }}
+            className="resq-input"
           />
         </div>
         <div style={{ marginBottom: 12 }}>
-          <label>Password</label><br />
+          <label className="resq-subtle">Password</label><br />
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            style={{ width: '100%', padding: 8 }}
+            className="resq-input"
           />
         </div>
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-        <button type="submit" disabled={loading} style={{ width: '100%', padding: 10 }}>
+        {error && <p style={{ color: '#ff8080' }}>{error}</p>}
+        <button type="submit" disabled={loading} className="resq-btn-primary" style={{ width: '100%' }}>
           {loading ? 'Signing in...' : 'Sign In'}
         </button>
-      </form>
+          </form>
+        </div>
+      </div>
     </div>
   )
 }

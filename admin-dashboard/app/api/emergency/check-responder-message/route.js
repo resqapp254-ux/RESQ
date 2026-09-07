@@ -7,6 +7,8 @@
 
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
+import { canAccessEmergency, getAuthenticatedUser } from '../../../../lib/authorizeRequest'
+import { fetchWithTimeout } from '../../../../lib/fetchWithTimeout'
 
 const SYSTEM_PROMPT = `You are a safety reviewer for RESQ, an emergency dispatch app.
 A human responder just sent a chat message to someone in an active emergency.
@@ -21,27 +23,40 @@ Be conservative — only flag genuinely concerning content, not just brief or in
 
 export async function POST(request) {
   try {
+    const { profile, error: authError } = await getAuthenticatedUser(request)
+    if (authError) return NextResponse.json({ success: false, error: authError }, { status: 401 })
     const { emergencyId, message } = await request.json()
 
     if (!emergencyId || !message) {
       return NextResponse.json({ success: false, error: 'Missing emergencyId or message' }, { status: 400 })
     }
 
-    const aiResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const { data: emergency } = await supabaseAdmin.from('emergencies').select('institution_id, claimed_by').eq('id', emergencyId).single()
+    if (!canAccessEmergency(profile, emergency, ['responder', 'institution_admin', 'super_admin']) || (profile.role === 'responder' && emergency.claimed_by !== profile.id)) {
+      return NextResponse.json({ success: false, error: 'Not authorized for this emergency' }, { status: 403 })
+    }
+
+    let aiResponse
+    try {
+      aiResponse = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${process.env.GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
         max_tokens: 100,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: `Responder's message: "${message}"` }
         ]
       })
-    })
+      })
+    } catch (error) {
+      console.error('CHECK RESPONDER MESSAGE TIMEOUT/ERROR:', error.message)
+      return NextResponse.json({ success: true, flagged: false, reason: '', fallback: true })
+    }
 
     if (!aiResponse.ok) {
       return NextResponse.json({ success: true, flagged: false }) // fail open — don't block chat over an AI hiccup
@@ -49,10 +64,11 @@ export async function POST(request) {
 
     const aiData = await aiResponse.json()
     const raw = aiData.choices?.[0]?.message?.content?.trim() || '{"flag": false, "reason": ""}'
+    const normalizedRaw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
 
     let parsed
     try {
-      parsed = JSON.parse(raw)
+      parsed = JSON.parse(normalizedRaw)
     } catch {
       parsed = { flag: false, reason: '' }
     }

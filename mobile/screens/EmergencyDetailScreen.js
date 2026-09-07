@@ -134,9 +134,10 @@ export default function EmergencyDetailScreen({ route, navigation }) {
     if (newStatus === 'resolved') {
       // Goes through the server so we can also email the institution admin
       try {
+        const { data: sessionData } = await supabase.auth.getSession()
         const res = await fetch(`${API_BASE_URL}/api/emergency/mark-resolved`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData.session?.access_token || ''}` },
           body: JSON.stringify({ emergencyId })
         })
         const data = await res.json()
@@ -195,9 +196,10 @@ export default function EmergencyDetailScreen({ route, navigation }) {
     }
 
     // Non-blocking safety check on what was just sent
+    const { data: sessionData } = await supabase.auth.getSession()
     fetch(`${API_BASE_URL}/api/emergency/check-responder-message`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData.session?.access_token || ''}` },
       body: JSON.stringify({ emergencyId, message: text })
     })
       .then((res) => res.json())
@@ -292,17 +294,21 @@ export default function EmergencyDetailScreen({ route, navigation }) {
         )}
       />
 
-      <View style={styles.inputRow}>
-        <TextInput
-          style={styles.input}
-          value={messageText}
-          onChangeText={setMessageText}
-          placeholder="Type a message..."
-        />
-        <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
-          <Text style={{ color: 'white' }}>Send</Text>
-        </TouchableOpacity>
-      </View>
+      {isMine ? (
+        <View style={styles.inputRow}>
+          <TextInput
+            style={styles.input}
+            value={messageText}
+            onChangeText={setMessageText}
+            placeholder="Type a message..."
+          />
+          <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
+            <Text style={{ color: 'white' }}>Send</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <Text style={styles.chatNotice}>Claim this emergency before sending messages.</Text>
+      )}
     </View>
   )
 }
@@ -313,6 +319,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: 'bold' },
   status: { fontWeight: 'bold', color: '#cc0000' },
   typeBadge: { alignSelf: 'flex-start', backgroundColor: '#eee', paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, marginTop: 8 },
+  chatNotice: { color: '#777', fontSize: 13, textAlign: 'center', paddingVertical: 12 },
   typeBadgeText: { fontWeight: 'bold', fontSize: 13, color: '#444' },
   person: { marginTop: 8, marginBottom: 8, color: '#333' },
   photoBox: { marginBottom: 10 },

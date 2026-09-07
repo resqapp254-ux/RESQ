@@ -7,11 +7,12 @@
 
 import { supabaseAdmin } from './supabaseAdmin'
 import { sendTriggerSmsToAdmin } from './notifyInstitutionAdmin'
+import { notifyGuardians } from './notifyGuardians'
 
 export async function notifyResponders(emergencyId) {
   const { data: emergency, error: fetchError } = await supabaseAdmin
     .from('emergencies')
-    .select('id, institution_id, institutions(name)')
+    .select('id, institution_id, triggered_by, notifications_sent_at, institutions(name)')
     .eq('id', emergencyId)
     .single()
 
@@ -21,10 +22,25 @@ export async function notifyResponders(emergencyId) {
 
   const institutionName = emergency.institutions?.name || 'your institution'
 
+  const { data: notificationClaim, error: claimError } = await supabaseAdmin
+    .from('emergencies')
+    .update({ notifications_sent_at: new Date().toISOString() })
+    .eq('id', emergencyId)
+    .is('notifications_sent_at', null)
+    .select('id')
+    .maybeSingle()
+
+  if (claimError) return { success: false, error: claimError.message }
+  if (!notificationClaim) return { success: true, alreadyNotified: true, notified: 0 }
+
   // Alert the institution admin by SMS regardless of who's on shift
   sendTriggerSmsToAdmin(emergencyId, emergency.institution_id, institutionName).catch((err) =>
     console.error('Admin SMS alert failed:', err.message)
   )
+
+  if (emergency.triggered_by) {
+    notifyGuardians(emergency.triggered_by, institutionName).catch((err) => console.error('Guardian SMS alert failed:', err.message))
+  }
 
   const nowIso = new Date().toISOString()
 

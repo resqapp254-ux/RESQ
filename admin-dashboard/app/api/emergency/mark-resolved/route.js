@@ -8,13 +8,21 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { sendResolutionEmailToAdmin } from '../../../../lib/notifyInstitutionAdmin'
+import { canAccessEmergency, getAuthenticatedUser } from '../../../../lib/authorizeRequest'
 
 export async function POST(request) {
   try {
+    const { profile, error: authError } = await getAuthenticatedUser(request)
+    if (authError) return NextResponse.json({ success: false, error: authError }, { status: 401 })
     const { emergencyId } = await request.json()
 
     if (!emergencyId) {
       return NextResponse.json({ success: false, error: 'Missing emergencyId' }, { status: 400 })
+    }
+
+    const { data: existingEmergency } = await supabaseAdmin.from('emergencies').select('institution_id, claimed_by').eq('id', emergencyId).single()
+    if (!canAccessEmergency(profile, existingEmergency, ['responder', 'institution_admin', 'super_admin']) || (profile.role === 'responder' && existingEmergency.claimed_by !== profile.id)) {
+      return NextResponse.json({ success: false, error: 'Not authorized for this emergency' }, { status: 403 })
     }
 
     const { data: emergency, error: updateError } = await supabaseAdmin
