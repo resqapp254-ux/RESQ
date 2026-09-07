@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabaseClient'
+import EmergencyPulseBackground from '../../components/EmergencyPulseBackground'
 
 const STATUS_COLORS = {
   pending_verification: '#b8860b',
@@ -110,7 +111,9 @@ export default function SuperAdminPage() {
   }
 
   return (
-    <div style={{ padding: 40, fontFamily: 'sans-serif', maxWidth: 1100, margin: '0 auto' }}>
+    <div className="resq-shell">
+      <EmergencyPulseBackground />
+      <div className="resq-content" style={{ padding: 40, fontFamily: 'sans-serif', maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1>RESQ Super Admin</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
@@ -203,6 +206,7 @@ export default function SuperAdminPage() {
           </tbody>
         </table>
       )}
+      </div>
     </div>
   )
 }

@@ -7,7 +7,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
-import GlobeBackground from '../../components/GlobeBackground'
+import EmergencyPulseBackground from '../../components/EmergencyPulseBackground'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -54,11 +54,13 @@ export default function LoginPage() {
 
   return (
     <div className="resq-shell">
-      <GlobeBackground />
+      <EmergencyPulseBackground />
       <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <div className="glass-card" style={{ width: '100%', maxWidth: 400 }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-            <img src="/icon.svg" alt="RESQ" width="64" height="64" />
+            <div style={{ width: 120, height: 120 }}>
+              <img src="/icon.svg" alt="RESQ" width="120" height="120" />
+            </div>
           </div>
           <h1 className="resq-h1" style={{ fontSize: 28, marginBottom: 24 }}>RESQ Admin Login</h1>
           <form onSubmit={handleLogin}>

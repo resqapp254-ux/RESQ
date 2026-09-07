@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
+import EmergencyPulseBackground from '../../components/EmergencyPulseBackground'
 
 export default function JoinInstitutionPage() {
   const router = useRouter()
@@ -29,8 +30,14 @@ export default function JoinInstitutionPage() {
 
   return (
     <main className="resq-shell">
+      <EmergencyPulseBackground />
       <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <section className="glass-card" style={{ width: '100%', maxWidth: 440 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+            <div style={{ width: 120, height: 120 }}>
+              <img src="/icon.svg" alt="RESQ" width="120" height="120" />
+            </div>
+          </div>
           <h1 className="resq-h1" style={{ fontSize: 28 }}>Connect your institution</h1>
           <p className="resq-subtle" style={{ margin: '8px 0 24px' }}>Enter the code provided by your school, workplace, or community organization.</p>
           <form onSubmit={handleJoin}>

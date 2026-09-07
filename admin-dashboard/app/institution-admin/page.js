@@ -5,12 +5,15 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabaseClient'
+import EmergencyPulseBackground from '../../components/EmergencyPulseBackground'
 
 export default function InstitutionAdminPage() {
   const [authorized, setAuthorized] = useState(false)
   const [institution, setInstitution] = useState(null)
   const [responders, setResponders] = useState([])
   const [shiftsByResponder, setShiftsByResponder] = useState({})
+  const [activeEmergencies, setActiveEmergencies] = useState([])
+  const [recentResolved, setRecentResolved] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -81,6 +84,7 @@ export default function InstitutionAdminPage() {
       await loadShifts(resp.map((r) => r.id))
     }
 
+    await loadEmergencies()
     setLoading(false)
   }
 
@@ -100,6 +104,34 @@ export default function InstitutionAdminPage() {
       grouped[s.responder_id].push(s)
     })
     setShiftsByResponder(grouped)
+  }
+
+  async function loadEmergencies() {
+    if (!institution) return
+
+    const { data: openEmergencies, error: openError } = await supabase
+      .from('emergencies')
+      .select('id, emergency_type, status, claimed_by, created_at')
+      .eq('institution_id', institution.id)
+      .in('status', ['open', 'claimed'])
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    const { data: resolvedEmergencies, error: resolvedError } = await supabase
+      .from('emergencies')
+      .select('id, emergency_type, status, claimed_by, created_at, resolved_at')
+      .eq('institution_id', institution.id)
+      .eq('status', 'resolved')
+      .order('resolved_at', { ascending: false })
+      .limit(10)
+
+    if (openError || resolvedError) {
+      setError(openError?.message || resolvedError?.message || 'Failed to load emergencies')
+      return
+    }
+
+    setActiveEmergencies(openEmergencies || [])
+    setRecentResolved(resolvedEmergencies || [])
   }
 
   async function handleAddShift(e) {
@@ -138,7 +170,9 @@ export default function InstitutionAdminPage() {
   }
 
   return (
-    <div style={{ padding: 40, fontFamily: 'sans-serif', maxWidth: 1000, margin: '0 auto' }}>
+    <div className="resq-shell">
+      <EmergencyPulseBackground />
+      <div className="resq-content" style={{ padding: 40, fontFamily: 'sans-serif', maxWidth: 1000, margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <h1>{institution?.name}</h1>
         <button onClick={handleLogout} style={{ padding: '10px 16px' }}>Log Out</button>
@@ -149,6 +183,39 @@ export default function InstitutionAdminPage() {
       </p>
 
       {error && <p style={{ color: 'red' }}>{error}</p>}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 20, margin: '24px 0' }}>
+        <section className="glass-card" style={{ minHeight: 180 }}>
+          <h2 style={{ marginTop: 0 }}>Active Emergencies</h2>
+          {activeEmergencies.length === 0 && <p className="resq-subtle">No active emergencies.</p>}
+          {activeEmergencies.map((emergency) => (
+            <div key={emergency.id} style={{ padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                <div>
+                  <strong>{emergency.emergency_type || 'Emergency'}</strong>
+                  <p className="resq-subtle" style={{ margin: '4px 0' }}>{new Date(emergency.created_at).toLocaleString()}</p>
+                </div>
+                <span style={{ color: emergency.claimed_by ? '#ff8080' : '#35d0e8' }}>
+                  {emergency.claimed_by ? 'Claimed' : 'Open'}
+                </span>
+              </div>
+            </div>
+          ))}
+        </section>
+        <section className="glass-card" style={{ minHeight: 180 }}>
+          <h2 style={{ marginTop: 0 }}>Recently Resolved</h2>
+        <p className="resq-subtle" style={{ marginTop: 0 }}>Weekly report emails go to this institution admin with resolution details.</p>
+          {recentResolved.length === 0 && <p className="resq-subtle">No resolved emergencies yet.</p>}
+          {recentResolved.map((emergency) => (
+            <div key={emergency.id} style={{ padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <strong>{emergency.emergency_type || 'Emergency'}</strong>
+              <p className="resq-subtle" style={{ margin: '4px 0' }}>
+                Resolved {emergency.resolved_at ? new Date(emergency.resolved_at).toLocaleString() : 'recently'}
+              </p>
+            </div>
+          ))}
+        </section>
+      </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '30px 0 12px' }}>
         <h2 style={{ margin: 0 }}>Responders</h2>
@@ -230,6 +297,7 @@ export default function InstitutionAdminPage() {
           </form>
         </div>
       )}
+      </div>
     </div>
   )
 }
