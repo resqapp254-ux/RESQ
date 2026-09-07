@@ -87,6 +87,9 @@ export default function LoginPage() {
           {loading ? 'Signing in...' : 'Sign In'}
         </button>
           </form>
+          <p className="resq-subtle" style={{ marginTop: 16 }}>
+            <a href="/user-login">User access code</a> · <a href="/signup">Create user account</a> · <a href="/forgot-password">Forgot password?</a>
+          </p>
         </div>
       </div>
     </div>
