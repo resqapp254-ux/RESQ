@@ -34,9 +34,10 @@ export default function SignupPage() {
     }
     if (data.session) {
       router.replace('/join-institution')
-    } else {
-      setMessage('Check your email to confirm your account, then return here to enter your institution code.')
+      return
     }
+
+    setMessage('Account created. Return to login and use the password you just set.')
   }
 
   return (

@@ -9,7 +9,6 @@ export default function UserLoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
-  const [stage, setStage] = useState('request')
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
@@ -33,8 +32,7 @@ export default function UserLoginPage() {
       return
     }
 
-    setStage('verify')
-    setMessage('An access code has been sent to your email. Enter it below to continue.')
+    setMessage('An access code has been sent to your email. You can also sign in with your password.')
   }
 
   async function verifyLogin() {
@@ -42,25 +40,40 @@ export default function UserLoginPage() {
     setMessage('')
     setLoading(true)
 
-    const { error: verifyError } = await supabase.auth.verifyOtp({
-      email: email.trim(),
-      token: code.trim(),
-      type: 'email'
-    })
+    let authError = null
+    let status = null
+    let statusError = null
 
-    if (verifyError) {
+    if (code.trim()) {
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email: email.trim(),
+        token: code.trim(),
+        type: 'email'
+      })
+      authError = verifyError
+    } else {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: code
+      })
+      authError = signInError
+    }
+
+    if (authError) {
       setLoading(false)
-      setError(verifyError.message)
+      setError(authError.message)
       return
     }
 
-    const { data: status, error: statusError } = await supabase.rpc('get_onboarding_status')
+    const { data: statusData, error: statusCheckError } = await supabase.rpc('get_onboarding_status')
     setLoading(false)
 
-    if (statusError) {
+    if (statusCheckError) {
       setError('Login succeeded, but your account status could not be loaded.')
       return
     }
+
+    status = statusData
 
     if (status.role === 'user' && status.next_step === 'enter_institution_code') {
       router.replace('/join-institution')
@@ -86,7 +99,7 @@ export default function UserLoginPage() {
             </div>
           </div>
           <h1 className="resq-h1" style={{ fontSize: 28 }}>User access code</h1>
-          <p className="resq-subtle" style={{ margin: '8px 0 24px' }}>Enter your email to receive a one-time sign-in code.</p>
+          <p className="resq-subtle" style={{ margin: '8px 0 24px' }}>Enter your email to receive a one-time sign-in code, or sign in with your password.</p>
 
           <div style={{ marginBottom: 12 }}>
             <label className="resq-subtle">Email</label>
@@ -100,32 +113,25 @@ export default function UserLoginPage() {
             />
           </div>
 
-          {stage === 'verify' && (
-            <div style={{ marginBottom: 12 }}>
-              <label className="resq-subtle">Access code</label>
-              <input
-                className="resq-input"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="Enter 6-digit code"
-                inputMode="numeric"
-                maxLength={6}
-              />
-            </div>
-          )}
+          <div style={{ marginBottom: 12 }}>
+            <label className="resq-subtle">Access code or password</label>
+            <input
+              className="resq-input"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="Enter 6-digit code or your password"
+            />
+          </div>
 
           {error && <p style={{ color: '#ff8080', marginTop: 12 }}>{error}</p>}
           {message && <p style={{ color: 'var(--resq-green)', marginTop: 12 }}>{message}</p>}
 
-          {stage === 'request' ? (
-            <button className="resq-btn-primary" style={{ width: '100%', marginTop: 20 }} disabled={loading} onClick={requestAccessCode}>
-              {loading ? 'Sending...' : 'Send access code'}
-            </button>
-          ) : (
-            <button className="resq-btn-primary" style={{ width: '100%', marginTop: 20 }} disabled={loading} onClick={verifyLogin}>
-              {loading ? 'Signing in...' : 'Verify and continue'}
-            </button>
-          )}
+          <button className="resq-btn-primary" style={{ width: '100%', marginTop: 20 }} disabled={loading} onClick={requestAccessCode}>
+            {loading ? 'Sending...' : 'Send access code'}
+          </button>
+          <button className="resq-btn-secondary" style={{ width: '100%', marginTop: 12 }} disabled={loading} onClick={verifyLogin}>
+            {loading ? 'Signing in...' : 'Sign in with access code or password'}
+          </button>
 
           <p className="resq-subtle" style={{ marginTop: 18 }}>
             <a href="/login">Admin login</a> · <a href="/signup">Create user account</a>
