@@ -13,55 +13,19 @@ export default function UserLoginPage() {
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
 
-  async function requestAccessCode() {
-    setError('')
-    setMessage('')
-    setLoading(true)
-
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: {
-        emailRedirectTo: `${window.location.origin}/join-institution`
-      }
-    })
-
-    setLoading(false)
-
-    if (otpError) {
-      setError(otpError.message)
-      return
-    }
-
-    setMessage('An access code has been sent to your email. You can also sign in with your password.')
-  }
-
   async function verifyLogin() {
     setError('')
     setMessage('')
     setLoading(true)
 
-    let authError = null
-    let status = null
-    let statusError = null
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password: code
+    })
 
-    if (code.trim()) {
-      const { error: verifyError } = await supabase.auth.verifyOtp({
-        email: email.trim(),
-        token: code.trim(),
-        type: 'email'
-      })
-      authError = verifyError
-    } else {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: code
-      })
-      authError = signInError
-    }
-
-    if (authError) {
+    if (signInError) {
       setLoading(false)
-      setError(authError.message)
+      setError(signInError.message)
       return
     }
 
@@ -73,14 +37,12 @@ export default function UserLoginPage() {
       return
     }
 
-    status = statusData
-
-    if (status.role === 'user' && status.next_step === 'enter_institution_code') {
+    if (statusData.role === 'user' && statusData.next_step === 'enter_institution_code') {
       router.replace('/join-institution')
       return
     }
 
-    if (status.role === 'user') {
+    if (statusData.role === 'user') {
       router.replace('/user')
       return
     }
@@ -98,8 +60,8 @@ export default function UserLoginPage() {
               <img src="/icon.svg" alt="RESQ" width="120" height="120" />
             </div>
           </div>
-          <h1 className="resq-h1" style={{ fontSize: 28 }}>User access code</h1>
-          <p className="resq-subtle" style={{ margin: '8px 0 24px' }}>Enter your email to receive a one-time sign-in code, or sign in with your password.</p>
+          <h1 className="resq-h1" style={{ fontSize: 28 }}>User sign in</h1>
+          <p className="resq-subtle" style={{ margin: '8px 0 24px' }}>Sign in with the password for your RESQ user account.</p>
 
           <div style={{ marginBottom: 12 }}>
             <label className="resq-subtle">Email</label>
@@ -114,23 +76,21 @@ export default function UserLoginPage() {
           </div>
 
           <div style={{ marginBottom: 12 }}>
-            <label className="resq-subtle">Access code or password</label>
+            <label className="resq-subtle">Password</label>
             <input
               className="resq-input"
+              type="password"
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="Enter 6-digit code or your password"
+              placeholder="Enter your password"
             />
           </div>
 
           {error && <p style={{ color: '#ff8080', marginTop: 12 }}>{error}</p>}
           {message && <p style={{ color: 'var(--resq-green)', marginTop: 12 }}>{message}</p>}
 
-          <button className="resq-btn-primary" style={{ width: '100%', marginTop: 20 }} disabled={loading} onClick={requestAccessCode}>
-            {loading ? 'Sending...' : 'Send access code'}
-          </button>
-          <button className="resq-btn-secondary" style={{ width: '100%', marginTop: 12 }} disabled={loading} onClick={verifyLogin}>
-            {loading ? 'Signing in...' : 'Sign in with access code or password'}
+          <button className="resq-btn-primary" style={{ width: '100%', marginTop: 20 }} disabled={loading} onClick={verifyLogin}>
+            {loading ? 'Signing in...' : 'Sign in'}
           </button>
 
           <p className="resq-subtle" style={{ marginTop: 18 }}>
