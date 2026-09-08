@@ -52,19 +52,19 @@ export async function POST(request) {
 
     try {
       const aiResponse = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
-        max_tokens: 200,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: userMessage }
-        ]
-      })
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: "Bearer " + process.env.GROQ_API_KEY,
+        },
+        body: JSON.stringify({
+          model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
+          max_tokens: 200,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: userMessage }
+          ]
+        })
       })
 
       if (aiResponse.ok) {
@@ -93,3 +93,4 @@ export async function POST(request) {
     return NextResponse.json({ success: false, error: err.message || 'Unknown error' }, { status: 500 })
   }
 }
+
