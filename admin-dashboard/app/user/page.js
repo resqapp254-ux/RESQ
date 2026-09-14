@@ -137,7 +137,12 @@ export default function UserPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role, institutionId, myServiceId, myUserId])
 
-  const chatTargetId = currentEmergency?.id || activeEmergencies[0]?.id || ''
+  // Responders can only message an emergency they've claimed — RLS
+  // enforces this server-side (day11-chat-claim-rules.sql), so the
+  // UI needs to target the same emergency, not just "the first one
+  // in the queue", or the send fails with a raw policy error.
+  const myClaimedEmergency = isResponderView ? activeEmergencies.find((e) => e.claimed_by === myUserId) : null
+  const chatTargetId = isResponderView ? (myClaimedEmergency?.id || '') : (currentEmergency?.id || activeEmergencies[0]?.id || '')
 
   async function loadChatMessages(emergencyId) {
     const { data } = await supabase
@@ -423,9 +428,9 @@ export default function UserPage() {
       return
     }
 
-    const targetId = currentEmergency?.id || activeEmergencies[0]?.id || ''
+    const targetId = chatTargetId
     if (!targetId) {
-      setChatError('No emergency selected.')
+      setChatError(isResponderView ? 'Claim an emergency first — you can only message its reporter once you have.' : 'No emergency selected.')
       setChatBusy(false)
       return
     }
@@ -468,7 +473,11 @@ export default function UserPage() {
       })
 
     if (insertError) {
-      setChatError(insertError.message)
+      setChatError(
+        insertError.code === '42501'
+          ? 'You are not allowed to message this emergency — responders must claim it first.'
+          : insertError.message
+      )
       setChatBusy(false)
       return
     }
@@ -586,17 +595,23 @@ export default function UserPage() {
                 </p>
                 <div style={{ marginTop: 20 }}>
                   <h3 style={{ marginTop: 0 }}>{t('messageReporter')}</h3>
-                  {chatThread}
-                  <textarea
-                    className="resq-input"
-                    style={{ minHeight: 120 }}
-                    placeholder={t('messageReporterPlaceholder')}
-                    value={chatMessage}
-                    onChange={(e) => setChatMessage(e.target.value)}
-                  />
-                  <button className="resq-btn-secondary" style={{ width: '100%', marginTop: 12 }} onClick={sendChatMessage} disabled={chatBusy}>
-                    {chatBusy ? t('sendingEllipsis') : t('sendMessage')}
-                  </button>
+                  {myClaimedEmergency ? (
+                    <>
+                      {chatThread}
+                      <textarea
+                        className="resq-input"
+                        style={{ minHeight: 120 }}
+                        placeholder={t('messageReporterPlaceholder')}
+                        value={chatMessage}
+                        onChange={(e) => setChatMessage(e.target.value)}
+                      />
+                      <button className="resq-btn-secondary" style={{ width: '100%', marginTop: 12 }} onClick={sendChatMessage} disabled={chatBusy}>
+                        {chatBusy ? t('sendingEllipsis') : t('sendMessage')}
+                      </button>
+                    </>
+                  ) : (
+                    <p className="resq-subtle">Claim an emergency below to message the person who reported it.</p>
+                  )}
                   {chatError && <p style={{ color: '#ff8080' }}>{chatError}</p>}
                   {message && <p className="resq-green">{message}</p>}
                 </div>
