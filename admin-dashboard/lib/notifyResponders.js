@@ -119,7 +119,10 @@ export async function notifyResponders(emergencyId) {
     body: 'Tap to view and claim this emergency now.',
     priority: 'high',
     channelId: 'resq-emergency-alerts',
-    sound: 'default',
+    // Android's actual sound comes from the channel (see
+    // mobile/lib/notifications.js); this field is what iOS uses,
+    // which doesn't have channels — same bundled siren either way.
+    sound: 'siren.wav',
     data: { emergencyId }
   }))
 

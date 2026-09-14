@@ -35,8 +35,11 @@ export async function setupEmergencyNotificationChannel() {
     // "Do Not Disturb access" to RESQ in Android system settings.
     bypassDnd: true,
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-    sound: 'default',
-    vibrationPattern: [0, 500, 250, 500, 250, 500],
+    // A real synthesized wailing siren (assets/siren.wav), not the
+    // generic system tone — this is what actually makes it read as
+    // an alarm instead of a normal notification ping.
+    sound: 'siren.wav',
+    vibrationPattern: [0, 500, 250, 500, 250, 500, 250, 500],
     enableVibrate: true,
     enableLights: true,
     lightColor: '#FF0000'

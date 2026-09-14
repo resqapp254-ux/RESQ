@@ -18,7 +18,8 @@
       [
         "expo-notifications",
         {
-          "color": "#cc0000"
+          "color": "#cc0000",
+          "sounds": ["./assets/siren.wav"]
         }
       ],
       [
