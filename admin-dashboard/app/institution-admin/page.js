@@ -231,11 +231,16 @@ export default function InstitutionAdminPage() {
         </section>
       </div>
 
-      <div className="resq-fade-in resq-fade-in-3" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '30px 0 12px' }}>
+      <div className="resq-fade-in resq-fade-in-3" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '30px 0 12px', flexWrap: 'wrap', gap: 12 }}>
         <h2 style={{ margin: 0 }}>Responders</h2>
-        <Link href="/institution-admin/add-responder" className="resq-btn-primary" style={{ textDecoration: 'none' }}>
-          + Add Responder
-        </Link>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <Link href="/institution-admin/services" className="resq-btn-secondary" style={{ textDecoration: 'none' }}>
+            🏥 Secondary Responders
+          </Link>
+          <Link href="/institution-admin/add-responder" className="resq-btn-primary" style={{ textDecoration: 'none' }}>
+            + Add Responder
+          </Link>
+        </div>
       </div>
 
       {responders.length === 0 && <p className="resq-subtle resq-fade-in resq-fade-in-3">No responders yet. Add your first one above.</p>}

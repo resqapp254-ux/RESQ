@@ -1,18 +1,39 @@
 // app/institution-admin/add-responder/page.js
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../../lib/supabaseClient'
 import EmergencyPulseBackground from '../../../components/EmergencyPulseBackground'
 
 export default function AddResponderPage() {
-  const [form, setForm] = useState({ fullName: '', email: '', phone: '', tempPassword: '' })
+  const [form, setForm] = useState({ fullName: '', email: '', phone: '', tempPassword: '', serviceId: '' })
+  const [services, setServices] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const router = useRouter()
+
+  useEffect(() => {
+    async function loadServices() {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('institution_id')
+        .eq('id', sessionData.session?.user?.id)
+        .single()
+      if (!profile?.institution_id) return
+      const { data } = await supabase
+        .from('institution_services')
+        .select('id, name, service_type')
+        .eq('institution_id', profile.institution_id)
+        .eq('is_active', true)
+        .order('name')
+      setServices(data || [])
+    }
+    loadServices()
+  }, [])
 
   function update(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -65,6 +86,11 @@ export default function AddResponderPage() {
             <div className="resq-success-box" style={{ marginTop: 16 }}>
               <p><strong>{form.fullName}</strong> can now log in at the RESQ sign-in page (web or mobile app) with:</p>
               <p style={{ marginTop: 10 }}>Email: <strong>{form.email}</strong><br />Password: <strong>{form.tempPassword}</strong></p>
+              {form.serviceId && (
+                <p className="resq-subtle" style={{ marginTop: 10 }}>
+                  Assigned as a secondary responder to: <strong style={{ color: 'var(--resq-text-primary)' }}>{services.find((s) => s.id === form.serviceId)?.name}</strong>
+                </p>
+              )}
             </div>
             <button className="resq-btn-primary" style={{ marginTop: 20 }} onClick={() => router.push('/institution-admin')}>
               Back to Dashboard
@@ -94,10 +120,22 @@ export default function AddResponderPage() {
             <input className="resq-input" style={{ marginTop: 4, marginBottom: 14 }} required value={form.phone} onChange={(e) => update('phone', e.target.value)} placeholder="Used for offline SMS alerts" />
 
             <label>Temporary Password</label>
-            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+            <div style={{ display: 'flex', gap: 8, marginTop: 4, marginBottom: 14 }}>
               <input className="resq-input" required value={form.tempPassword} onChange={(e) => update('tempPassword', e.target.value)} style={{ flex: 1 }} />
               <button type="button" className="resq-btn-secondary" onClick={generatePassword}>Generate</button>
             </div>
+
+            <label>Assign to a service (optional)</label>
+            <select className="resq-input" style={{ marginTop: 4 }} value={form.serviceId} onChange={(e) => update('serviceId', e.target.value)}>
+              <option value="">Primary responder (all emergencies)</option>
+              {services.map((s) => (
+                <option key={s.id} value={s.id}>{s.name} ({s.service_type})</option>
+              ))}
+            </select>
+            <p className="resq-subtle" style={{ marginTop: 4 }}>
+              Leave as "Primary" for your main team. Pick a service to make this a secondary responder — see{' '}
+              <Link href="/institution-admin/services">Secondary Responders</Link> to add one first.
+            </p>
 
             {error && <p style={{ color: '#ff8080' }}>{error}</p>}
 

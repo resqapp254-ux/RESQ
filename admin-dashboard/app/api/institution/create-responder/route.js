@@ -45,10 +45,24 @@ export async function POST(request) {
     }
 
     const body = await request.json()
-    const { fullName, email, phone, tempPassword } = body
+    const { fullName, email, phone, tempPassword, serviceId } = body
 
     if (!fullName || !email || !tempPassword) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 })
+    }
+
+    // If a secondary service was picked, make sure it actually belongs
+    // to the caller's own institution before assigning it.
+    if (serviceId) {
+      const { data: service } = await supabaseAdmin
+        .from('institution_services')
+        .select('id')
+        .eq('id', serviceId)
+        .eq('institution_id', caller.institution_id)
+        .maybeSingle()
+      if (!service) {
+        return NextResponse.json({ success: false, error: 'Selected service was not found for your institution' }, { status: 400 })
+      }
     }
 
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -66,6 +80,16 @@ export async function POST(request) {
     if (authError) {
       console.error('RESPONDER CREATE ERROR:', JSON.stringify(authError, null, 2))
       return NextResponse.json({ success: false, error: authError.message || 'Failed to create responder account' }, { status: 500 })
+    }
+
+    if (serviceId) {
+      const { error: assignError } = await supabaseAdmin
+        .from('profiles')
+        .update({ service_id: serviceId })
+        .eq('id', authUser.user.id)
+      if (assignError) {
+        console.error('RESPONDER SERVICE ASSIGN ERROR:', assignError.message)
+      }
     }
 
     return NextResponse.json({ success: true, responderId: authUser.user.id })

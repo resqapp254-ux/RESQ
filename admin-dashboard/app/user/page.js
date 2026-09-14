@@ -6,20 +6,23 @@ import { supabase } from '../../lib/supabaseClient'
 import EmergencyPulseBackground from '../../components/EmergencyPulseBackground'
 import HeartMonitorLine from '../../components/HeartMonitorLine'
 import { useEmergencySiren } from '../../lib/useEmergencySiren'
+import { pickMatchingServices } from '../../lib/serviceDispatch'
+import LanguageSwitcher from '../../components/LanguageSwitcher'
+import { useTranslation } from '../../lib/i18n/LanguageContext'
 
 const EMERGENCY_TYPES = [
-  { key: 'medical', label: 'Medical', emoji: '\uD83C\uDFE5' },
-  { key: 'fire', label: 'Fire', emoji: '\uD83D\uDD25' },
-  { key: 'accident', label: 'Accident', emoji: '\uD83D\uDE91' },
-  { key: 'security', label: 'Security', emoji: '\uD83D\uDEE1\uFE0F' },
-  { key: 'gbv', label: 'GBV', emoji: '\uD83E\uDD1D' },
-  { key: 'mental_health', label: 'Mental Health', emoji: '\uD83E\uDDE0' },
-  { key: 'other', label: 'Other', emoji: '\u26A0\uFE0F' }
+  { key: 'medical', translationKey: 'medical', emoji: '\uD83C\uDFE5' },
+  { key: 'fire', translationKey: 'fire', emoji: '\uD83D\uDD25' },
+  { key: 'accident', translationKey: 'accident', emoji: '\uD83D\uDE91' },
+  { key: 'security', translationKey: 'security', emoji: '\uD83D\uDEE1\uFE0F' },
+  { key: 'gbv', translationKey: 'gbv', emoji: '\uD83E\uDD1D' },
+  { key: 'mental_health', translationKey: 'mentalHealth', emoji: '\uD83E\uDDE0' },
+  { key: 'other', translationKey: 'other', emoji: '\u26A0\uFE0F' }
 ]
 
-function typeLabel(key) {
-  const found = EMERGENCY_TYPES.find((t) => t.key === key)
-  return found ? found.emoji + ' ' + found.label : (key || 'Emergency')
+function typeLabel(key, t) {
+  const found = EMERGENCY_TYPES.find((type) => type.key === key)
+  return found ? found.emoji + ' ' + t(found.translationKey) : (key || 'Emergency')
 }
 
 function statusBadgeClass(status, claimedBy) {
@@ -32,9 +35,12 @@ const RESPONDER_ROLES = ['responder', 'institution_admin', 'super_admin']
 
 export default function UserPage() {
   const router = useRouter()
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('')
   const [institutionName, setInstitutionName] = useState('')
+  const [institutionId, setInstitutionId] = useState('')
+  const [myServiceId, setMyServiceId] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
@@ -74,11 +80,12 @@ export default function UserPage() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('institution_id')
+        .select('institution_id, service_id')
         .eq('id', authData.user.id)
         .single()
 
       if (profile?.institution_id) {
+        setInstitutionId(profile.institution_id)
         const { data: institution } = await supabase
           .from('institutions')
           .select('name')
@@ -86,8 +93,9 @@ export default function UserPage() {
           .single()
         setInstitutionName(institution?.name || '')
       }
+      if (profile?.service_id) setMyServiceId(profile.service_id)
 
-      await refreshEmergencies(authData.user.id, status?.role, profile?.institution_id)
+      await refreshEmergencies(authData.user.id, status?.role, profile?.institution_id, profile?.service_id)
       setLoading(false)
     }
 
@@ -95,8 +103,10 @@ export default function UserPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
-  async function refreshEmergencies(userId, roleValue, institutionId) {
+  async function refreshEmergencies(userId, roleValue, institutionIdArg, serviceIdArg) {
     const roleName = roleValue || role
+    const institutionIdValue = institutionIdArg || institutionId
+    const serviceIdValue = serviceIdArg || myServiceId
 
     if (roleName === 'user') {
       const { data: open } = await supabase
@@ -128,16 +138,35 @@ export default function UserPage() {
     if (RESPONDER_ROLES.includes(roleName)) {
       let openQuery = supabase
         .from('emergencies')
-        .select('id, emergency_type, status, created_at, claimed_by, institution_id, triggered_by, ai_flag_to_responder')
+        .select('id, emergency_type, status, created_at, claimed_by, institution_id, triggered_by, ai_flag_to_responder, lat, lng')
         .in('status', ['triggered', 'claimed', 'in_progress'])
         .order('created_at', { ascending: false })
         .limit(20)
 
-      if (roleName !== 'super_admin' && institutionId) {
-        openQuery = openQuery.eq('institution_id', institutionId)
+      if (roleName !== 'super_admin' && institutionIdValue) {
+        openQuery = openQuery.eq('institution_id', institutionIdValue)
       }
 
-      const { data: open } = await openQuery
+      let { data: open } = await openQuery
+
+      // Secondary responders (linked to an institution_service) only
+      // see emergencies routed to their service — see lib/serviceDispatch.js.
+      if (roleName === 'responder' && serviceIdValue && institutionIdValue) {
+        const { data: services } = await supabase
+          .from('institution_services')
+          .select('id, service_type, lat, lng, handles_emergency_types, is_active')
+          .eq('institution_id', institutionIdValue)
+          .eq('is_active', true)
+
+        open = (open || []).filter((emergency) => {
+          const matching = pickMatchingServices(services, {
+            emergencyType: emergency.emergency_type,
+            lat: emergency.lat,
+            lng: emergency.lng
+          })
+          return matching.some((s) => s.id === serviceIdValue)
+        })
+      }
 
       let resolvedQuery = supabase
         .from('emergencies')
@@ -146,8 +175,8 @@ export default function UserPage() {
         .order('resolved_at', { ascending: false })
         .limit(10)
 
-      if (roleName !== 'super_admin' && institutionId) {
-        resolvedQuery = resolvedQuery.eq('institution_id', institutionId)
+      if (roleName !== 'super_admin' && institutionIdValue) {
+        resolvedQuery = resolvedQuery.eq('institution_id', institutionIdValue)
       }
 
       const { data: resolved } = await resolvedQuery
@@ -395,6 +424,7 @@ export default function UserPage() {
   return (
     <main className={'resq-shell' + (hasActiveAlert ? ' resq-alert-shell' : '')}>
       <EmergencyPulseBackground />
+      <LanguageSwitcher />
       <div className="resq-content" style={{ padding: 32, maxWidth: 1200, margin: '0 auto' }}>
         <div className="glass-card resq-fade-in" style={{ maxWidth: 720, marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
@@ -404,20 +434,20 @@ export default function UserPage() {
           </div>
           <h1 className="resq-h1">RESQ</h1>
           <p className="resq-subtle" style={{ marginTop: 8 }}>
-            Signed in as {email}
-            {role ? ' \u2022 ' + (isResponderView ? 'Responder workspace' : 'User workspace') + ' (' + role + ')' : ''}
+            {t('signedInAs')} {email}
+            {role ? ' \u2022 ' + (isResponderView ? t('responderWorkspace') : t('userWorkspace')) + ' (' + role + ')' : ''}
             {institutionName ? ' \u2022 ' + institutionName : ''}
           </p>
         </div>
 
         {isResponderView && (
-          <HeartMonitorLine alert={hasActiveAlert} label={hasActiveAlert ? 'Active emergency' : 'All clear'} />
+          <HeartMonitorLine alert={hasActiveAlert} label={hasActiveAlert ? t('activeEmergencyLabel') : t('allClear')} />
         )}
 
         {hasActiveAlert && (
           <div className="resq-siren-banner resq-fade-in" role="alert">
             <span>
-              <strong>{activeEmergencies.length}</strong> active emergenc{activeEmergencies.length === 1 ? 'y' : 'ies'} \u2014 respond now.
+              <strong>{activeEmergencies.length}</strong> {activeEmergencies.length === 1 ? t('activeEmergencyBanner') : t('activeEmergenciesBanner')}
             </span>
             <button
               type="button"
@@ -425,7 +455,7 @@ export default function UserPage() {
               onClick={() => setSirenMuted((m) => !m)}
               aria-pressed={sirenMuted}
             >
-              {sirenMuted ? '\ud83d\udd07 Unmute siren' : '\ud83d\udd0a Mute siren'}
+              {sirenMuted ? '\ud83d\udd07 ' + t('unmuteSiren') : '\ud83d\udd0a ' + t('muteSiren')}
             </button>
           </div>
         )}
@@ -434,21 +464,21 @@ export default function UserPage() {
           <section className="glass-card resq-fade-in resq-fade-in-2">
             {isResponderView ? (
               <>
-                <h2 style={{ marginTop: 0 }}>Responder Console</h2>
+                <h2 style={{ marginTop: 0 }}>{t('responderConsole')}</h2>
                 <p className="resq-subtle" style={{ marginTop: 0 }}>
-                  Claim incoming emergencies, message the reporting user, and mark cases resolved once handled.
+                  {t('responderConsoleSubtitle')}
                 </p>
                 <div style={{ marginTop: 20 }}>
-                  <h3 style={{ marginTop: 0 }}>Message reporter</h3>
+                  <h3 style={{ marginTop: 0 }}>{t('messageReporter')}</h3>
                   <textarea
                     className="resq-input"
                     style={{ minHeight: 120 }}
-                    placeholder="Send an update to the person who reported this emergency..."
+                    placeholder={t('messageReporterPlaceholder')}
                     value={chatMessage}
                     onChange={(e) => setChatMessage(e.target.value)}
                   />
                   <button className="resq-btn-secondary" style={{ width: '100%', marginTop: 12 }} onClick={sendChatMessage} disabled={chatBusy}>
-                    {chatBusy ? 'Sending...' : 'Send message'}
+                    {chatBusy ? t('sendingEllipsis') : t('sendMessage')}
                   </button>
                   {chatError && <p style={{ color: '#ff8080' }}>{chatError}</p>}
                   {message && <p className="resq-green">{message}</p>}
@@ -456,10 +486,10 @@ export default function UserPage() {
               </>
             ) : (
               <>
-                <h2 style={{ marginTop: 0 }}>Emergency Control</h2>
-                <p className="resq-subtle" style={{ marginTop: 0 }}>Choose what's happening, then trigger — responders are alerted instantly.</p>
+                <h2 style={{ marginTop: 0 }}>{t('emergencyControl')}</h2>
+                <p className="resq-subtle" style={{ marginTop: 0 }}>{t('emergencyControlSubtitle')}</p>
 
-                <label id="resq-type-label" className="resq-subtle">Emergency type</label>
+                <label id="resq-type-label" className="resq-subtle">{t('emergencyType')}</label>
                 <div className="resq-type-grid" role="radiogroup" aria-labelledby="resq-type-label">
                   {EMERGENCY_TYPES.map((type) => (
                     <button
@@ -467,12 +497,12 @@ export default function UserPage() {
                       key={type.key}
                       role="radio"
                       aria-checked={selectedType === type.key}
-                      aria-label={type.label}
+                      aria-label={t(type.translationKey)}
                       className={'resq-type-chip' + (selectedType === type.key ? ' resq-type-chip-selected' : '')}
                       onClick={() => setSelectedType(type.key)}
                     >
                       <span className="resq-type-emoji" aria-hidden="true">{type.emoji}</span>
-                      <span>{type.label}</span>
+                      <span>{t(type.translationKey)}</span>
                     </button>
                   ))}
                 </div>
@@ -480,11 +510,11 @@ export default function UserPage() {
                 <div className="resq-trigger-wrap">
                   <button
                     className="resq-trigger-btn"
-                    aria-label={`Send an SOS for a ${typeLabel(selectedType)} emergency`}
+                    aria-label={`Send an SOS for a ${typeLabel(selectedType, t)} emergency`}
                     onClick={handleTriggerEmergency}
                     disabled={locationBusy || triggerBusy}
                   >
-                    {locationBusy ? 'Locating...' : triggerBusy ? 'Sending...' : 'SOS \u2014 Trigger'}
+                    {locationBusy ? t('locating') : triggerBusy ? t('sendingEllipsis') : t('sosTrigger')}
                   </button>
                 </div>
 
@@ -495,22 +525,22 @@ export default function UserPage() {
 
                 {currentAdvice && (
                   <div className="resq-advice-box">
-                    <strong>AI safety guidance</strong>
+                    <strong>{t('aiSafetyGuidance')}</strong>
                     <p style={{ margin: '6px 0 0' }}>{currentAdvice}</p>
                   </div>
                 )}
 
                 <div style={{ marginTop: 20 }}>
-                  <h3 style={{ marginTop: 0 }}>Chat with responders</h3>
+                  <h3 style={{ marginTop: 0 }}>{t('chatWithResponders')}</h3>
                   <textarea
                     className="resq-input"
                     style={{ minHeight: 100 }}
-                    placeholder="Type a message to responders..."
+                    placeholder={t('chatPlaceholder')}
                     value={chatMessage}
                     onChange={(e) => setChatMessage(e.target.value)}
                   />
                   <button className="resq-btn-secondary" style={{ width: '100%', marginTop: 12 }} onClick={sendChatMessage} disabled={chatBusy}>
-                    {chatBusy ? 'Sending...' : 'Send message'}
+                    {chatBusy ? t('sendingEllipsis') : t('sendMessage')}
                   </button>
                   {chatError && <p style={{ color: '#ff8080' }}>{chatError}</p>}
                 </div>
@@ -521,20 +551,20 @@ export default function UserPage() {
           <section className="glass-card resq-fade-in resq-fade-in-3">
             <h2 style={{ marginTop: 0 }}>
               {activeEmergencies.length > 0 && <span className="resq-live-dot" aria-hidden="true" />}
-              {isResponderView ? 'Emergency Queue' : 'My Emergencies'}
+              {isResponderView ? t('emergencyQueue') : t('myEmergencies')}
             </h2>
             <p className="resq-subtle" style={{ marginTop: 0 }}>
-              {isResponderView ? 'Open cases assigned to your institution.' : 'Active and recent cases you have reported.'}
+              {isResponderView ? t('openCasesInstitution') : t('activeAndRecentCases')}
             </p>
 
             <div style={{ marginBottom: 18 }}>
-              <h3 style={{ marginTop: 0 }}>Active</h3>
-              {activeEmergencies.length === 0 && <p className="resq-subtle">No active emergencies.</p>}
+              <h3 style={{ marginTop: 0 }}>{t('active')}</h3>
+              {activeEmergencies.length === 0 && <p className="resq-subtle">{t('noActiveEmergencies')}</p>}
               {activeEmergencies.map((emergency) => (
                 <div key={emergency.id} className="resq-row-interactive" style={{ padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
                     <div>
-                      <strong>{typeLabel(emergency.emergency_type)}</strong>
+                      <strong>{typeLabel(emergency.emergency_type, t)}</strong>
                       <p className="resq-subtle" style={{ margin: '4px 0' }}>
                         {new Date(emergency.created_at).toLocaleString()}
                       </p>
@@ -551,10 +581,10 @@ export default function UserPage() {
                     {isResponderView && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <button className="resq-btn-secondary" onClick={() => handleClaim(emergency.id)} disabled={claimingId === emergency.id}>
-                          {claimingId === emergency.id ? 'Claiming...' : 'Claim'}
+                          {claimingId === emergency.id ? t('claiming') : t('claim')}
                         </button>
                         <button className="resq-btn-secondary" onClick={() => handleResolve(emergency.id)} disabled={resolvingId === emergency.id}>
-                          {resolvingId === emergency.id ? 'Resolving...' : 'Resolve'}
+                          {resolvingId === emergency.id ? t('resolving') : t('resolve')}
                         </button>
                       </div>
                     )}
@@ -564,11 +594,11 @@ export default function UserPage() {
             </div>
 
             <div>
-              <h3 style={{ marginTop: 0 }}>Resolved</h3>
-              {resolvedEmergencies.length === 0 && <p className="resq-subtle">No resolved emergencies yet.</p>}
+              <h3 style={{ marginTop: 0 }}>{t('resolved')}</h3>
+              {resolvedEmergencies.length === 0 && <p className="resq-subtle">{t('noResolvedEmergencies')}</p>}
               {resolvedEmergencies.map((emergency) => (
                 <div key={emergency.id} style={{ padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                  <strong>{typeLabel(emergency.emergency_type)}</strong>
+                  <strong>{typeLabel(emergency.emergency_type, t)}</strong>
                   <p className="resq-subtle" style={{ margin: '4px 0' }}>
                     Resolved {emergency.resolved_at ? new Date(emergency.resolved_at).toLocaleString() : 'recently'}
                   </p>

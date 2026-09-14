@@ -8,11 +8,12 @@
 import { supabaseAdmin } from './supabaseAdmin'
 import { sendTriggerSmsToAdmin } from './notifyInstitutionAdmin'
 import { notifyGuardians } from './notifyGuardians'
+import { pickMatchingServices } from './serviceDispatch'
 
 export async function notifyResponders(emergencyId) {
   const { data: emergency, error: fetchError } = await supabaseAdmin
     .from('emergencies')
-    .select('id, institution_id, triggered_by, notifications_sent_at, institutions(name)')
+    .select('id, institution_id, triggered_by, emergency_type, lat, lng, notifications_sent_at, institutions(name)')
     .eq('id', emergencyId)
     .single()
 
@@ -53,26 +54,62 @@ export async function notifyResponders(emergencyId) {
 
   const onShiftResponderIds = (onShiftIds || []).map((s) => s.responder_id)
 
+  // Primary responders — always notified for every emergency in their institution.
   let responderQuery = supabaseAdmin
     .from('profiles')
     .select('id, push_token')
     .eq('institution_id', emergency.institution_id)
     .eq('role', 'responder')
+    .is('service_id', null)
     .not('push_token', 'is', null)
 
-  // If anyone is actually on shift right now, only notify them.
-  // Otherwise fall back to notifying every responder in the institution.
-  if (onShiftResponderIds.length > 0) {
-    responderQuery = responderQuery.in('id', onShiftResponderIds)
+  // Secondary responders — belong to an institution_service (hospital,
+  // police, etc). Only the services this emergency should route to.
+  const { data: services } = await supabaseAdmin
+    .from('institution_services')
+    .select('id, service_type, lat, lng, handles_emergency_types, is_active')
+    .eq('institution_id', emergency.institution_id)
+    .eq('is_active', true)
+
+  const matchingServices = pickMatchingServices(services, {
+    emergencyType: emergency.emergency_type,
+    lat: emergency.lat,
+    lng: emergency.lng
+  })
+  const matchingServiceIds = matchingServices.map((s) => s.id)
+
+  let secondaryResponders = []
+  if (matchingServiceIds.length > 0) {
+    const { data } = await supabaseAdmin
+      .from('profiles')
+      .select('id, push_token')
+      .eq('role', 'responder')
+      .in('service_id', matchingServiceIds)
+      .not('push_token', 'is', null)
+    secondaryResponders = data || []
   }
 
-  const { data: responders, error: responderError } = await responderQuery
+  // If anyone is actually on shift right now, only notify them.
+  // Otherwise fall back to notifying every eligible responder.
+  if (onShiftResponderIds.length > 0) {
+    responderQuery = responderQuery.in('id', onShiftResponderIds)
+    secondaryResponders = secondaryResponders.filter((r) => onShiftResponderIds.includes(r.id))
+  }
+
+  const { data: primaryResponders, error: responderError } = await responderQuery
 
   if (responderError) {
     return { success: false, error: responderError.message }
   }
 
-  if (!responders || responders.length === 0) {
+  const seen = new Set()
+  const responders = [...(primaryResponders || []), ...secondaryResponders].filter((r) => {
+    if (seen.has(r.id)) return false
+    seen.add(r.id)
+    return true
+  })
+
+  if (responders.length === 0) {
     return { success: true, notified: 0, note: 'No responders with a registered device found.' }
   }
 

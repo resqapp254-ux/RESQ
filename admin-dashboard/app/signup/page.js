@@ -4,8 +4,11 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
 import GlobeBackground from '../../components/GlobeBackground'
+import LanguageSwitcher from '../../components/LanguageSwitcher'
+import { useTranslation } from '../../lib/i18n/LanguageContext'
 
 export default function SignupPage() {
+  const { t } = useTranslation()
   const router = useRouter()
   const [form, setForm] = useState({ fullName: '', email: '', phone: '', password: '' })
   const [error, setError] = useState('')
@@ -43,6 +46,7 @@ export default function SignupPage() {
   return (
     <main className="resq-shell">
       <GlobeBackground />
+      <LanguageSwitcher />
       <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <section className="glass-card resq-fade-in" style={{ width: '100%', maxWidth: 440 }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
@@ -50,18 +54,18 @@ export default function SignupPage() {
               <img src="/icon.svg" alt="RESQ" width="120" height="120" />
             </div>
           </div>
-          <h1 className="resq-h1" style={{ fontSize: 28 }}>Create a RESQ account</h1>
-          <p className="resq-subtle" style={{ margin: '8px 0 24px' }}>Your institution code routes emergencies to the right responders.</p>
+          <h1 className="resq-h1" style={{ fontSize: 28 }}>{t('createAccountTitle')}</h1>
+          <p className="resq-subtle" style={{ margin: '8px 0 24px' }}>{t('createAccountSubtitle')}</p>
           <form onSubmit={handleSignup}>
-            <input className="resq-input" placeholder="Full name" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} required />
-            <input className="resq-input" style={{ marginTop: 12 }} type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
-            <input className="resq-input" style={{ marginTop: 12 }} placeholder="Phone number" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
-            <input className="resq-input" style={{ marginTop: 12 }} type="password" minLength={8} placeholder="Password (8+ characters)" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+            <input className="resq-input" placeholder={t('fullName')} value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} required />
+            <input className="resq-input" style={{ marginTop: 12 }} type="email" placeholder={t('email')} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+            <input className="resq-input" style={{ marginTop: 12 }} placeholder={t('phoneNumber')} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
+            <input className="resq-input" style={{ marginTop: 12 }} type="password" minLength={8} placeholder={t('passwordHint')} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
             {error && <p style={{ color: '#ff8080' }}>{error}</p>}
             {message && <p style={{ color: 'var(--resq-green)' }}>{message}</p>}
-            <button className="resq-btn-primary" style={{ width: '100%', marginTop: 20 }} disabled={loading}>{loading ? 'Creating account...' : 'Create account'}</button>
+            <button className="resq-btn-primary" style={{ width: '100%', marginTop: 20 }} disabled={loading}>{loading ? t('creatingAccount') : t('createAccountButton')}</button>
           </form>
-          <p className="resq-subtle" style={{ marginTop: 18 }}>Already have an account? <a href="/login">Sign in here</a></p>
+          <p className="resq-subtle" style={{ marginTop: 18 }}>{t('alreadyHaveAccount')} <a href="/login">{t('signInHere')}</a></p>
         </section>
       </div>
     </main>

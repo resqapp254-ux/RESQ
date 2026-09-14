@@ -1,4 +1,5 @@
 import '../styles/resq-design-system.css'
+import { LanguageProvider } from '../lib/i18n/LanguageContext'
 
 export const metadata = {
   title: 'RESQ Admin',
@@ -8,7 +9,9 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <LanguageProvider>{children}</LanguageProvider>
+      </body>
     </html>
   )
 }

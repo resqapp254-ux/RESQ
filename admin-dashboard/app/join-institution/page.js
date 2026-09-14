@@ -4,8 +4,11 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
 import GlobeBackground from '../../components/GlobeBackground'
+import LanguageSwitcher from '../../components/LanguageSwitcher'
+import { useTranslation } from '../../lib/i18n/LanguageContext'
 
 export default function JoinInstitutionPage() {
+  const { t } = useTranslation()
   const router = useRouter()
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
@@ -31,6 +34,7 @@ export default function JoinInstitutionPage() {
   return (
     <main className="resq-shell">
       <GlobeBackground />
+      <LanguageSwitcher />
       <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <section className="glass-card resq-fade-in" style={{ width: '100%', maxWidth: 440 }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
@@ -38,12 +42,12 @@ export default function JoinInstitutionPage() {
               <img src="/icon.svg" alt="RESQ" width="120" height="120" />
             </div>
           </div>
-          <h1 className="resq-h1" style={{ fontSize: 28 }}>Connect your institution</h1>
-          <p className="resq-subtle" style={{ margin: '8px 0 24px' }}>Enter the code provided by your school, workplace, or community organization.</p>
+          <h1 className="resq-h1" style={{ fontSize: 28 }}>{t('connectInstitution')}</h1>
+          <p className="resq-subtle" style={{ margin: '8px 0 24px' }}>{t('connectInstitutionSubtitle')}</p>
           <form onSubmit={handleJoin}>
             <input className="resq-input" placeholder="RESQ-AB12CD" value={code} onChange={(e) => setCode(e.target.value)} autoCapitalize="characters" required />
             {error && <p style={{ color: '#ff8080' }}>{error}</p>}
-            <button className="resq-btn-primary" style={{ width: '100%', marginTop: 20 }} disabled={loading}>{loading ? 'Connecting...' : 'Connect institution'}</button>
+            <button className="resq-btn-primary" style={{ width: '100%', marginTop: 20 }} disabled={loading}>{loading ? t('connecting') : t('connectButton')}</button>
           </form>
         </section>
       </div>
