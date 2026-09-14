@@ -408,6 +408,11 @@ export default function UserPage() {
     await refreshEmergencies((await supabase.auth.getUser()).data.user.id, role)
   }
 
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    router.replace('/login')
+  }
+
   async function sendChatMessage() {
     setChatError('')
     setChatBusy(true)
@@ -535,6 +540,9 @@ export default function UserPage() {
       <LanguageSwitcher />
       <div className="resq-content" style={{ padding: 32, maxWidth: 1200, margin: '0 auto' }}>
         <div className="glass-card resq-fade-in" style={{ maxWidth: 720, marginBottom: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button className="resq-btn-secondary" onClick={handleLogout}>{t('logOut')}</button>
+          </div>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
             <div style={{ width: 96, height: 96 }}>
               <img src="/icon.svg" alt="RESQ" width="96" height="96" />
