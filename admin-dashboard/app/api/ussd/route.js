@@ -12,8 +12,23 @@
 
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
 import { notifyResponders } from '../../../lib/notifyResponders'
+import { verifyWebhookSecret } from '../../../lib/verifyWebhookSecret'
+import { getClientIp, rateLimit } from '../../../lib/rateLimit'
+
+function ussdResponse(text) {
+  return new Response(text, { status: 200, headers: { 'Content-Type': 'text/plain' } })
+}
 
 export async function POST(request) {
+  if (!verifyWebhookSecret(request)) {
+    return ussdResponse('END Unauthorized.')
+  }
+
+  const { allowed } = rateLimit('ussd:' + getClientIp(request), 30, 60 * 1000)
+  if (!allowed) {
+    return ussdResponse('END Too many requests. Try again shortly.')
+  }
+
   const formData = await request.formData()
   const phoneNumber = formData.get('phoneNumber')
   const text = (formData.get('text') || '').toString()
@@ -55,6 +70,8 @@ export async function POST(request) {
 
         if (!institution || institution.status !== 'active') {
           response = 'END Invalid or inactive institution code.'
+        } else if (!rateLimit('ussd-phone:' + phoneNumber, 3, 10 * 60 * 1000).allowed) {
+          response = 'END Too many requests from this number. Please wait before trying again.'
         } else {
           const { data: emergency, error: insertError } = await supabaseAdmin
             .from('emergencies')

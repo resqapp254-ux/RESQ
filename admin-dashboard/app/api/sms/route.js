@@ -10,9 +10,20 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
 import { notifyResponders } from '../../../lib/notifyResponders'
+import { verifyWebhookSecret } from '../../../lib/verifyWebhookSecret'
+import { getClientIp, rateLimit } from '../../../lib/rateLimit'
 
 export async function POST(request) {
   try {
+    if (!verifyWebhookSecret(request)) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { allowed } = rateLimit('sms:' + getClientIp(request), 20, 60 * 1000)
+    if (!allowed) {
+      return NextResponse.json({ success: false, error: 'Too many requests' }, { status: 429 })
+    }
+
     const formData = await request.formData()
     const from = formData.get('from')
     const text = (formData.get('text') || '').toString().trim()
@@ -24,6 +35,14 @@ export async function POST(request) {
     if (keyword !== 'SOS' || !code) {
       // Not a recognized emergency SMS — acknowledge silently, don't create anything
       return NextResponse.json({ success: true, note: 'Not an emergency-format message, ignored.' })
+    }
+
+    // A phone number can't be allowed to fire unlimited emergencies —
+    // real repeat emergencies are rare enough that a tight limit here
+    // only blocks abuse, not genuine use.
+    const perPhone = rateLimit('sms-phone:' + from, 3, 10 * 60 * 1000)
+    if (!perPhone.allowed) {
+      return NextResponse.json({ success: false, error: 'Too many requests from this number' }, { status: 429 })
     }
 
     const { data: institution } = await supabaseAdmin

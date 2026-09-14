@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
-import { getAuthenticatedUser } from '../../../../lib/authorizeRequest'
+import { canAccessEmergency, getAuthenticatedUser } from '../../../../lib/authorizeRequest'
 
 export async function POST(request) {
   try {
@@ -20,14 +20,14 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Emergency not found' }, { status: 404 })
     }
 
-    if (!['responder', 'institution_admin', 'super_admin'].includes(profile.role)) {
-      return NextResponse.json({ success: false, error: 'Not authorized to claim emergencies' }, { status: 403 })
-    }
-
-    if (profile.role === 'responder' && profile.institution_id !== emergency.institution_id) {
+    // Same institution-scoping rule used everywhere else (claim,
+    // resolve, chat): only super_admin can act across institutions.
+    if (!canAccessEmergency(profile, emergency, ['responder', 'institution_admin', 'super_admin'])) {
       return NextResponse.json({ success: false, error: 'Not authorized for this institution' }, { status: 403 })
     }
 
+    // Admins can reassign a stuck claim; a plain responder can't
+    // steal another responder's case.
     if (profile.role === 'responder' && emergency.claimed_by && emergency.claimed_by !== profile.id) {
       return NextResponse.json({ success: false, error: 'Already claimed by another responder' }, { status: 409 })
     }

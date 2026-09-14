@@ -8,6 +8,7 @@
 // actual super_admin before doing anything.
 
 import { NextResponse } from 'next/server'
+import { randomInt } from 'crypto'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 
 async function verifySuperAdmin(request) {
@@ -34,7 +35,9 @@ function generateCode(prefix, length = 6) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // no ambiguous chars (0/O, 1/I)
   let code = ''
   for (let i = 0; i < length; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)]
+    // crypto.randomInt, not Math.random — this code gates institution
+    // activation, so it shouldn't be generated with a predictable PRNG.
+    code += chars[randomInt(chars.length)]
   }
   return `${prefix}-${code}`
 }
