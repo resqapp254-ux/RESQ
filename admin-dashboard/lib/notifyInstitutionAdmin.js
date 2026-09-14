@@ -23,13 +23,13 @@ async function getInstitutionAdmin(institutionId) {
 }
 
 async function logNotification(institutionId, emergencyId, channel, recipient, status, detail) {
-  console.log(`NOTIFY LOG [${channel}] to ${recipient}: ${status}${detail ? ' — ' + detail : ''}`)
+  console.log('NOTIFY LOG [' + channel + '] to ' + recipient + ': ' + status + (detail ? ' - ' + detail : ''))
   await supabaseAdmin.from('notification_log').insert({
     institution_id: institutionId,
     emergency_id: emergencyId,
     channel,
     recipient,
-    status: detail ? `${status}: ${detail}`.slice(0, 250) : status
+    status: detail ? (status + ': ' + detail).slice(0, 250) : status
   })
 }
 
@@ -48,7 +48,7 @@ export async function sendTriggerSmsToAdmin(emergencyId, institutionId, institut
     const body = new URLSearchParams({
       username: process.env.AFRICASTALKING_USERNAME || 'sandbox',
       to: admin.phone,
-      message: `RESQ ALERT: A new emergency was just triggered at ${institutionName}. Open the dashboard for details.`
+      message: 'RESQ ALERT: A new emergency was just triggered at ' + institutionName + '. Open the dashboard for details.'
     })
 
     const res = await fetch('https://api.sandbox.africastalking.com/version1/messaging', {
@@ -89,14 +89,14 @@ export async function sendResolutionEmailToAdmin(emergencyId, institutionId, ins
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        Authorization: "Bearer " + process.env.RESEND_API_KEY,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         from: 'RESQ <onboarding@resend.dev>',
         to: [admin.email],
-        subject: `Emergency Resolved — ${institutionName}`,
-        html: `<p>An emergency at <strong>${institutionName}</strong> has been marked resolved.</p><p>Emergency ID: ${emergencyId}</p>`
+        subject: 'Emergency Resolved - ' + institutionName,
+        html: '<p>An emergency at <strong>' + institutionName + '</strong> has been marked resolved.</p><p>Emergency ID: ' + emergencyId + '</p>'
       })
     })
 

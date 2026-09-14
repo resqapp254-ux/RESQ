@@ -184,7 +184,7 @@ export default function InstitutionAdminPage() {
 
       {error && <p style={{ color: 'red' }}>{error}</p>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 20, margin: '24px 0' }}>
+      <div className="resq-two-col" style={{ gridTemplateColumns: '1.4fr 1fr', margin: '24px 0' }}>
         <section className="glass-card" style={{ minHeight: 180 }}>
           <h2 style={{ marginTop: 0 }}>Active Emergencies</h2>
           {activeEmergencies.length === 0 && <p className="resq-subtle">No active emergencies.</p>}

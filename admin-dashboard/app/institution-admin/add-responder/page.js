@@ -59,7 +59,7 @@ export default function AddResponderPage() {
       <div style={{ maxWidth: 500, margin: '60px auto', fontFamily: 'sans-serif', padding: 24 }}>
         <h1>Responder Added ✅</h1>
         <div style={{ background: '#f0fdf4', border: '1px solid #1a7f37', borderRadius: 8, padding: 20 }}>
-          <p><strong>{form.fullName}</strong> can now log in to the RESQ mobile app with:</p>
+          <p><strong>{form.fullName}</strong> can now log in at the RESQ sign-in page (web or mobile app) with:</p>
           <p>Email: <strong>{form.email}</strong><br />Password: <strong>{form.tempPassword}</strong></p>
         </div>
         <button onClick={() => router.push('/institution-admin')} style={{ marginTop: 20, padding: '10px 20px' }}>

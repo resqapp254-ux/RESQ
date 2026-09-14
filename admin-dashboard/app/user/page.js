@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -6,14 +6,27 @@ import { supabase } from '../../lib/supabaseClient'
 import EmergencyPulseBackground from '../../components/EmergencyPulseBackground'
 
 const EMERGENCY_TYPES = [
-  'medical',
-  'fire',
-  'accident',
-  'security',
-  'gbv',
-  'mental_health',
-  'other'
+  { key: 'medical', label: 'Medical', emoji: '\uD83C\uDFE5' },
+  { key: 'fire', label: 'Fire', emoji: '\uD83D\uDD25' },
+  { key: 'accident', label: 'Accident', emoji: '\uD83D\uDE91' },
+  { key: 'security', label: 'Security', emoji: '\uD83D\uDEE1\uFE0F' },
+  { key: 'gbv', label: 'GBV', emoji: '\uD83E\uDD1D' },
+  { key: 'mental_health', label: 'Mental Health', emoji: '\uD83E\uDDE0' },
+  { key: 'other', label: 'Other', emoji: '\u26A0\uFE0F' }
 ]
+
+function typeLabel(key) {
+  const found = EMERGENCY_TYPES.find((t) => t.key === key)
+  return found ? found.emoji + ' ' + found.label : (key || 'Emergency')
+}
+
+function statusBadgeClass(status, claimedBy) {
+  if (status === 'resolved') return 'resq-badge resq-badge-resolved'
+  if (claimedBy) return 'resq-badge resq-badge-claimed'
+  return 'resq-badge resq-badge-open'
+}
+
+const RESPONDER_ROLES = ['responder', 'institution_admin', 'super_admin']
 
 export default function UserPage() {
   const router = useRouter()
@@ -29,10 +42,14 @@ export default function UserPage() {
   const [claimingId, setClaimingId] = useState('')
   const [resolvingId, setResolvingId] = useState('')
   const [currentEmergency, setCurrentEmergency] = useState(null)
+  const [currentAdvice, setCurrentAdvice] = useState('')
   const [chatMessage, setChatMessage] = useState('')
   const [chatError, setChatError] = useState('')
   const [chatBusy, setChatBusy] = useState(false)
   const [locationBusy, setLocationBusy] = useState(false)
+  const [triggerBusy, setTriggerBusy] = useState(false)
+
+  const isResponderView = RESPONDER_ROLES.includes(role)
 
   useEffect(() => {
     async function load() {
@@ -66,14 +83,15 @@ export default function UserPage() {
         setInstitutionName(institution?.name || '')
       }
 
-      await refreshEmergencies(authData.user.id, status?.role)
+      await refreshEmergencies(authData.user.id, status?.role, profile?.institution_id)
       setLoading(false)
     }
 
     load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
-  async function refreshEmergencies(userId, roleValue) {
+  async function refreshEmergencies(userId, roleValue, institutionId) {
     const roleName = roleValue || role
 
     if (roleName === 'user') {
@@ -81,6 +99,7 @@ export default function UserPage() {
         .from('emergencies')
         .select('id, emergency_type, status, created_at, claimed_by, ai_advice_to_user')
         .eq('triggered_by', userId)
+        .neq('status', 'resolved')
         .order('created_at', { ascending: false })
         .limit(10)
 
@@ -94,19 +113,24 @@ export default function UserPage() {
 
       setActiveEmergencies(open || [])
       setResolvedEmergencies(resolved || [])
+
+      if (open && open.length > 0 && open[0].ai_advice_to_user) {
+        setCurrentEmergency(open[0])
+        setCurrentAdvice(open[0].ai_advice_to_user)
+      }
       return
     }
 
-    if (['responder', 'institution_admin', 'super_admin'].includes(roleName)) {
+    if (RESPONDER_ROLES.includes(roleName)) {
       let openQuery = supabase
         .from('emergencies')
-        .select('id, emergency_type, status, created_at, claimed_by, institution_id, triggered_by')
+        .select('id, emergency_type, status, created_at, claimed_by, institution_id, triggered_by, ai_flag_to_responder')
         .in('status', ['triggered', 'claimed', 'in_progress'])
         .order('created_at', { ascending: false })
         .limit(20)
 
-      if (roleName !== 'super_admin') {
-        openQuery = openQuery.eq('institution_id', (await supabase.auth.getUser()).data.user.id)
+      if (roleName !== 'super_admin' && institutionId) {
+        openQuery = openQuery.eq('institution_id', institutionId)
       }
 
       const { data: open } = await openQuery
@@ -118,8 +142,8 @@ export default function UserPage() {
         .order('resolved_at', { ascending: false })
         .limit(10)
 
-      if (roleName !== 'super_admin') {
-        resolvedQuery = resolvedQuery.eq('institution_id', (await supabase.auth.getUser()).data.user.id)
+      if (roleName !== 'super_admin' && institutionId) {
+        resolvedQuery = resolvedQuery.eq('institution_id', institutionId)
       }
 
       const { data: resolved } = await resolvedQuery
@@ -143,10 +167,17 @@ export default function UserPage() {
     })
   }
 
+  async function getAccessToken() {
+    const { data: sessionData } = await supabase.auth.getSession()
+    return sessionData.session?.access_token || null
+  }
+
   async function handleTriggerEmergency() {
     setError('')
     setMessage('')
+    setCurrentAdvice('')
     setLocationBusy(true)
+    setTriggerBusy(true)
 
     const location = await requestLocation()
     setLocationBusy(false)
@@ -157,10 +188,10 @@ export default function UserPage() {
       return
     }
 
-    const { data: sessionData } = await supabase.auth.getSession()
-    const accessToken = sessionData.session?.access_token
+    const accessToken = await getAccessToken()
     if (!accessToken) {
       setError('Missing session token. Please log in again.')
+      setTriggerBusy(false)
       return
     }
 
@@ -168,7 +199,7 @@ export default function UserPage() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`
+        Authorization: 'Bearer ' + accessToken
       },
       body: JSON.stringify({
         emergencyType: selectedType,
@@ -178,6 +209,8 @@ export default function UserPage() {
     })
 
     const result = await response.json()
+    setTriggerBusy(false)
+
     if (!response.ok) {
       setError(result.error || 'Could not trigger emergency')
       return
@@ -186,6 +219,22 @@ export default function UserPage() {
     setCurrentEmergency(result.emergency)
     setMessage('Emergency sent. Responders are being notified.')
     await refreshEmergencies(authData.user.id, role)
+
+    if (result.emergency?.id) {
+      fetch('/api/emergency/generate-advice', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + accessToken
+        },
+        body: JSON.stringify({ emergencyId: result.emergency.id })
+      })
+        .then((res) => res.json())
+        .then((adviceResult) => {
+          if (adviceResult?.advice) setCurrentAdvice(adviceResult.advice)
+        })
+        .catch(() => null)
+    }
   }
 
   async function handleClaim(emergencyId) {
@@ -193,8 +242,7 @@ export default function UserPage() {
     setError('')
     setMessage('')
 
-    const { data: sessionData } = await supabase.auth.getSession()
-    const accessToken = sessionData.session?.access_token
+    const accessToken = await getAccessToken()
     if (!accessToken) {
       setError('Missing session token. Please log in again.')
       setClaimingId('')
@@ -205,7 +253,7 @@ export default function UserPage() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`
+        Authorization: 'Bearer ' + accessToken
       },
       body: JSON.stringify({ emergencyId })
     })
@@ -227,8 +275,7 @@ export default function UserPage() {
     setError('')
     setMessage('')
 
-    const { data: sessionData } = await supabase.auth.getSession()
-    const accessToken = sessionData.session?.access_token
+    const accessToken = await getAccessToken()
     if (!accessToken) {
       setError('Missing session token. Please log in again.')
       setResolvingId('')
@@ -239,7 +286,7 @@ export default function UserPage() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`
+        Authorization: 'Bearer ' + accessToken
       },
       body: JSON.stringify({ emergencyId })
     })
@@ -266,10 +313,17 @@ export default function UserPage() {
       return
     }
 
+    const targetId = currentEmergency?.id || activeEmergencies[0]?.id || ''
+    if (!targetId) {
+      setChatError('No emergency selected.')
+      setChatBusy(false)
+      return
+    }
+
     const { data: emergency, error: emergencyError } = await supabase
       .from('emergencies')
       .select('id, institution_id, triggered_by, claimed_by')
-      .eq('id', currentEmergency?.id || activeEmergencies[0]?.id || '')
+      .eq('id', targetId)
       .single()
 
     if (emergencyError || !emergency) {
@@ -278,8 +332,7 @@ export default function UserPage() {
       return
     }
 
-    const { data: sessionData } = await supabase.auth.getSession()
-    const accessToken = sessionData.session?.access_token
+    const accessToken = await getAccessToken()
     if (!accessToken) {
       setChatError('Missing session token. Please log in again.')
       setChatBusy(false)
@@ -311,11 +364,11 @@ export default function UserPage() {
     }
 
     if (senderRole === 'responder') {
-      await fetch('/api/emergency/check-responder-message', {
+      fetch('/api/emergency/check-responder-message', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`
+          Authorization: 'Bearer ' + accessToken
         },
         body: JSON.stringify({ emergencyId: emergency.id, message })
       }).catch(() => null)
@@ -327,7 +380,12 @@ export default function UserPage() {
   }
 
   if (loading) {
-    return <div style={{ padding: 40, fontFamily: 'sans-serif' }}>Loading...</div>
+    return (
+      <main className="resq-shell">
+        <EmergencyPulseBackground />
+        <div className="resq-content" style={{ padding: 40 }}>Loading...</div>
+      </main>
+    )
   }
 
   return (
@@ -336,65 +394,105 @@ export default function UserPage() {
       <div className="resq-content" style={{ padding: 32, maxWidth: 1200, margin: '0 auto' }}>
         <div className="glass-card" style={{ maxWidth: 720, marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-            <div style={{ width: 120, height: 120 }}>
-              <img src="/icon.svg" alt="RESQ" width="120" height="120" />
+            <div style={{ width: 96, height: 96 }}>
+              <img src="/icon.svg" alt="RESQ" width="96" height="96" />
             </div>
           </div>
           <h1 className="resq-h1">RESQ</h1>
           <p className="resq-subtle" style={{ marginTop: 8 }}>
-            Signed in as {email}{role ? ` (${role})` : ''}{institutionName ? ` • ${institutionName}` : ''}.
+            Signed in as {email}
+            {role ? ' \u2022 ' + (isResponderView ? 'Responder workspace' : 'User workspace') + ' (' + role + ')' : ''}
+            {institutionName ? ' \u2022 ' + institutionName : ''}
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 20 }}>
+        <div className="resq-two-col" style={{ gridTemplateColumns: '1.2fr 1fr' }}>
           <section className="glass-card">
-            <h2 style={{ marginTop: 0 }}>Emergency Control</h2>
-            <p className="resq-subtle" style={{ marginTop: 0 }}>Trigger an emergency or manage one from here.</p>
+            {isResponderView ? (
+              <>
+                <h2 style={{ marginTop: 0 }}>Responder Console</h2>
+                <p className="resq-subtle" style={{ marginTop: 0 }}>
+                  Claim incoming emergencies, message the reporting user, and mark cases resolved once handled.
+                </p>
+                <div style={{ marginTop: 20 }}>
+                  <h3 style={{ marginTop: 0 }}>Message reporter</h3>
+                  <textarea
+                    className="resq-input"
+                    style={{ minHeight: 120 }}
+                    placeholder="Send an update to the person who reported this emergency..."
+                    value={chatMessage}
+                    onChange={(e) => setChatMessage(e.target.value)}
+                  />
+                  <button className="resq-btn-secondary" style={{ width: '100%', marginTop: 12 }} onClick={sendChatMessage} disabled={chatBusy}>
+                    {chatBusy ? 'Sending...' : 'Send message'}
+                  </button>
+                  {chatError && <p style={{ color: '#ff8080' }}>{chatError}</p>}
+                  {message && <p className="resq-green">{message}</p>}
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 style={{ marginTop: 0 }}>Emergency Control</h2>
+                <p className="resq-subtle" style={{ marginTop: 0 }}>Choose what's happening, then trigger — responders are alerted instantly.</p>
 
-            <div style={{ marginBottom: 14 }}>
-              <label className="resq-subtle">Emergency type</label>
-              <select
-                className="resq-input"
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
-              >
-                {EMERGENCY_TYPES.map((type) => (
-                  <option key={type} value={type}>{type.replace('_', ' ')}</option>
-                ))}
-              </select>
-            </div>
+                <label className="resq-subtle">Emergency type</label>
+                <div className="resq-type-grid">
+                  {EMERGENCY_TYPES.map((type) => (
+                    <button
+                      type="button"
+                      key={type.key}
+                      className={'resq-type-chip' + (selectedType === type.key ? ' resq-type-chip-selected' : '')}
+                      onClick={() => setSelectedType(type.key)}
+                    >
+                      <span className="resq-type-emoji">{type.emoji}</span>
+                      <span>{type.label}</span>
+                    </button>
+                  ))}
+                </div>
 
-            <button
-              className="resq-btn-primary"
-              style={{ width: '100%' }}
-              onClick={handleTriggerEmergency}
-              disabled={locationBusy}
-            >
-              {locationBusy ? 'Locating...' : 'Trigger Emergency'}
-            </button>
+                <div className="resq-trigger-wrap">
+                  <button
+                    className="resq-trigger-btn"
+                    onClick={handleTriggerEmergency}
+                    disabled={locationBusy || triggerBusy}
+                  >
+                    {locationBusy ? 'Locating...' : triggerBusy ? 'Sending...' : 'SOS \u2014 Trigger'}
+                  </button>
+                </div>
 
-            {message && <p style={{ color: 'var(--resq-green)' }}>{message}</p>}
-            {error && <p style={{ color: '#ff8080' }}>{error}</p>}
+                {message && <p className="resq-green" style={{ textAlign: 'center' }}>{message}</p>}
+                {error && <p style={{ color: '#ff8080', textAlign: 'center' }}>{error}</p>}
 
-            <div style={{ marginTop: 20 }}>
-              <h3 style={{ marginTop: 0 }}>Chat</h3>
-              <textarea
-                className="resq-input"
-                style={{ minHeight: 120 }}
-                placeholder="Type a message to responders..."
-                value={chatMessage}
-                onChange={(e) => setChatMessage(e.target.value)}
-              />
-              <button className="resq-btn-secondary" style={{ width: '100%', marginTop: 12 }} onClick={sendChatMessage} disabled={chatBusy}>
-                {chatBusy ? 'Sending...' : 'Send message'}
-              </button>
-              {chatError && <p style={{ color: '#ff8080' }}>{chatError}</p>}
-            </div>
+                {currentAdvice && (
+                  <div className="resq-advice-box">
+                    <strong>AI safety guidance</strong>
+                    <p style={{ margin: '6px 0 0' }}>{currentAdvice}</p>
+                  </div>
+                )}
+
+                <div style={{ marginTop: 20 }}>
+                  <h3 style={{ marginTop: 0 }}>Chat with responders</h3>
+                  <textarea
+                    className="resq-input"
+                    style={{ minHeight: 100 }}
+                    placeholder="Type a message to responders..."
+                    value={chatMessage}
+                    onChange={(e) => setChatMessage(e.target.value)}
+                  />
+                  <button className="resq-btn-secondary" style={{ width: '100%', marginTop: 12 }} onClick={sendChatMessage} disabled={chatBusy}>
+                    {chatBusy ? 'Sending...' : 'Send message'}
+                  </button>
+                  {chatError && <p style={{ color: '#ff8080' }}>{chatError}</p>}
+                </div>
+              </>
+            )}
           </section>
 
           <section className="glass-card">
-            <h2 style={{ marginTop: 0 }}>Emergencies</h2>
-            <p className="resq-subtle" style={{ marginTop: 0 }}>Active and recent cases.</p>
+            <h2 style={{ marginTop: 0 }}>{isResponderView ? 'Emergency Queue' : 'My Emergencies'}</h2>
+            <p className="resq-subtle" style={{ marginTop: 0 }}>
+              {isResponderView ? 'Open cases assigned to your institution.' : 'Active and recent cases you have reported.'}
+            </p>
 
             <div style={{ marginBottom: 18 }}>
               <h3 style={{ marginTop: 0 }}>Active</h3>
@@ -403,26 +501,30 @@ export default function UserPage() {
                 <div key={emergency.id} style={{ padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
                     <div>
-                      <strong>{emergency.emergency_type || 'Emergency'}</strong>
+                      <strong>{typeLabel(emergency.emergency_type)}</strong>
                       <p className="resq-subtle" style={{ margin: '4px 0' }}>
                         {new Date(emergency.created_at).toLocaleString()}
                       </p>
-                      <p className="resq-subtle" style={{ margin: 0 }}>
-                        {emergency.claimed_by ? 'Claimed' : 'Open'} · {emergency.status}
-                      </p>
+                      <span className={statusBadgeClass(emergency.status, emergency.claimed_by)}>
+                        {emergency.claimed_by ? 'Claimed' : 'Open'} \u00b7 {emergency.status}
+                      </span>
+                      {isResponderView && emergency.ai_flag_to_responder && (
+                        <div className="resq-flag-box">
+                          <strong>AI flag</strong>
+                          <p style={{ margin: '4px 0 0' }}>{emergency.ai_flag_to_responder}</p>
+                        </div>
+                      )}
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {['responder', 'institution_admin', 'super_admin'].includes(role) && (
+                    {isResponderView && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <button className="resq-btn-secondary" onClick={() => handleClaim(emergency.id)} disabled={claimingId === emergency.id}>
                           {claimingId === emergency.id ? 'Claiming...' : 'Claim'}
                         </button>
-                      )}
-                      {['responder', 'institution_admin', 'super_admin'].includes(role) && (
                         <button className="resq-btn-secondary" onClick={() => handleResolve(emergency.id)} disabled={resolvingId === emergency.id}>
                           {resolvingId === emergency.id ? 'Resolving...' : 'Resolve'}
                         </button>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -433,7 +535,7 @@ export default function UserPage() {
               {resolvedEmergencies.length === 0 && <p className="resq-subtle">No resolved emergencies yet.</p>}
               {resolvedEmergencies.map((emergency) => (
                 <div key={emergency.id} style={{ padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                  <strong>{emergency.emergency_type || 'Emergency'}</strong>
+                  <strong>{typeLabel(emergency.emergency_type)}</strong>
                   <p className="resq-subtle" style={{ margin: '4px 0' }}>
                     Resolved {emergency.resolved_at ? new Date(emergency.resolved_at).toLocaleString() : 'recently'}
                   </p>

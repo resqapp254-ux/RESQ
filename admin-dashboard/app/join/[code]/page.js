@@ -15,7 +15,7 @@ export default function JoinPage({ params }) {
       <div style={{ background: '#f7f7f7', borderRadius: 8, padding: 20, textAlign: 'left' }}>
         <p><strong>To get help:</strong></p>
         <ol>
-          <li>Download the RESQ app (link coming soon — for now, ask a staff member for the Expo Go testing link)</li>
+          <li>Download the RESQ app (link coming soon — for now, ask a staff member for the Expo Go testing link), or use this same website on your phone or computer</li>
           <li>Create an account or log in</li>
           <li>Enter this code: <strong>{code}</strong></li>
           <li>Press the red emergency button any time you need help here</li>

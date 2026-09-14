@@ -24,3 +24,8 @@ npm-debug.log*
 .DS_Store
 
 !mobile/google-services.json
+
+RESQ.rar
+stripe_1.50.6_windows_x86_64/
+supabase/.temp/
+
