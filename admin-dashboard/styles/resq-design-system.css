@@ -23,6 +23,11 @@
 .glass-card { padding: 24px; border: 1px solid var(--resq-glass-border); border-radius: 16px; background: var(--resq-glass); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
 .resq-input { width: 100%; padding: 12px 14px; border: 1px solid var(--resq-glass-border); border-radius: 10px; background: rgba(255, 255, 255, 0.04); color: var(--resq-text-primary); font: 14px var(--resq-font-body); }
 .resq-input:focus { outline: none; border-color: var(--resq-red); }
+/* Native <option> popups ignore the parent's translucent background,
+   so give them an explicit dark background + a bright, on-brand red
+   so every choice reads clearly, not just the selected one. */
+.resq-input option { background: #0d1220; color: var(--resq-red-bright); }
+.resq-input option:checked { background: var(--resq-red); color: #fff; }
 .resq-btn-primary { padding: 12px 22px; border: 0; border-radius: 10px; background: linear-gradient(135deg, var(--resq-red-bright), var(--resq-red)); color: #fff; font: 600 14px var(--resq-font-body); cursor: pointer; box-shadow: 0 4px 20px var(--resq-red-glow); }
 .resq-btn-primary:disabled { cursor: wait; opacity: 0.7; }
 .resq-btn-secondary { padding: 10px 18px; border: 1px solid var(--resq-glass-border); border-radius: 10px; background: rgba(255, 255, 255, 0.06); color: var(--resq-text-primary); font: 600 13px var(--resq-font-body); cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease; }

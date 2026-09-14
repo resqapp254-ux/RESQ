@@ -57,8 +57,13 @@ export default function UserPage() {
   const [locationBusy, setLocationBusy] = useState(false)
   const [triggerBusy, setTriggerBusy] = useState(false)
 
+  const [chatMessages, setChatMessages] = useState([])
+  const [myUserId, setMyUserId] = useState('')
+
   const isResponderView = RESPONDER_ROLES.includes(role)
-  const hasActiveAlert = isResponderView && activeEmergencies.some((e) => e.status !== 'resolved')
+  // Wails until someone claims it — once claimed_by is set (by any
+  // responder on the institution), the alarm goes quiet for everyone.
+  const hasActiveAlert = isResponderView && activeEmergencies.some((e) => !e.claimed_by && e.status !== 'resolved')
   const { muted: sirenMuted, setMuted: setSirenMuted } = useEmergencySiren(hasActiveAlert)
 
   useEffect(() => {
@@ -70,6 +75,7 @@ export default function UserPage() {
       }
 
       setEmail(authData.user.email || '')
+      setMyUserId(authData.user.id)
 
       const { data: status } = await supabase.rpc('get_onboarding_status')
       if (status?.role) setRole(status.role)
@@ -102,6 +108,70 @@ export default function UserPage() {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
+
+  // Live updates: when anyone (on the same institution) claims,
+  // resolves, or triggers an emergency, every open dashboard reflects
+  // it immediately — this is what lets the siren go quiet the moment
+  // a colleague claims a case, not only when this device claims it.
+  useEffect(() => {
+    if (!role) return
+
+    const channel = supabase
+      .channel('resq-emergencies-' + (institutionId || 'super-admin'))
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'emergencies' },
+        (payload) => {
+          const row = payload.new || payload.old
+          if (!row) return
+          if (role !== 'super_admin' && role !== 'user' && row.institution_id !== institutionId) return
+          if (role === 'user' && row.triggered_by !== myUserId) return
+          refreshEmergencies(myUserId, role, institutionId, myServiceId)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role, institutionId, myServiceId, myUserId])
+
+  const chatTargetId = currentEmergency?.id || activeEmergencies[0]?.id || ''
+
+  async function loadChatMessages(emergencyId) {
+    const { data } = await supabase
+      .from('emergency_messages')
+      .select('id, sender_id, sender_role, message, created_at, is_ai_generated')
+      .eq('emergency_id', emergencyId)
+      .order('created_at', { ascending: true })
+      .limit(200)
+    setChatMessages(data || [])
+  }
+
+  // Show the conversation, and keep it live for both sides while the
+  // chat is open.
+  useEffect(() => {
+    if (!chatTargetId) {
+      setChatMessages([])
+      return
+    }
+    loadChatMessages(chatTargetId)
+
+    const channel = supabase
+      .channel('resq-chat-' + chatTargetId)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'emergency_messages', filter: `emergency_id=eq.${chatTargetId}` },
+        (payload) => setChatMessages((prev) => [...prev, payload.new])
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatTargetId])
 
   async function refreshEmergencies(userId, roleValue, institutionIdArg, serviceIdArg) {
     const roleName = roleValue || role
@@ -138,7 +208,9 @@ export default function UserPage() {
     if (RESPONDER_ROLES.includes(roleName)) {
       let openQuery = supabase
         .from('emergencies')
-        .select('id, emergency_type, status, created_at, claimed_by, institution_id, triggered_by, ai_flag_to_responder, lat, lng')
+        .select(
+          'id, emergency_type, status, created_at, claimed_by, institution_id, triggered_by, triggered_by_phone, triggered_via, ai_flag_to_responder, lat, lng, reporter:profiles!emergencies_triggered_by_fkey(full_name, phone)'
+        )
         .in('status', ['triggered', 'claimed', 'in_progress'])
         .order('created_at', { ascending: false })
         .limit(20)
@@ -412,6 +484,42 @@ export default function UserPage() {
     setMessage('Message sent.')
   }
 
+  const chatThread = chatMessages.length > 0 && (
+    <div
+      style={{
+        maxHeight: 220,
+        overflowY: 'auto',
+        marginBottom: 10,
+        padding: '4px 2px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8
+      }}
+    >
+      {chatMessages.map((m) => {
+        const mine = m.sender_id === myUserId
+        return (
+          <div
+            key={m.id}
+            style={{
+              alignSelf: mine ? 'flex-end' : 'flex-start',
+              maxWidth: '85%',
+              background: mine ? 'rgba(255,43,43,0.22)' : 'rgba(255,255,255,0.06)',
+              border: '1px solid ' + (mine ? 'rgba(255,43,43,0.4)' : 'var(--resq-glass-border)'),
+              borderRadius: 12,
+              padding: '8px 12px'
+            }}
+          >
+            <p className="resq-subtle" style={{ margin: 0, fontSize: 11, textTransform: 'capitalize' }}>
+              {m.is_ai_generated ? 'AI' : m.sender_role} · {new Date(m.created_at).toLocaleTimeString()}
+            </p>
+            <p style={{ margin: '2px 0 0' }}>{m.message}</p>
+          </div>
+        )
+      })}
+    </div>
+  )
+
   if (loading) {
     return (
       <main className="resq-shell">
@@ -470,6 +578,7 @@ export default function UserPage() {
                 </p>
                 <div style={{ marginTop: 20 }}>
                   <h3 style={{ marginTop: 0 }}>{t('messageReporter')}</h3>
+                  {chatThread}
                   <textarea
                     className="resq-input"
                     style={{ minHeight: 120 }}
@@ -532,6 +641,7 @@ export default function UserPage() {
 
                 <div style={{ marginTop: 20 }}>
                   <h3 style={{ marginTop: 0 }}>{t('chatWithResponders')}</h3>
+                  {chatThread}
                   <textarea
                     className="resq-input"
                     style={{ minHeight: 100 }}
@@ -571,6 +681,29 @@ export default function UserPage() {
                       <span className={statusBadgeClass(emergency.status, emergency.claimed_by)}>
                         {emergency.claimed_by ? 'Claimed' : 'Open'} \u00b7 {emergency.status}
                       </span>
+                      {isResponderView && (
+                        <p className="resq-subtle" style={{ margin: '6px 0 0' }}>
+                          {emergency.reporter?.full_name ? (
+                            <>\ud83d\udc64 {emergency.reporter.full_name}{(emergency.reporter.phone || emergency.triggered_by_phone) ? ' \u00b7 ' + (emergency.reporter.phone || emergency.triggered_by_phone) : ''}</>
+                          ) : emergency.triggered_by_phone ? (
+                            <>\ud83d\udcde {emergency.triggered_by_phone} {emergency.triggered_via === 'ussd' ? '(USSD)' : emergency.triggered_via === 'sms' ? '(SMS)' : ''}</>
+                          ) : (
+                            <>Reporter details unavailable</>
+                          )}
+                          {emergency.lat != null && emergency.lng != null && (
+                            <>
+                              {' \u00b7 '}
+                              <a
+                                href={`https://www.google.com/maps?q=${emergency.lat},${emergency.lng}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                \ud83d\udccd View location
+                              </a>
+                            </>
+                          )}
+                        </p>
+                      )}
                       {isResponderView && emergency.ai_flag_to_responder && (
                         <div className="resq-flag-box">
                           <strong>AI flag</strong>
