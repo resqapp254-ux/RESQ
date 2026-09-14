@@ -13,8 +13,11 @@ Apply the SQL files in this order to a new or staging Supabase project:
 7. `day9-rls-hardening.sql`
 8. `day10-guardians-notification-idempotency.sql`
 9. `day11-chat-claim-rules.sql`
+10. `day12-auth-schema-hardening.sql`
+11. `auth-functions.sql` (day 2 functions — safe to run any time after `schema.sql`, kept last here since it's re-run occasionally)
+12. `day13-secondary-responders.sql` — **not yet applied to the live project; written for review, see the file header.**
 
-Do not rerun the destructive cleanup section of `schema.sql` against an existing production project. The Day 10 migration adds trusted contacts, `emergencies.photo_url`, and the atomic `emergencies.notifications_sent_at` claim field.
+Do not rerun the destructive cleanup section of `schema.sql` against an existing production project. The Day 10 migration adds trusted contacts, `emergencies.photo_url`, and the atomic `emergencies.notifications_sent_at` claim field. Day 13 adds `institution_services` (secondary responders — hospitals, police, etc. an institution registers) and `profiles.service_id`; the dispatch logic that uses it lives in application code and ships separately once this schema is approved and applied.
 
 ## Required deployment configuration
 
