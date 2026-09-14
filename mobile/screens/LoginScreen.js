@@ -3,7 +3,7 @@
 // Routes to the right next screen based on onboarding status.
 
 import React, { useState } from 'react'
-import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image, ActivityIndicator } from 'react-native'
 import { supabase } from '../lib/supabase'
 
 export default function LoginScreen({ navigation }) {
@@ -49,12 +49,14 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      <Image source={require('../assets/icon.png')} style={styles.logo} />
       <Text style={styles.title}>RESQ</Text>
       <Text style={styles.subtitle}>Emergency response, fast.</Text>
 
       <TextInput
         style={styles.input}
         placeholder="Email"
+        placeholderTextColor="#5c6480"
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
@@ -63,12 +65,15 @@ export default function LoginScreen({ navigation }) {
       <TextInput
         style={styles.input}
         placeholder="Password"
+        placeholderTextColor="#5c6480"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
       />
 
-      <Button title={loading ? 'Logging in...' : 'Log In'} onPress={handleLogin} disabled={loading} />
+      <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading} activeOpacity={0.85}>
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Log In</Text>}
+      </TouchableOpacity>
 
       <Text style={styles.link} onPress={() => navigation.navigate('SignUp')}>
         New here? Create an account
@@ -78,9 +83,30 @@ export default function LoginScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, justifyContent: 'center' },
-  title: { fontSize: 32, fontWeight: 'bold', textAlign: 'center', color: '#cc0000' },
-  subtitle: { textAlign: 'center', marginBottom: 24, color: '#666' },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, marginBottom: 12 },
-  link: { marginTop: 16, textAlign: 'center', color: '#0066cc' }
+  container: { flex: 1, padding: 24, justifyContent: 'center', backgroundColor: '#05070d' },
+  logo: { width: 88, height: 88, alignSelf: 'center', marginBottom: 16, borderRadius: 20 },
+  title: { fontSize: 32, fontWeight: 'bold', textAlign: 'center', color: '#f4f6fb', letterSpacing: 1 },
+  subtitle: { textAlign: 'center', marginBottom: 28, color: '#9aa4bf' },
+  input: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    color: '#f4f6fb',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 12
+  },
+  button: {
+    backgroundColor: '#cc0000',
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 8,
+    shadowColor: '#cc0000',
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 4
+  },
+  buttonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  link: { marginTop: 20, textAlign: 'center', color: '#35d0e8' }
 })

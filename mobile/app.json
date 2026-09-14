@@ -6,6 +6,12 @@
     "scheme": "resq",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "backgroundColor": "#05070d",
+      "resizeMode": "contain"
+    },
     "plugins": [
       [
         "expo-location",
@@ -18,6 +24,7 @@
       [
         "expo-notifications",
         {
+          "icon": "./assets/notification-icon.png",
           "color": "#cc0000",
           "sounds": ["./assets/siren.wav"]
         }
@@ -40,6 +47,10 @@
       "package": "com.resqapp254.resqmobile",
       "softwareKeyboardLayoutMode": "resize",
       "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#05070d"
+      },
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
