@@ -10,6 +10,7 @@
   --resq-text-primary: #f4f6fb;
   --resq-text-secondary: #9aa4bf;
   --resq-text-muted: #5c6480;
+  --resq-green: #3fe08a;
   --resq-font-display: 'Space Grotesk', Arial, sans-serif;
   --resq-font-body: 'Inter', Arial, sans-serif;
 }
@@ -78,4 +79,37 @@
 .resq-two-col { display: grid; gap: 20px; }
 @media (max-width: 860px) { .resq-two-col { grid-template-columns: 1fr !important; } }
 
-@media (prefers-reduced-motion: reduce) { .resq-globe-orbit, .resq-globe-pulse, .resq-trigger-btn { animation: none !important; } }
+.resq-shell a { color: #7fe3f2; }
+.resq-shell label { color: var(--resq-text-secondary); font-size: 13px; font-weight: 600; }
+.resq-shell table { border-collapse: collapse; width: 100%; }
+.resq-shell th { text-align: left; color: var(--resq-text-secondary); font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; border-bottom: 1px solid var(--resq-glass-border); }
+.resq-shell td { border-bottom: 1px solid var(--resq-glass-border); }
+.resq-success-box { padding: 18px 20px; border-radius: 12px; background: rgba(63, 224, 138, 0.1); border: 1px solid rgba(63, 224, 138, 0.3); }
+
+/* Entrance animation for cards/sections as a page mounts */
+@keyframes resq-fade-up { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+.resq-fade-in { animation: resq-fade-up 0.6s cubic-bezier(.16,.84,.44,1) both; }
+.resq-fade-in-2 { animation-delay: .1s; }
+.resq-fade-in-3 { animation-delay: .2s; }
+
+/* Hover/interaction affordance for clickable list rows */
+.resq-row-interactive { transition: background 0.15s ease, transform 0.15s ease; border-radius: 10px; padding-left: 8px; padding-right: 8px; margin: 0 -8px; }
+.resq-row-interactive:hover { background: rgba(255, 255, 255, 0.045); transform: translateX(3px); }
+
+/* Small blinking dot to signal "this is live" next to real-time sections */
+.resq-live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--resq-red-bright); margin-right: 8px; vertical-align: middle; animation: resq-live-blink 1.8s ease-in-out infinite; }
+@keyframes resq-live-blink {
+  0% { box-shadow: 0 0 0 0 rgba(255, 43, 43, 0.55); }
+  70% { box-shadow: 0 0 0 9px rgba(255, 43, 43, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 43, 43, 0); }
+}
+
+/* Buttons/cards that should feel tactile on hover */
+.resq-btn-primary, .resq-btn-secondary { transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease; }
+.resq-btn-primary:hover:not(:disabled), .resq-btn-secondary:hover:not(:disabled) { transform: translateY(-1px); }
+.resq-btn-primary:active:not(:disabled), .resq-btn-secondary:active:not(:disabled) { transform: translateY(0); }
+
+@media (prefers-reduced-motion: reduce) {
+  .resq-globe-orbit, .resq-globe-pulse, .resq-trigger-btn, .resq-live-dot { animation: none !important; }
+  .resq-fade-in, .resq-fade-in-2, .resq-fade-in-3 { animation: none !important; opacity: 1; transform: none; }
+}

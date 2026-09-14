@@ -8,9 +8,9 @@ import { supabase } from '../../lib/supabaseClient'
 import EmergencyPulseBackground from '../../components/EmergencyPulseBackground'
 
 const STATUS_COLORS = {
-  pending_verification: '#b8860b',
-  active: '#1a7f37',
-  suspended: '#c02020'
+  pending_verification: '#e0b34d',
+  active: '#3fe08a',
+  suspended: '#ff8080'
 }
 
 export default function SuperAdminPage() {
@@ -113,9 +113,9 @@ export default function SuperAdminPage() {
   return (
     <div className="resq-shell">
       <EmergencyPulseBackground />
-      <div className="resq-content" style={{ padding: 40, fontFamily: 'sans-serif', maxWidth: 1100, margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h1>RESQ Super Admin</h1>
+      <div className="resq-content" style={{ padding: 40, maxWidth: 1100, margin: '0 auto' }}>
+      <div className="resq-fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
+        <h1 className="resq-h1">RESQ Super Admin</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
           <div style={{ textAlign: 'center' }}>
             <img
@@ -126,26 +126,27 @@ export default function SuperAdminPage() {
               width={60}
               height={60}
             />
-            <div style={{ fontSize: 11, color: '#666' }}>Download RESQ</div>
+            <div className="resq-subtle" style={{ fontSize: 11 }}>Download RESQ</div>
           </div>
-          <Link href="/super-admin/create" style={{ padding: '10px 16px', background: '#cc0000', color: 'white', textDecoration: 'none', borderRadius: 6 }}>
+          <Link href="/super-admin/create" className="resq-btn-primary" style={{ textDecoration: 'none' }}>
             + New Institution
           </Link>
-          <button onClick={handleLogout} style={{ padding: '10px 16px' }}>Log Out</button>
+          <button className="resq-btn-secondary" onClick={handleLogout}>Log Out</button>
         </div>
       </div>
 
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      {loading && <p>Loading institutions...</p>}
+      {error && <p style={{ color: '#ff8080' }}>{error}</p>}
+      {loading && <p className="resq-subtle">Loading institutions...</p>}
 
       {!loading && institutions.length === 0 && (
-        <p>No institutions yet. Click "+ New Institution" to create your first one.</p>
+        <p className="resq-subtle">No institutions yet. Click "+ New Institution" to create your first one.</p>
       )}
 
       {!loading && institutions.length > 0 && (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <section className="glass-card resq-fade-in resq-fade-in-2" style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%' }}>
           <thead>
-            <tr style={{ borderBottom: '2px solid #ddd', textAlign: 'left' }}>
+            <tr>
               <th style={{ padding: 10 }}>Name</th>
               <th style={{ padding: 10 }}>Status</th>
               <th style={{ padding: 10 }}>Tier</th>
@@ -157,18 +158,18 @@ export default function SuperAdminPage() {
           </thead>
           <tbody>
             {institutions.map((inst) => (
-              <tr key={inst.id} style={{ borderBottom: '1px solid #eee' }}>
+              <tr key={inst.id} className="resq-row-interactive">
                 <td style={{ padding: 10 }}>
                   <strong>{inst.name}</strong><br />
-                  <small style={{ color: '#666' }}>{inst.contact_email}</small>
+                  <small className="resq-subtle">{inst.contact_email}</small>
                 </td>
                 <td style={{ padding: 10 }}>
-                  <span style={{ color: STATUS_COLORS[inst.status] || '#333', fontWeight: 'bold' }}>
+                  <span style={{ color: STATUS_COLORS[inst.status] || 'var(--resq-text-primary)', fontWeight: 'bold' }}>
                     {inst.status.replace('_', ' ')}
                   </span>
                 </td>
                 <td style={{ padding: 10 }}>
-                  <select value={inst.subscription_tier} onChange={(e) => changeTier(inst, e.target.value)}>
+                  <select className="resq-input" value={inst.subscription_tier} onChange={(e) => changeTier(inst, e.target.value)}>
                     <option value="trial">Trial</option>
                     <option value="basic">Basic</option>
                     <option value="pro">Pro</option>
@@ -178,7 +179,7 @@ export default function SuperAdminPage() {
                 <td style={{ padding: 10, fontFamily: 'monospace' }}>{inst.institution_code}</td>
                 <td style={{ padding: 10, fontFamily: 'monospace' }}>
                   {inst.verification_code_used ? (
-                    <span style={{ color: '#999' }}>used</span>
+                    <span className="resq-subtle">used</span>
                   ) : (
                     inst.verification_code
                   )}
@@ -194,10 +195,10 @@ export default function SuperAdminPage() {
                   />
                 </td>
                 <td style={{ padding: 10 }}>
-                  <button onClick={() => toggleStatus(inst)} style={{ marginRight: 8 }}>
+                  <button className="resq-btn-secondary" onClick={() => toggleStatus(inst)} style={{ marginRight: 8 }}>
                     {inst.status === 'suspended' ? 'Reactivate' : 'Suspend'}
                   </button>
-                  <button onClick={() => deleteInstitution(inst)} style={{ color: 'red' }}>
+                  <button className="resq-btn-secondary" onClick={() => deleteInstitution(inst)} style={{ color: '#ff8080' }}>
                     Delete
                   </button>
                 </td>
@@ -205,6 +206,7 @@ export default function SuperAdminPage() {
             ))}
           </tbody>
         </table>
+        </section>
       )}
       </div>
     </div>

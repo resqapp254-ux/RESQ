@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
-import EmergencyPulseBackground from '../../components/EmergencyPulseBackground'
+import GlobeBackground from '../../components/GlobeBackground'
 
 export default function JoinInstitutionPage() {
   const router = useRouter()
@@ -30,9 +30,9 @@ export default function JoinInstitutionPage() {
 
   return (
     <main className="resq-shell">
-      <EmergencyPulseBackground />
+      <GlobeBackground />
       <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <section className="glass-card" style={{ width: '100%', maxWidth: 440 }}>
+        <section className="glass-card resq-fade-in" style={{ width: '100%', maxWidth: 440 }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
             <div style={{ width: 120, height: 120 }}>
               <img src="/icon.svg" alt="RESQ" width="120" height="120" />

@@ -392,7 +392,7 @@ export default function UserPage() {
     <main className="resq-shell">
       <EmergencyPulseBackground />
       <div className="resq-content" style={{ padding: 32, maxWidth: 1200, margin: '0 auto' }}>
-        <div className="glass-card" style={{ maxWidth: 720, marginBottom: 24 }}>
+        <div className="glass-card resq-fade-in" style={{ maxWidth: 720, marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
             <div style={{ width: 96, height: 96 }}>
               <img src="/icon.svg" alt="RESQ" width="96" height="96" />
@@ -407,7 +407,7 @@ export default function UserPage() {
         </div>
 
         <div className="resq-two-col" style={{ gridTemplateColumns: '1.2fr 1fr' }}>
-          <section className="glass-card">
+          <section className="glass-card resq-fade-in resq-fade-in-2">
             {isResponderView ? (
               <>
                 <h2 style={{ marginTop: 0 }}>Responder Console</h2>
@@ -488,8 +488,11 @@ export default function UserPage() {
             )}
           </section>
 
-          <section className="glass-card">
-            <h2 style={{ marginTop: 0 }}>{isResponderView ? 'Emergency Queue' : 'My Emergencies'}</h2>
+          <section className="glass-card resq-fade-in resq-fade-in-3">
+            <h2 style={{ marginTop: 0 }}>
+              {activeEmergencies.length > 0 && <span className="resq-live-dot" aria-hidden="true" />}
+              {isResponderView ? 'Emergency Queue' : 'My Emergencies'}
+            </h2>
             <p className="resq-subtle" style={{ marginTop: 0 }}>
               {isResponderView ? 'Open cases assigned to your institution.' : 'Active and recent cases you have reported.'}
             </p>
@@ -498,7 +501,7 @@ export default function UserPage() {
               <h3 style={{ marginTop: 0 }}>Active</h3>
               {activeEmergencies.length === 0 && <p className="resq-subtle">No active emergencies.</p>}
               {activeEmergencies.map((emergency) => (
-                <div key={emergency.id} style={{ padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                <div key={emergency.id} className="resq-row-interactive" style={{ padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
                     <div>
                       <strong>{typeLabel(emergency.emergency_type)}</strong>

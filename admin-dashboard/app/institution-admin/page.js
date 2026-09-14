@@ -172,30 +172,33 @@ export default function InstitutionAdminPage() {
   return (
     <div className="resq-shell">
       <EmergencyPulseBackground />
-      <div className="resq-content" style={{ padding: 40, fontFamily: 'sans-serif', maxWidth: 1000, margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <h1>{institution?.name}</h1>
-        <button onClick={handleLogout} style={{ padding: '10px 16px' }}>Log Out</button>
+      <div className="resq-content" style={{ padding: 40, maxWidth: 1000, margin: '0 auto' }}>
+      <div className="resq-fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <h1 className="resq-h1">{institution?.name}</h1>
+        <button className="resq-btn-secondary" onClick={handleLogout}>Log Out</button>
       </div>
-      <p style={{ color: '#666' }}>
-        Institution Code: <strong style={{ fontFamily: 'monospace' }}>{institution?.institution_code}</strong>
-        {' — '}Status: <strong style={{ color: '#1a7f37' }}>{institution?.status}</strong>
+      <p className="resq-fade-in resq-subtle">
+        Institution Code: <strong style={{ fontFamily: 'monospace', color: 'var(--resq-text-primary)' }}>{institution?.institution_code}</strong>
+        {' — '}Status: <strong className="resq-green">{institution?.status}</strong>
       </p>
 
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {error && <p style={{ color: '#ff8080' }}>{error}</p>}
 
-      <div className="resq-two-col" style={{ gridTemplateColumns: '1.4fr 1fr', margin: '24px 0' }}>
+      <div className="resq-two-col resq-fade-in resq-fade-in-2" style={{ gridTemplateColumns: '1.4fr 1fr', margin: '24px 0' }}>
         <section className="glass-card" style={{ minHeight: 180 }}>
-          <h2 style={{ marginTop: 0 }}>Active Emergencies</h2>
+          <h2 style={{ marginTop: 0 }}>
+            {activeEmergencies.length > 0 && <span className="resq-live-dot" aria-hidden="true" />}
+            Active Emergencies
+          </h2>
           {activeEmergencies.length === 0 && <p className="resq-subtle">No active emergencies.</p>}
           {activeEmergencies.map((emergency) => (
-            <div key={emergency.id} style={{ padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+            <div key={emergency.id} className="resq-row-interactive" style={{ padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                 <div>
                   <strong>{emergency.emergency_type || 'Emergency'}</strong>
                   <p className="resq-subtle" style={{ margin: '4px 0' }}>{new Date(emergency.created_at).toLocaleString()}</p>
                 </div>
-                <span style={{ color: emergency.claimed_by ? '#ff8080' : '#35d0e8' }}>
+                <span className={emergency.claimed_by ? 'resq-badge resq-badge-claimed' : 'resq-badge resq-badge-open'}>
                   {emergency.claimed_by ? 'Claimed' : 'Open'}
                 </span>
               </div>
@@ -207,7 +210,7 @@ export default function InstitutionAdminPage() {
         <p className="resq-subtle" style={{ marginTop: 0 }}>Weekly report emails go to this institution admin with resolution details.</p>
           {recentResolved.length === 0 && <p className="resq-subtle">No resolved emergencies yet.</p>}
           {recentResolved.map((emergency) => (
-            <div key={emergency.id} style={{ padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+            <div key={emergency.id} className="resq-row-interactive" style={{ padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
               <strong>{emergency.emergency_type || 'Emergency'}</strong>
               <p className="resq-subtle" style={{ margin: '4px 0' }}>
                 Resolved {emergency.resolved_at ? new Date(emergency.resolved_at).toLocaleString() : 'recently'}
@@ -217,19 +220,20 @@ export default function InstitutionAdminPage() {
         </section>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '30px 0 12px' }}>
+      <div className="resq-fade-in resq-fade-in-3" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '30px 0 12px' }}>
         <h2 style={{ margin: 0 }}>Responders</h2>
-        <Link href="/institution-admin/add-responder" style={{ padding: '10px 16px', background: '#cc0000', color: 'white', textDecoration: 'none', borderRadius: 6 }}>
+        <Link href="/institution-admin/add-responder" className="resq-btn-primary" style={{ textDecoration: 'none' }}>
           + Add Responder
         </Link>
       </div>
 
-      {responders.length === 0 && <p>No responders yet. Add your first one above.</p>}
+      {responders.length === 0 && <p className="resq-subtle resq-fade-in resq-fade-in-3">No responders yet. Add your first one above.</p>}
 
       {responders.length > 0 && (
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 30 }}>
+        <section className="glass-card resq-fade-in resq-fade-in-3" style={{ marginBottom: 24, overflowX: 'auto' }}>
+        <table style={{ width: '100%' }}>
           <thead>
-            <tr style={{ borderBottom: '2px solid #ddd', textAlign: 'left' }}>
+            <tr>
               <th style={{ padding: 10 }}>Name</th>
               <th style={{ padding: 10 }}>Email</th>
               <th style={{ padding: 10 }}>Phone</th>
@@ -238,14 +242,14 @@ export default function InstitutionAdminPage() {
           </thead>
           <tbody>
             {responders.map((r) => (
-              <tr key={r.id} style={{ borderBottom: '1px solid #eee' }}>
+              <tr key={r.id} className="resq-row-interactive">
                 <td style={{ padding: 10 }}>{r.full_name}</td>
                 <td style={{ padding: 10 }}>{r.email}</td>
                 <td style={{ padding: 10 }}>{r.phone}</td>
                 <td style={{ padding: 10 }}>
-                  {(shiftsByResponder[r.id] || []).length === 0 && <span style={{ color: '#999' }}>None scheduled</span>}
+                  {(shiftsByResponder[r.id] || []).length === 0 && <span className="resq-subtle">None scheduled</span>}
                   {(shiftsByResponder[r.id] || []).map((s) => (
-                    <div key={s.id} style={{ fontSize: 13 }}>
+                    <div key={s.id} className="resq-subtle" style={{ fontSize: 13 }}>
                       {new Date(s.shift_start).toLocaleString()} → {new Date(s.shift_end).toLocaleString()}
                     </div>
                   ))}
@@ -254,18 +258,20 @@ export default function InstitutionAdminPage() {
             ))}
           </tbody>
         </table>
+        </section>
       )}
 
       {responders.length > 0 && (
-        <div style={{ background: '#f7f7f7', padding: 20, borderRadius: 8 }}>
+        <section className="glass-card resq-fade-in resq-fade-in-3">
           <h3 style={{ marginTop: 0 }}>Schedule a Shift</h3>
           <form onSubmit={handleAddShift} style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div>
               <label>Responder</label><br />
               <select
+                className="resq-input"
                 value={shiftForm.responderId}
                 onChange={(e) => setShiftForm({ ...shiftForm, responderId: e.target.value })}
-                style={{ padding: 8 }}
+                style={{ marginTop: 4 }}
               >
                 <option value="">Select...</option>
                 {responders.map((r) => (
@@ -276,26 +282,28 @@ export default function InstitutionAdminPage() {
             <div>
               <label>Shift Start</label><br />
               <input
+                className="resq-input"
                 type="datetime-local"
                 value={shiftForm.start}
                 onChange={(e) => setShiftForm({ ...shiftForm, start: e.target.value })}
-                style={{ padding: 8 }}
+                style={{ marginTop: 4 }}
               />
             </div>
             <div>
               <label>Shift End</label><br />
               <input
+                className="resq-input"
                 type="datetime-local"
                 value={shiftForm.end}
                 onChange={(e) => setShiftForm({ ...shiftForm, end: e.target.value })}
-                style={{ padding: 8 }}
+                style={{ marginTop: 4 }}
               />
             </div>
-            <button type="submit" disabled={savingShift} style={{ padding: '10px 16px' }}>
+            <button className="resq-btn-primary" type="submit" disabled={savingShift}>
               {savingShift ? 'Saving...' : 'Add Shift'}
             </button>
           </form>
-        </div>
+        </section>
       )}
       </div>
     </div>

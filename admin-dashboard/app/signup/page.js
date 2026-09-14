@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
-import EmergencyPulseBackground from '../../components/EmergencyPulseBackground'
+import GlobeBackground from '../../components/GlobeBackground'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -42,9 +42,9 @@ export default function SignupPage() {
 
   return (
     <main className="resq-shell">
-      <EmergencyPulseBackground />
+      <GlobeBackground />
       <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <section className="glass-card" style={{ width: '100%', maxWidth: 440 }}>
+        <section className="glass-card resq-fade-in" style={{ width: '100%', maxWidth: 440 }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
             <div style={{ width: 120, height: 120 }}>
               <img src="/icon.svg" alt="RESQ" width="120" height="120" />
@@ -61,7 +61,7 @@ export default function SignupPage() {
             {message && <p style={{ color: 'var(--resq-green)' }}>{message}</p>}
             <button className="resq-btn-primary" style={{ width: '100%', marginTop: 20 }} disabled={loading}>{loading ? 'Creating account...' : 'Create account'}</button>
           </form>
-          <p className="resq-subtle" style={{ marginTop: 18 }}>Admin? <a href="/login">Sign in here</a></p>
+          <p className="resq-subtle" style={{ marginTop: 18 }}>Already have an account? <a href="/login">Sign in here</a></p>
         </section>
       </div>
     </main>

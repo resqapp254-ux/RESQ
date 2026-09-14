@@ -7,6 +7,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabaseClient'
+import GlobeBackground from '../../../components/GlobeBackground'
 
 export default function VerifyInstitutionPage() {
   const [code, setCode] = useState('')
@@ -32,23 +33,35 @@ export default function VerifyInstitutionPage() {
   }
 
   return (
-    <div style={{ maxWidth: 400, margin: '80px auto', fontFamily: 'sans-serif' }}>
-      <h1>Activate Your Institution</h1>
-      <p>Enter the verification code sent to you by the RESQ super admin.</p>
-      <form onSubmit={handleVerify}>
-        <input
-          type="text"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          placeholder="Verification code"
-          required
-          style={{ width: '100%', padding: 8, marginBottom: 12 }}
-        />
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-        <button type="submit" disabled={loading} style={{ width: '100%', padding: 10 }}>
-          {loading ? 'Verifying...' : 'Activate Institution'}
-        </button>
-      </form>
-    </div>
+    <main className="resq-shell">
+      <GlobeBackground />
+      <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <section className="glass-card resq-fade-in" style={{ width: '100%', maxWidth: 420 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+            <div style={{ width: 96, height: 96 }}>
+              <img src="/icon.svg" alt="RESQ" width="96" height="96" />
+            </div>
+          </div>
+          <h1 className="resq-h1" style={{ fontSize: 26, textAlign: 'center' }}>Activate Your Institution</h1>
+          <p className="resq-subtle" style={{ margin: '8px 0 24px', textAlign: 'center' }}>
+            Enter the verification code sent to you by the RESQ super admin.
+          </p>
+          <form onSubmit={handleVerify}>
+            <input
+              className="resq-input"
+              type="text"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="Verification code"
+              required
+            />
+            {error && <p style={{ color: '#ff8080' }}>{error}</p>}
+            <button className="resq-btn-primary" type="submit" disabled={loading} style={{ width: '100%', marginTop: 20 }}>
+              {loading ? 'Verifying...' : 'Activate Institution'}
+            </button>
+          </form>
+        </section>
+      </div>
+    </main>
   )
 }

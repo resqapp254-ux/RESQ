@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../../lib/supabaseClient'
+import EmergencyPulseBackground from '../../../components/EmergencyPulseBackground'
 
 export default function CreateInstitutionPage() {
   const [form, setForm] = useState({
@@ -65,64 +66,72 @@ export default function CreateInstitutionPage() {
 
   if (result) {
     return (
-      <div style={{ maxWidth: 600, margin: '60px auto', fontFamily: 'sans-serif', padding: 24 }}>
-        <h1>Institution Created 🎉</h1>
-        <div style={{ background: '#f0fdf4', border: '1px solid #1a7f37', borderRadius: 8, padding: 20, marginTop: 20 }}>
-          <p><strong>{result.institution.name}</strong> has been created.</p>
-          <p>Send these two codes to the institution's admin ({form.adminEmail}):</p>
-          <p style={{ fontFamily: 'monospace', fontSize: 18 }}>
-            Institution Code: <strong>{result.institutionCode}</strong><br />
-            Verification Code: <strong>{result.verificationCode}</strong>
-          </p>
-          <p style={{ marginTop: 16 }}>
-            Their login is <strong>{form.adminEmail}</strong> with the temporary password you set.
-            They should log in, enter the verification code above, then change their password.
-          </p>
+      <main className="resq-shell">
+        <EmergencyPulseBackground />
+        <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <section className="glass-card resq-fade-in" style={{ width: '100%', maxWidth: 560 }}>
+            <h1 className="resq-h1" style={{ fontSize: 24 }}>Institution Created</h1>
+            <div className="resq-success-box" style={{ marginTop: 16 }}>
+              <p><strong>{result.institution.name}</strong> has been created.</p>
+              <p style={{ marginTop: 8 }}>Send these two codes to the institution's admin ({form.adminEmail}):</p>
+              <p style={{ fontFamily: 'monospace', fontSize: 18, marginTop: 8 }}>
+                Institution Code: <strong>{result.institutionCode}</strong><br />
+                Verification Code: <strong>{result.verificationCode}</strong>
+              </p>
+              <p className="resq-subtle" style={{ marginTop: 16 }}>
+                Their login is <strong style={{ color: 'var(--resq-text-primary)' }}>{form.adminEmail}</strong> with the temporary password you set.
+                They should log in, enter the verification code above, then change their password.
+              </p>
+            </div>
+            <button className="resq-btn-primary" style={{ marginTop: 20 }} onClick={() => router.push('/super-admin')}>
+              Back to Dashboard
+            </button>
+          </section>
         </div>
-        <button onClick={() => router.push('/super-admin')} style={{ marginTop: 24, padding: '10px 20px' }}>
-          Back to Dashboard
-        </button>
-      </div>
+      </main>
     )
   }
 
   return (
-    <div style={{ maxWidth: 500, margin: '40px auto', fontFamily: 'sans-serif', padding: 24 }}>
-      <Link href="/super-admin">&larr; Back to Dashboard</Link>
-      <h1>Create New Institution</h1>
+    <main className="resq-shell">
+      <EmergencyPulseBackground />
+      <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <section className="glass-card resq-fade-in" style={{ width: '100%', maxWidth: 480 }}>
+          <Link href="/super-admin">&larr; Back to Dashboard</Link>
+          <h1 className="resq-h1" style={{ fontSize: 26, marginTop: 12 }}>Create New Institution</h1>
 
-      <form onSubmit={handleSubmit}>
-        <h3>Institution Details</h3>
-        <label>Institution Name</label>
-        <input required value={form.institutionName} onChange={(e) => update('institutionName', e.target.value)} style={inputStyle} />
+          <form onSubmit={handleSubmit} style={{ marginTop: 16 }}>
+            <h3 style={{ marginTop: 0 }}>Institution Details</h3>
+            <label>Institution Name</label>
+            <input className="resq-input" style={{ marginTop: 4, marginBottom: 14 }} required value={form.institutionName} onChange={(e) => update('institutionName', e.target.value)} />
 
-        <label>Contact Email</label>
-        <input required type="email" value={form.contactEmail} onChange={(e) => update('contactEmail', e.target.value)} style={inputStyle} />
+            <label>Contact Email</label>
+            <input className="resq-input" style={{ marginTop: 4, marginBottom: 14 }} required type="email" value={form.contactEmail} onChange={(e) => update('contactEmail', e.target.value)} />
 
-        <label>Contact Phone (optional)</label>
-        <input value={form.contactPhone} onChange={(e) => update('contactPhone', e.target.value)} style={inputStyle} />
+            <label>Contact Phone (optional)</label>
+            <input className="resq-input" style={{ marginTop: 4, marginBottom: 14 }} value={form.contactPhone} onChange={(e) => update('contactPhone', e.target.value)} />
 
-        <h3>First Institution Admin Account</h3>
-        <label>Admin Full Name</label>
-        <input required value={form.adminFullName} onChange={(e) => update('adminFullName', e.target.value)} style={inputStyle} />
+            <h3>First Institution Admin Account</h3>
+            <label>Admin Full Name</label>
+            <input className="resq-input" style={{ marginTop: 4, marginBottom: 14 }} required value={form.adminFullName} onChange={(e) => update('adminFullName', e.target.value)} />
 
-        <label>Admin Email (their login)</label>
-        <input required type="email" value={form.adminEmail} onChange={(e) => update('adminEmail', e.target.value)} style={inputStyle} />
+            <label>Admin Email (their login)</label>
+            <input className="resq-input" style={{ marginTop: 4, marginBottom: 14 }} required type="email" value={form.adminEmail} onChange={(e) => update('adminEmail', e.target.value)} />
 
-        <label>Temporary Password</label>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input required value={form.adminTempPassword} onChange={(e) => update('adminTempPassword', e.target.value)} style={{ ...inputStyle, flex: 1 }} />
-          <button type="button" onClick={generatePassword} style={{ padding: '0 12px' }}>Generate</button>
-        </div>
+            <label>Temporary Password</label>
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              <input className="resq-input" required value={form.adminTempPassword} onChange={(e) => update('adminTempPassword', e.target.value)} style={{ flex: 1 }} />
+              <button type="button" className="resq-btn-secondary" onClick={generatePassword}>Generate</button>
+            </div>
 
-        {error && <p style={{ color: 'red' }}>{error}</p>}
+            {error && <p style={{ color: '#ff8080' }}>{error}</p>}
 
-        <button type="submit" disabled={loading} style={{ width: '100%', padding: 12, marginTop: 20, background: '#cc0000', color: 'white', border: 'none', borderRadius: 6 }}>
-          {loading ? 'Creating...' : 'Create Institution'}
-        </button>
-      </form>
-    </div>
+            <button type="submit" disabled={loading} className="resq-btn-primary" style={{ width: '100%', marginTop: 20 }}>
+              {loading ? 'Creating...' : 'Create Institution'}
+            </button>
+          </form>
+        </section>
+      </div>
+    </main>
   )
 }
-
-const inputStyle = { width: '100%', padding: 10, marginBottom: 14, marginTop: 4, borderRadius: 6, border: '1px solid #ccc' }

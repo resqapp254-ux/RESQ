@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../../lib/supabaseClient'
+import EmergencyPulseBackground from '../../../components/EmergencyPulseBackground'
 
 export default function AddResponderPage() {
   const [form, setForm] = useState({ fullName: '', email: '', phone: '', tempPassword: '' })
@@ -56,48 +57,56 @@ export default function AddResponderPage() {
 
   if (success) {
     return (
-      <div style={{ maxWidth: 500, margin: '60px auto', fontFamily: 'sans-serif', padding: 24 }}>
-        <h1>Responder Added ✅</h1>
-        <div style={{ background: '#f0fdf4', border: '1px solid #1a7f37', borderRadius: 8, padding: 20 }}>
-          <p><strong>{form.fullName}</strong> can now log in at the RESQ sign-in page (web or mobile app) with:</p>
-          <p>Email: <strong>{form.email}</strong><br />Password: <strong>{form.tempPassword}</strong></p>
+      <main className="resq-shell">
+        <EmergencyPulseBackground />
+        <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <section className="glass-card resq-fade-in" style={{ width: '100%', maxWidth: 480 }}>
+            <h1 className="resq-h1" style={{ fontSize: 24 }}>Responder Added</h1>
+            <div className="resq-success-box" style={{ marginTop: 16 }}>
+              <p><strong>{form.fullName}</strong> can now log in at the RESQ sign-in page (web or mobile app) with:</p>
+              <p style={{ marginTop: 10 }}>Email: <strong>{form.email}</strong><br />Password: <strong>{form.tempPassword}</strong></p>
+            </div>
+            <button className="resq-btn-primary" style={{ marginTop: 20 }} onClick={() => router.push('/institution-admin')}>
+              Back to Dashboard
+            </button>
+          </section>
         </div>
-        <button onClick={() => router.push('/institution-admin')} style={{ marginTop: 20, padding: '10px 20px' }}>
-          Back to Dashboard
-        </button>
-      </div>
+      </main>
     )
   }
 
   return (
-    <div style={{ maxWidth: 450, margin: '40px auto', fontFamily: 'sans-serif', padding: 24 }}>
-      <Link href="/institution-admin">&larr; Back to Dashboard</Link>
-      <h1>Add Responder</h1>
+    <main className="resq-shell">
+      <EmergencyPulseBackground />
+      <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <section className="glass-card resq-fade-in" style={{ width: '100%', maxWidth: 440 }}>
+          <Link href="/institution-admin">&larr; Back to Dashboard</Link>
+          <h1 className="resq-h1" style={{ fontSize: 26, marginTop: 12 }}>Add Responder</h1>
 
-      <form onSubmit={handleSubmit}>
-        <label>Full Name</label>
-        <input required value={form.fullName} onChange={(e) => update('fullName', e.target.value)} style={inputStyle} />
+          <form onSubmit={handleSubmit} style={{ marginTop: 16 }}>
+            <label>Full Name</label>
+            <input className="resq-input" style={{ marginTop: 4, marginBottom: 14 }} required value={form.fullName} onChange={(e) => update('fullName', e.target.value)} />
 
-        <label>Email (their login)</label>
-        <input required type="email" value={form.email} onChange={(e) => update('email', e.target.value)} style={inputStyle} />
+            <label>Email (their login)</label>
+            <input className="resq-input" style={{ marginTop: 4, marginBottom: 14 }} required type="email" value={form.email} onChange={(e) => update('email', e.target.value)} />
 
-        <label>Phone Number</label>
-        <input required value={form.phone} onChange={(e) => update('phone', e.target.value)} style={inputStyle} placeholder="Used for offline SMS alerts" />
+            <label>Phone Number</label>
+            <input className="resq-input" style={{ marginTop: 4, marginBottom: 14 }} required value={form.phone} onChange={(e) => update('phone', e.target.value)} placeholder="Used for offline SMS alerts" />
 
-        <label>Temporary Password</label>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input required value={form.tempPassword} onChange={(e) => update('tempPassword', e.target.value)} style={{ ...inputStyle, flex: 1 }} />
-          <button type="button" onClick={generatePassword} style={{ padding: '0 12px' }}>Generate</button>
-        </div>
+            <label>Temporary Password</label>
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              <input className="resq-input" required value={form.tempPassword} onChange={(e) => update('tempPassword', e.target.value)} style={{ flex: 1 }} />
+              <button type="button" className="resq-btn-secondary" onClick={generatePassword}>Generate</button>
+            </div>
 
-        {error && <p style={{ color: 'red' }}>{error}</p>}
+            {error && <p style={{ color: '#ff8080' }}>{error}</p>}
 
-        <button type="submit" disabled={loading} style={{ width: '100%', padding: 12, marginTop: 16, background: '#cc0000', color: 'white', border: 'none', borderRadius: 6 }}>
-          {loading ? 'Adding...' : 'Add Responder'}
-        </button>
-      </form>
-    </div>
+            <button type="submit" disabled={loading} className="resq-btn-primary" style={{ width: '100%', marginTop: 16 }}>
+              {loading ? 'Adding...' : 'Add Responder'}
+            </button>
+          </form>
+        </section>
+      </div>
+    </main>
   )
 }
-
-const inputStyle = { width: '100%', padding: 10, marginBottom: 14, marginTop: 4, borderRadius: 6, border: '1px solid #ccc' }
