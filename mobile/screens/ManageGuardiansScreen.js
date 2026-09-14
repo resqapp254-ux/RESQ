@@ -80,17 +80,17 @@ export default function ManageGuardiansScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: '#fff' },
-  title: { fontSize: 22, fontWeight: 'bold', color: '#cc0000', marginBottom: 6 },
-  subtitle: { color: '#666', fontSize: 13, marginBottom: 20, lineHeight: 18 },
+  container: { flex: 1, padding: 20, backgroundColor: '#05070d' },
+  title: { fontSize: 22, fontWeight: 'bold', color: '#f4f6fb', marginBottom: 6 },
+  subtitle: { color: '#9aa4bf', fontSize: 13, marginBottom: 20, lineHeight: 18 },
   list: { flex: 1 },
-  empty: { color: '#999', textAlign: 'center', marginTop: 40 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f7f7f7', padding: 14, borderRadius: 10, marginBottom: 10 },
-  name: { fontWeight: 'bold', fontSize: 15 },
-  phone: { color: '#666', fontSize: 13, marginTop: 2 },
-  remove: { color: '#cc0000', fontWeight: '600', fontSize: 13 },
-  addBox: { borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 16, marginTop: 8 },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, marginBottom: 10 },
+  empty: { color: '#5c6480', textAlign: 'center', marginTop: 40 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)', padding: 14, borderRadius: 10, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)' },
+  name: { fontWeight: 'bold', fontSize: 15, color: '#f4f6fb' },
+  phone: { color: '#9aa4bf', fontSize: 13, marginTop: 2 },
+  remove: { color: '#ff8080', fontWeight: '600', fontSize: 13 },
+  addBox: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.09)', paddingTop: 16, marginTop: 8 },
+  input: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.05)', color: '#f4f6fb', borderRadius: 8, padding: 12, marginBottom: 10 },
   button: { backgroundColor: '#cc0000', borderRadius: 8, padding: 14, alignItems: 'center' },
   buttonText: { color: '#fff', fontWeight: 'bold' }
 })

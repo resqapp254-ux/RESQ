@@ -2,9 +2,17 @@
 // Shows all active emergencies for the responder's institution.
 // Updates live via Supabase Realtime as new emergencies come in
 // or existing ones change status (e.g. claimed by another responder).
+//
+// While any emergency is unclaimed, this screen loops the RESQ siren
+// at full volume — the mobile equivalent of the web dashboard's
+// alarm, but able to keep sounding through Do Not Disturb once the
+// user has granted that (see lib/notifications.js). It stops the
+// moment any responder claims it, same rule as the web app.
 
-import React, { useEffect, useState, useCallback } from 'react'
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, Alert, Linking, Platform } from 'react-native'
+import React, { useEffect, useState, useCallback, useMemo } from 'react'
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, Alert, Linking, Platform, Image } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { useAudioPlayer } from 'expo-audio'
 import { supabase } from '../lib/supabase'
 import { registerForPushNotifications } from '../lib/notifications'
 
@@ -17,17 +25,46 @@ const STATUS_LABELS = {
 }
 
 const STATUS_COLORS = {
-  triggered: '#cc0000',
-  claimed: '#b8860b',
-  in_progress: '#1a5fb4',
-  resolved: '#1a7f37',
-  cancelled: '#888'
+  triggered: '#ff2b2b',
+  claimed: '#e0b34d',
+  in_progress: '#35d0e8',
+  resolved: '#3fe08a',
+  cancelled: '#5c6480'
 }
 
 export default function ResponderHomeScreen({ navigation }) {
   const [emergencies, setEmergencies] = useState([])
   const [institutionId, setInstitutionId] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [sirenMuted, setSirenMuted] = useState(false)
+
+  const sirenPlayer = useAudioPlayer(require('../assets/siren.wav'))
+
+  const hasUnclaimed = useMemo(
+    () => emergencies.some((e) => !e.claimed_by && e.status !== 'resolved' && e.status !== 'cancelled'),
+    [emergencies]
+  )
+
+  useEffect(() => {
+    sirenPlayer.loop = true
+  }, [sirenPlayer])
+
+  useEffect(() => {
+    if (hasUnclaimed && !sirenMuted) {
+      try {
+        sirenPlayer.seekTo(0)
+        sirenPlayer.play()
+      } catch (err) {
+        console.log('SIREN PLAY FAILED (non-fatal):', err.message)
+      }
+    } else {
+      sirenPlayer.pause()
+    }
+  }, [hasUnclaimed, sirenMuted, sirenPlayer])
+
+  useEffect(() => {
+    if (!hasUnclaimed) setSirenMuted(false)
+  }, [hasUnclaimed])
 
   useEffect(() => {
     let channel
@@ -107,8 +144,20 @@ export default function ResponderHomeScreen({ navigation }) {
   }, [institutionId])
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>Active Emergencies</Text>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
+      {hasUnclaimed && (
+        <View style={styles.sirenBanner}>
+          <Text style={styles.sirenText}>🚨 Unclaimed emergency — respond now</Text>
+          <TouchableOpacity onPress={() => setSirenMuted((m) => !m)}>
+            <Text style={styles.sirenMuteButton}>{sirenMuted ? '🔇 Unmute' : '🔊 Mute'}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      <View style={styles.headerRow}>
+        <Image source={require('../assets/icon.png')} style={styles.logo} />
+        <Text style={styles.header}>Active Emergencies</Text>
+      </View>
 
       {emergencies.length === 0 && (
         <View style={styles.empty}>
@@ -119,7 +168,8 @@ export default function ResponderHomeScreen({ navigation }) {
       <FlatList
         data={emergencies}
         keyExtractor={(item) => item.id}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ff2b2b" />}
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.card}
@@ -140,30 +190,40 @@ export default function ResponderHomeScreen({ navigation }) {
           </TouchableOpacity>
         )}
       />
-    </View>
+    </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#fafafa' },
-  header: { fontSize: 24, fontWeight: 'bold', marginBottom: 16 },
+  container: { flex: 1, backgroundColor: '#05070d' },
+  sirenBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(204,0,0,0.22)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,43,43,0.4)',
+    paddingVertical: 10,
+    paddingHorizontal: 16
+  },
+  sirenText: { color: '#ff8080', fontWeight: '700', fontSize: 13, flex: 1 },
+  sirenMuteButton: { color: '#f4f6fb', fontWeight: '600', fontSize: 13 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 16, paddingBottom: 8 },
+  logo: { width: 32, height: 32, borderRadius: 8 },
+  header: { fontSize: 22, fontWeight: 'bold', color: '#f4f6fb' },
   empty: { padding: 40, alignItems: 'center' },
-  emptyText: { color: '#888' },
+  emptyText: { color: '#5c6480' },
   card: {
-    backgroundColor: 'white',
-    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#eee',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1
+    borderColor: 'rgba(255,255,255,0.09)'
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   status: { fontWeight: 'bold', fontSize: 16 },
-  time: { color: '#888' },
-  location: { color: '#333' },
-  badge: { marginTop: 6, fontSize: 12, color: '#b8860b', fontWeight: 'bold' }
+  time: { color: '#5c6480' },
+  location: { color: '#9aa4bf' },
+  badge: { marginTop: 6, fontSize: 12, color: '#e0b34d', fontWeight: 'bold' }
 })

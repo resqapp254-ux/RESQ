@@ -41,9 +41,15 @@ export default function LoginScreen({ navigation }) {
     } else if (data.role === 'user') {
       console.log('LOGIN - routing to Home')
       navigation.replace('Home')
+    } else if (data.role === 'institution_admin' || data.role === 'super_admin') {
+      // Institution/super admin screens (managing institutions,
+      // responders, services, reports) only exist on the web
+      // dashboard — open it here instead of a native screen.
+      console.log('LOGIN - routing admin role to AdminWebView')
+      navigation.replace('AdminWebView')
     } else {
       console.log('LOGIN - unrecognized role, showing alert')
-      Alert.alert('Wrong app', 'This account type should use the RESQ admin dashboard, not the mobile app.')
+      Alert.alert('Account role could not be determined', 'Please contact support.')
     }
   }
 

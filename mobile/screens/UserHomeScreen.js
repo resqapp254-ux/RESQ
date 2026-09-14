@@ -4,7 +4,8 @@
 // user's live location, routing them to the active-emergency screen.
 
 import React, { useState } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image, ScrollView } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import * as Location from 'expo-location'
 import * as ImagePicker from 'expo-image-picker'
 import * as FileSystem from 'expo-file-system/legacy'
@@ -177,10 +178,12 @@ export default function UserHomeScreen({ navigation }) {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <ScrollView contentContainerStyle={styles.container}>
       <TouchableOpacity style={styles.guardiansLink} onPress={() => navigation.navigate('ManageGuardians')} disabled={sending}>
         <Text style={styles.guardiansLinkText}>Trusted Contacts</Text>
       </TouchableOpacity>
+      <Image source={require('../assets/icon.png')} style={styles.logo} />
       <Text style={styles.title}>RESQ</Text>
       <Text style={styles.subtitle}>What's happening?</Text>
 
@@ -227,35 +230,38 @@ export default function UserHomeScreen({ navigation }) {
       <Text style={styles.footnote}>
         Your exact location will be shared with your institution's emergency responders.
       </Text>
-    </View>
+      </ScrollView>
+    </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: '#fff' },
-  guardiansLink: { position: 'absolute', top: 50, right: 20, padding: 8 },
-  guardiansLinkText: { color: '#1a5fb4', fontWeight: '600', fontSize: 13 },
-  title: { fontSize: 32, fontWeight: 'bold', color: '#cc0000', marginBottom: 8 },
-  subtitle: { textAlign: 'center', color: '#666', marginBottom: 16, fontSize: 15, fontWeight: '600' },
+  safeArea: { flex: 1, backgroundColor: '#05070d' },
+  container: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  guardiansLink: { position: 'absolute', top: 12, right: 20, padding: 8 },
+  guardiansLinkText: { color: '#35d0e8', fontWeight: '600', fontSize: 13 },
+  logo: { width: 64, height: 64, borderRadius: 14, marginBottom: 8 },
+  title: { fontSize: 32, fontWeight: 'bold', color: '#f4f6fb', marginBottom: 8, letterSpacing: 1 },
+  subtitle: { textAlign: 'center', color: '#9aa4bf', marginBottom: 16, fontSize: 15, fontWeight: '600' },
   typeRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginBottom: 16, gap: 10 },
   typeChip: {
     width: 82,
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#e0e0e0',
+    borderColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
-    backgroundColor: '#fafafa'
+    backgroundColor: 'rgba(255,255,255,0.04)'
   },
-  typeChipSelected: { borderColor: '#cc0000', backgroundColor: '#fdeaea' },
+  typeChipSelected: { borderColor: '#ff2b2b', backgroundColor: 'rgba(255,43,43,0.16)' },
   typeEmoji: { fontSize: 22, marginBottom: 4 },
-  typeLabel: { fontSize: 11, color: '#666', fontWeight: '600', textAlign: 'center' },
-  typeLabelSelected: { color: '#cc0000' },
-  attachButton: { marginBottom: 20, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: '#f0f0f0' },
-  attachButtonText: { color: '#555', fontSize: 13, fontWeight: '600' },
+  typeLabel: { fontSize: 11, color: '#9aa4bf', fontWeight: '600', textAlign: 'center' },
+  typeLabelSelected: { color: '#ff8080' },
+  attachButton: { marginBottom: 20, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.06)' },
+  attachButtonText: { color: '#9aa4bf', fontSize: 13, fontWeight: '600' },
   photoPreviewRow: { alignItems: 'center', marginBottom: 20 },
   photoThumb: { width: 90, height: 90, borderRadius: 10, marginBottom: 6 },
-  removePhoto: { color: '#cc0000', fontSize: 12, fontWeight: '600' },
+  removePhoto: { color: '#ff8080', fontSize: 12, fontWeight: '600' },
   bigButton: {
     width: 220,
     height: 220,
@@ -269,5 +275,5 @@ const styles = StyleSheet.create({
     elevation: 8
   },
   bigButtonText: { color: 'white', fontSize: 24, fontWeight: 'bold', textAlign: 'center' },
-  footnote: { marginTop: 40, textAlign: 'center', color: '#999', fontSize: 12, paddingHorizontal: 20 }
+  footnote: { marginTop: 40, textAlign: 'center', color: '#5c6480', fontSize: 12, paddingHorizontal: 20 }
 })

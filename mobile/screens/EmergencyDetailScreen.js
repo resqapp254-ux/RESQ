@@ -210,7 +210,7 @@ export default function EmergencyDetailScreen({ route, navigation }) {
   }
 
   if (!emergency) {
-    return <View style={styles.container}><Text>Loading...</Text></View>
+    return <View style={styles.container}><Text style={{ color: '#9aa4bf' }}>Loading...</Text></View>
   }
 
   const isMine = emergency.claimed_by === myId
@@ -301,6 +301,7 @@ export default function EmergencyDetailScreen({ route, navigation }) {
             value={messageText}
             onChangeText={setMessageText}
             placeholder="Type a message..."
+            placeholderTextColor="#5c6480"
           />
           <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
             <Text style={{ color: 'white' }}>Send</Text>
@@ -314,37 +315,37 @@ export default function EmergencyDetailScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#fafafa' },
+  container: { flex: 1, padding: 16, backgroundColor: '#05070d' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { fontSize: 22, fontWeight: 'bold' },
-  status: { fontWeight: 'bold', color: '#cc0000' },
-  typeBadge: { alignSelf: 'flex-start', backgroundColor: '#eee', paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, marginTop: 8 },
-  chatNotice: { color: '#777', fontSize: 13, textAlign: 'center', paddingVertical: 12 },
-  typeBadgeText: { fontWeight: 'bold', fontSize: 13, color: '#444' },
-  person: { marginTop: 8, marginBottom: 8, color: '#333' },
+  title: { fontSize: 22, fontWeight: 'bold', color: '#f4f6fb' },
+  status: { fontWeight: 'bold', color: '#ff2b2b' },
+  typeBadge: { alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.08)', paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, marginTop: 8 },
+  chatNotice: { color: '#9aa4bf', fontSize: 13, textAlign: 'center', paddingVertical: 12 },
+  typeBadgeText: { fontWeight: 'bold', fontSize: 13, color: '#f4f6fb' },
+  person: { marginTop: 8, marginBottom: 8, color: '#9aa4bf' },
   photoBox: { marginBottom: 10 },
-  photoLabel: { fontWeight: 'bold', fontSize: 12, color: '#555', marginBottom: 6 },
-  photo: { width: '100%', height: 200, borderRadius: 10, backgroundColor: '#eee' },
-  aiBox: { backgroundColor: '#eef6ff', padding: 10, borderRadius: 8, marginBottom: 8 },
-  aiLabel: { fontWeight: 'bold', fontSize: 12, color: '#1a5fb4' },
-  aiWarnBox: { backgroundColor: '#fff4e5', padding: 10, borderRadius: 8, marginBottom: 8 },
-  aiWarnLabel: { fontWeight: 'bold', fontSize: 12, color: '#b8860b' },
-  aiText: { marginTop: 4 },
+  photoLabel: { fontWeight: 'bold', fontSize: 12, color: '#9aa4bf', marginBottom: 6 },
+  photo: { width: '100%', height: 200, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.08)' },
+  aiBox: { backgroundColor: 'rgba(53,208,232,0.1)', padding: 10, borderRadius: 8, marginBottom: 8, borderWidth: 1, borderColor: 'rgba(53,208,232,0.25)' },
+  aiLabel: { fontWeight: 'bold', fontSize: 12, color: '#35d0e8' },
+  aiWarnBox: { backgroundColor: 'rgba(224,179,77,0.12)', padding: 10, borderRadius: 8, marginBottom: 8, borderWidth: 1, borderColor: 'rgba(224,179,77,0.3)' },
+  aiWarnLabel: { fontWeight: 'bold', fontSize: 12, color: '#e0b34d' },
+  aiText: { marginTop: 4, color: '#f4f6fb' },
   actionsRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-  actionButton: { flex: 1, backgroundColor: '#eee', padding: 12, borderRadius: 8, alignItems: 'center' },
-  actionButtonText: { fontWeight: 'bold' },
+  actionButton: { flex: 1, backgroundColor: 'rgba(255,255,255,0.06)', padding: 12, borderRadius: 8, alignItems: 'center' },
+  actionButtonText: { fontWeight: 'bold', color: '#f4f6fb' },
   claimButton: { backgroundColor: '#cc0000', padding: 14, borderRadius: 8, alignItems: 'center', marginBottom: 10 },
-  progressButton: { backgroundColor: '#1a5fb4', padding: 14, borderRadius: 8, alignItems: 'center', marginBottom: 10 },
-  resolveButton: { backgroundColor: '#1a7f37', padding: 14, borderRadius: 8, alignItems: 'center', marginBottom: 10 },
+  progressButton: { backgroundColor: '#35d0e8', padding: 14, borderRadius: 8, alignItems: 'center', marginBottom: 10 },
+  resolveButton: { backgroundColor: '#3fe08a', padding: 14, borderRadius: 8, alignItems: 'center', marginBottom: 10 },
   claimButtonText: { color: 'white', fontWeight: 'bold' },
-  chatHeader: { fontWeight: 'bold', marginTop: 8, marginBottom: 4 },
+  chatHeader: { fontWeight: 'bold', marginTop: 8, marginBottom: 4, color: '#f4f6fb' },
   chatList: { flex: 1 },
   bubble: { padding: 10, borderRadius: 10, marginVertical: 4, maxWidth: '80%' },
   bubbleMine: { backgroundColor: '#cc0000', alignSelf: 'flex-end' },
-  bubbleTheirs: { backgroundColor: '#e0e0e0', alignSelf: 'flex-start' },
+  bubbleTheirs: { backgroundColor: 'rgba(255,255,255,0.1)', alignSelf: 'flex-start' },
   bubbleTextMine: { color: 'white' },
-  bubbleTextTheirs: { color: '#000' },
+  bubbleTextTheirs: { color: '#f4f6fb' },
   inputRow: { flexDirection: 'row', marginTop: 8 },
-  input: { flex: 1, borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginRight: 8, backgroundColor: 'white' },
+  input: { flex: 1, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 8, padding: 10, marginRight: 8, backgroundColor: 'rgba(255,255,255,0.05)', color: '#f4f6fb' },
   sendButton: { backgroundColor: '#cc0000', borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center' }
 })

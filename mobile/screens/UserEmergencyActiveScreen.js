@@ -189,7 +189,7 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
   }
 
   if (!emergency) {
-    return <View style={styles.container}><Text>Loading...</Text></View>
+    return <View style={styles.container}><Text style={{ color: '#9aa4bf' }}>Loading...</Text></View>
   }
 
   return (
@@ -236,6 +236,7 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
           value={messageText}
           onChangeText={setMessageText}
           placeholder="Message your responder..."
+          placeholderTextColor="#5c6480"
         />
         <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
           <Text style={{ color: 'white' }}>Send</Text>
@@ -246,23 +247,23 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#fafafa' },
-  statusHeader: { fontSize: 20, fontWeight: 'bold', marginBottom: 12, color: '#cc0000' },
-  aiBox: { backgroundColor: '#eef6ff', padding: 14, borderRadius: 10, marginBottom: 12 },
-  aiLabel: { fontWeight: 'bold', fontSize: 12, color: '#1a5fb4', marginBottom: 4 },
-  aiText: { fontSize: 15, lineHeight: 20 },
-  responderBox: { backgroundColor: '#f0fdf4', padding: 14, borderRadius: 10, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  responderName: { fontWeight: 'bold' },
-  callButton: { backgroundColor: '#1a7f37', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8 },
-  callButtonText: { color: 'white', fontWeight: 'bold' },
-  chatHeader: { fontWeight: 'bold', marginTop: 4, marginBottom: 4 },
+  container: { flex: 1, padding: 16, backgroundColor: '#05070d' },
+  statusHeader: { fontSize: 20, fontWeight: 'bold', marginBottom: 12, color: '#ff2b2b' },
+  aiBox: { backgroundColor: 'rgba(53,208,232,0.1)', padding: 14, borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(53,208,232,0.25)' },
+  aiLabel: { fontWeight: 'bold', fontSize: 12, color: '#35d0e8', marginBottom: 4 },
+  aiText: { fontSize: 15, lineHeight: 20, color: '#f4f6fb' },
+  responderBox: { backgroundColor: 'rgba(63,224,138,0.1)', padding: 14, borderRadius: 10, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(63,224,138,0.25)' },
+  responderName: { fontWeight: 'bold', color: '#f4f6fb' },
+  callButton: { backgroundColor: '#3fe08a', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8 },
+  callButtonText: { color: '#05070d', fontWeight: 'bold' },
+  chatHeader: { fontWeight: 'bold', marginTop: 4, marginBottom: 4, color: '#f4f6fb' },
   chatList: { flex: 1 },
   bubble: { padding: 10, borderRadius: 10, marginVertical: 4, maxWidth: '80%' },
   bubbleMine: { backgroundColor: '#cc0000', alignSelf: 'flex-end' },
-  bubbleTheirs: { backgroundColor: '#e0e0e0', alignSelf: 'flex-start' },
+  bubbleTheirs: { backgroundColor: 'rgba(255,255,255,0.1)', alignSelf: 'flex-start' },
   bubbleTextMine: { color: 'white' },
-  bubbleTextTheirs: { color: '#000' },
+  bubbleTextTheirs: { color: '#f4f6fb' },
   inputRow: { flexDirection: 'row', marginTop: 8 },
-  input: { flex: 1, borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginRight: 8, backgroundColor: 'white' },
+  input: { flex: 1, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 8, padding: 10, marginRight: 8, backgroundColor: 'rgba(255,255,255,0.05)', color: '#f4f6fb' },
   sendButton: { backgroundColor: '#cc0000', borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center' }
 })

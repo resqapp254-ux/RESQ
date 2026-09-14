@@ -14,17 +14,21 @@
     "@react-navigation/native-stack": "^6.9.26",
     "@supabase/supabase-js": "^2.45.0",
     "base64-arraybuffer": "^1.0.2",
-    "expo": "~54.0.0",
+    "expo": "~54.0.37",
+    "expo-asset": "~12.0.13",
+    "expo-audio": "~1.1.1",
     "expo-dev-client": "~6.0.21",
-    "expo-device": "~7.0.0",
-    "expo-file-system": "~19.0.23",
+    "expo-device": "~8.0.10",
+    "expo-file-system": "~19.0.24",
     "expo-image-picker": "~17.0.11",
-    "expo-location": "~18.0.0",
-    "expo-notifications": "~0.31.0",
+    "expo-location": "~19.0.8",
+    "expo-notifications": "~0.32.17",
+    "expo-updates": "~29.0.20",
     "react": "19.1.0",
     "react-native": "0.81.5",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
-    "react-native-url-polyfill": "^2.0.0"
+    "react-native-url-polyfill": "^2.0.0",
+    "react-native-webview": "13.15.0"
   }
 }
