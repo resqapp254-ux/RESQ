@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabaseClient'
 import EmergencyPulseBackground from '../../components/EmergencyPulseBackground'
+import GuardianShield from '../../components/GuardianShield'
+import HeartMonitorLine from '../../components/HeartMonitorLine'
 
 export default function InstitutionAdminPage() {
   const [authorized, setAuthorized] = useState(false)
@@ -169,11 +171,13 @@ export default function InstitutionAdminPage() {
     return <div style={{ padding: 40, fontFamily: 'sans-serif' }}>Loading...</div>
   }
 
+  const hasActiveAlert = activeEmergencies.some((e) => e.status !== 'resolved')
+
   return (
-    <div className="resq-shell">
+    <div className={'resq-shell' + (hasActiveAlert ? ' resq-alert-shell' : '')}>
       <EmergencyPulseBackground />
       <div className="resq-content" style={{ padding: 40, maxWidth: 1000, margin: '0 auto' }}>
-      <div className="resq-fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+      <div className="resq-fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 12 }}>
         <h1 className="resq-h1">{institution?.name}</h1>
         <button className="resq-btn-secondary" onClick={handleLogout}>Log Out</button>
       </div>
@@ -183,6 +187,13 @@ export default function InstitutionAdminPage() {
       </p>
 
       {error && <p style={{ color: '#ff8080' }}>{error}</p>}
+
+      <div className="resq-fade-in resq-fade-in-2" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 28, margin: '20px 0' }}>
+        <GuardianShield buildingCount={1} alert={hasActiveAlert} size={140} label={hasActiveAlert ? 'Responding' : 'Protecting your institution'} />
+        <div style={{ flex: '1 1 260px', minWidth: 260 }}>
+          <HeartMonitorLine alert={hasActiveAlert} label={hasActiveAlert ? 'Active emergency' : 'All clear'} />
+        </div>
+      </div>
 
       <div className="resq-two-col resq-fade-in resq-fade-in-2" style={{ gridTemplateColumns: '1.4fr 1fr', margin: '24px 0' }}>
         <section className="glass-card" style={{ minHeight: 180 }}>

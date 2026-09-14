@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabaseClient'
 import EmergencyPulseBackground from '../../components/EmergencyPulseBackground'
+import GuardianShield from '../../components/GuardianShield'
+import HeartMonitorLine from '../../components/HeartMonitorLine'
 
 const STATUS_COLORS = {
   pending_verification: '#e0b34d',
@@ -15,6 +17,7 @@ const STATUS_COLORS = {
 
 export default function SuperAdminPage() {
   const [institutions, setInstitutions] = useState([])
+  const [activeEmergencyCount, setActiveEmergencyCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [authorized, setAuthorized] = useState(false)
   const [error, setError] = useState('')
@@ -39,6 +42,7 @@ export default function SuperAdminPage() {
 
     setAuthorized(true)
     await loadInstitutions()
+    await loadActiveEmergencyCount()
   }
 
   async function loadInstitutions() {
@@ -54,6 +58,14 @@ export default function SuperAdminPage() {
       setInstitutions(data)
     }
     setLoading(false)
+  }
+
+  async function loadActiveEmergencyCount() {
+    const { count } = await supabase
+      .from('emergencies')
+      .select('id', { count: 'exact', head: true })
+      .neq('status', 'resolved')
+    setActiveEmergencyCount(count || 0)
   }
 
   async function toggleStatus(institution) {
@@ -106,12 +118,19 @@ export default function SuperAdminPage() {
     router.replace('/login')
   }
 
+  const hasActiveAlert = activeEmergencyCount > 0
+
   if (!authorized) {
-    return <div style={{ padding: 40, fontFamily: 'sans-serif' }}>Checking access...</div>
+    return (
+      <main className="resq-shell">
+        <EmergencyPulseBackground />
+        <div className="resq-content" style={{ padding: 40 }}>Checking access...</div>
+      </main>
+    )
   }
 
   return (
-    <div className="resq-shell">
+    <div className={'resq-shell' + (hasActiveAlert ? ' resq-alert-shell' : '')}>
       <EmergencyPulseBackground />
       <div className="resq-content" style={{ padding: 40, maxWidth: 1100, margin: '0 auto' }}>
       <div className="resq-fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
@@ -134,6 +153,20 @@ export default function SuperAdminPage() {
           <button className="resq-btn-secondary" onClick={handleLogout}>Log Out</button>
         </div>
       </div>
+
+      {!loading && institutions.length > 0 && (
+        <div className="resq-fade-in resq-fade-in-2" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 28, margin: '4px 0 24px' }}>
+          <GuardianShield
+            buildingCount={institutions.length}
+            alert={hasActiveAlert}
+            size={170}
+            label={hasActiveAlert ? `Responding to ${activeEmergencyCount} active emergenc${activeEmergencyCount === 1 ? 'y' : 'ies'}` : `Watching over ${institutions.length} institution${institutions.length === 1 ? '' : 's'}`}
+          />
+          <div style={{ flex: '1 1 260px', minWidth: 260 }}>
+            <HeartMonitorLine alert={hasActiveAlert} label={hasActiveAlert ? 'Active emergency' : 'All clear'} />
+          </div>
+        </div>
+      )}
 
       {error && <p style={{ color: '#ff8080' }}>{error}</p>}
       {loading && <p className="resq-subtle">Loading institutions...</p>}

@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
 import EmergencyPulseBackground from '../../components/EmergencyPulseBackground'
+import HeartMonitorLine from '../../components/HeartMonitorLine'
+import { useEmergencySiren } from '../../lib/useEmergencySiren'
 
 const EMERGENCY_TYPES = [
   { key: 'medical', label: 'Medical', emoji: '\uD83C\uDFE5' },
@@ -50,6 +52,8 @@ export default function UserPage() {
   const [triggerBusy, setTriggerBusy] = useState(false)
 
   const isResponderView = RESPONDER_ROLES.includes(role)
+  const hasActiveAlert = isResponderView && activeEmergencies.some((e) => e.status !== 'resolved')
+  const { muted: sirenMuted, setMuted: setSirenMuted } = useEmergencySiren(hasActiveAlert)
 
   useEffect(() => {
     async function load() {
@@ -389,7 +393,7 @@ export default function UserPage() {
   }
 
   return (
-    <main className="resq-shell">
+    <main className={'resq-shell' + (hasActiveAlert ? ' resq-alert-shell' : '')}>
       <EmergencyPulseBackground />
       <div className="resq-content" style={{ padding: 32, maxWidth: 1200, margin: '0 auto' }}>
         <div className="glass-card resq-fade-in" style={{ maxWidth: 720, marginBottom: 24 }}>
@@ -406,7 +410,27 @@ export default function UserPage() {
           </p>
         </div>
 
-        <div className="resq-two-col" style={{ gridTemplateColumns: '1.2fr 1fr' }}>
+        {isResponderView && (
+          <HeartMonitorLine alert={hasActiveAlert} label={hasActiveAlert ? 'Active emergency' : 'All clear'} />
+        )}
+
+        {hasActiveAlert && (
+          <div className="resq-siren-banner resq-fade-in" role="alert">
+            <span>
+              <strong>{activeEmergencies.length}</strong> active emergenc{activeEmergencies.length === 1 ? 'y' : 'ies'} \u2014 respond now.
+            </span>
+            <button
+              type="button"
+              className="resq-btn-secondary resq-siren-mute"
+              onClick={() => setSirenMuted((m) => !m)}
+              aria-pressed={sirenMuted}
+            >
+              {sirenMuted ? '\ud83d\udd07 Unmute siren' : '\ud83d\udd0a Mute siren'}
+            </button>
+          </div>
+        )}
+
+        <div className="resq-two-col" style={{ gridTemplateColumns: '1.2fr 1fr', marginTop: isResponderView ? 20 : 0 }}>
           <section className="glass-card resq-fade-in resq-fade-in-2">
             {isResponderView ? (
               <>
@@ -435,16 +459,19 @@ export default function UserPage() {
                 <h2 style={{ marginTop: 0 }}>Emergency Control</h2>
                 <p className="resq-subtle" style={{ marginTop: 0 }}>Choose what's happening, then trigger — responders are alerted instantly.</p>
 
-                <label className="resq-subtle">Emergency type</label>
-                <div className="resq-type-grid">
+                <label id="resq-type-label" className="resq-subtle">Emergency type</label>
+                <div className="resq-type-grid" role="radiogroup" aria-labelledby="resq-type-label">
                   {EMERGENCY_TYPES.map((type) => (
                     <button
                       type="button"
                       key={type.key}
+                      role="radio"
+                      aria-checked={selectedType === type.key}
+                      aria-label={type.label}
                       className={'resq-type-chip' + (selectedType === type.key ? ' resq-type-chip-selected' : '')}
                       onClick={() => setSelectedType(type.key)}
                     >
-                      <span className="resq-type-emoji">{type.emoji}</span>
+                      <span className="resq-type-emoji" aria-hidden="true">{type.emoji}</span>
                       <span>{type.label}</span>
                     </button>
                   ))}
@@ -453,6 +480,7 @@ export default function UserPage() {
                 <div className="resq-trigger-wrap">
                   <button
                     className="resq-trigger-btn"
+                    aria-label={`Send an SOS for a ${typeLabel(selectedType)} emergency`}
                     onClick={handleTriggerEmergency}
                     disabled={locationBusy || triggerBusy}
                   >
@@ -460,8 +488,10 @@ export default function UserPage() {
                   </button>
                 </div>
 
-                {message && <p className="resq-green" style={{ textAlign: 'center' }}>{message}</p>}
-                {error && <p style={{ color: '#ff8080', textAlign: 'center' }}>{error}</p>}
+                <div aria-live="polite">
+                  {message && <p className="resq-green" style={{ textAlign: 'center' }}>{message}</p>}
+                  {error && <p style={{ color: '#ff8080', textAlign: 'center' }}>{error}</p>}
+                </div>
 
                 {currentAdvice && (
                   <div className="resq-advice-box">
