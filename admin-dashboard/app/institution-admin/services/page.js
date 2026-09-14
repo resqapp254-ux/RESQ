@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../../lib/supabaseClient'
 import EmergencyPulseBackground from '../../../components/EmergencyPulseBackground'
+import LoadingScreen from '../../../components/LoadingScreen'
 import { DEFAULT_HANDLES_BY_SERVICE_TYPE } from '../../../lib/serviceDispatch'
 
 const SERVICE_TYPES = [
@@ -172,7 +173,7 @@ export default function ManageServicesPage() {
     return (
       <main className="resq-shell">
         <EmergencyPulseBackground />
-        <div className="resq-content" style={{ padding: 40 }}>Loading...</div>
+        <div className="resq-content"><LoadingScreen /></div>
       </main>
     )
   }

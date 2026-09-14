@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabaseClient'
 import EmergencyPulseBackground from '../../components/EmergencyPulseBackground'
 import GuardianShield from '../../components/GuardianShield'
 import HeartMonitorLine from '../../components/HeartMonitorLine'
+import LoadingScreen from '../../components/LoadingScreen'
 
 const STATUS_COLORS = {
   pending_verification: '#e0b34d',
@@ -17,6 +18,7 @@ const STATUS_COLORS = {
 
 export default function SuperAdminPage() {
   const [institutions, setInstitutions] = useState([])
+  const [emergencySummary, setEmergencySummary] = useState({})
   const [activeEmergencyCount, setActiveEmergencyCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [authorized, setAuthorized] = useState(false)
@@ -43,6 +45,7 @@ export default function SuperAdminPage() {
     setAuthorized(true)
     await loadInstitutions()
     await loadActiveEmergencyCount()
+    await loadEmergencySummary()
   }
 
   async function loadInstitutions() {
@@ -66,6 +69,18 @@ export default function SuperAdminPage() {
       .select('id', { count: 'exact', head: true })
       .neq('status', 'resolved')
     setActiveEmergencyCount(count || 0)
+  }
+
+  // Totals only, per institution — not the raw emergency list, which
+  // is the institution admin's view, not super admin's.
+  async function loadEmergencySummary() {
+    const { data, error: rpcError } = await supabase.rpc('get_institution_emergency_summary')
+    if (rpcError) return
+    const byInstitution = {}
+    for (const row of data || []) {
+      byInstitution[row.institution_id] = { active: row.active_count, resolved: row.resolved_count }
+    }
+    setEmergencySummary(byInstitution)
   }
 
   async function toggleStatus(institution) {
@@ -124,7 +139,7 @@ export default function SuperAdminPage() {
     return (
       <main className="resq-shell">
         <EmergencyPulseBackground />
-        <div className="resq-content" style={{ padding: 40 }}>Checking access...</div>
+        <div className="resq-content"><LoadingScreen label="Checking access…" /></div>
       </main>
     )
   }
@@ -183,6 +198,7 @@ export default function SuperAdminPage() {
               <th style={{ padding: 10 }}>Name</th>
               <th style={{ padding: 10 }}>Status</th>
               <th style={{ padding: 10 }}>Tier</th>
+              <th style={{ padding: 10 }}>Emergencies</th>
               <th style={{ padding: 10 }}>Institution Code</th>
               <th style={{ padding: 10 }}>Verification Code</th>
               <th style={{ padding: 10 }}>QR Code</th>
@@ -208,6 +224,19 @@ export default function SuperAdminPage() {
                     <option value="pro">Pro</option>
                     <option value="enterprise">Enterprise</option>
                   </select>
+                </td>
+                <td style={{ padding: 10 }}>
+                  {(() => {
+                    const summary = emergencySummary[inst.id] || { active: 0, resolved: 0 }
+                    return (
+                      <>
+                        <span className={summary.active > 0 ? 'resq-badge resq-badge-open' : 'resq-badge resq-badge-resolved'}>
+                          {summary.active} active
+                        </span>
+                        <span className="resq-subtle" style={{ marginLeft: 8, fontSize: 12 }}>{summary.resolved} resolved</span>
+                      </>
+                    )
+                  })()}
                 </td>
                 <td style={{ padding: 10, fontFamily: 'monospace' }}>{inst.institution_code}</td>
                 <td style={{ padding: 10, fontFamily: 'monospace' }}>

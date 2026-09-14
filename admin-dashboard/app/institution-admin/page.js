@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabaseClient'
 import EmergencyPulseBackground from '../../components/EmergencyPulseBackground'
 import GuardianShield from '../../components/GuardianShield'
 import HeartMonitorLine from '../../components/HeartMonitorLine'
+import LoadingScreen from '../../components/LoadingScreen'
 
 export default function InstitutionAdminPage() {
   const [authorized, setAuthorized] = useState(false)
@@ -16,6 +17,7 @@ export default function InstitutionAdminPage() {
   const [shiftsByResponder, setShiftsByResponder] = useState({})
   const [activeEmergencies, setActiveEmergencies] = useState([])
   const [recentResolved, setRecentResolved] = useState([])
+  const [openReportCount, setOpenReportCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -87,7 +89,16 @@ export default function InstitutionAdminPage() {
     }
 
     await loadEmergencies()
+    await loadOpenReportCount()
     setLoading(false)
+  }
+
+  async function loadOpenReportCount() {
+    const { count } = await supabase
+      .from('responder_reports')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'open')
+    setOpenReportCount(count || 0)
   }
 
   async function loadShifts(responderIds) {
@@ -168,7 +179,12 @@ export default function InstitutionAdminPage() {
   }
 
   if (!authorized || loading) {
-    return <div style={{ padding: 40, fontFamily: 'sans-serif' }}>Loading...</div>
+    return (
+      <div className="resq-shell">
+        <EmergencyPulseBackground />
+        <div className="resq-content"><LoadingScreen /></div>
+      </div>
+    )
   }
 
   const hasActiveAlert = activeEmergencies.some((e) => e.status !== 'resolved')
@@ -233,7 +249,13 @@ export default function InstitutionAdminPage() {
 
       <div className="resq-fade-in resq-fade-in-3" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '30px 0 12px', flexWrap: 'wrap', gap: 12 }}>
         <h2 style={{ margin: 0 }}>Responders</h2>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <Link href="/institution-admin/reports" className="resq-btn-secondary" style={{ textDecoration: 'none', position: 'relative' }}>
+            🚩 Reports
+            {openReportCount > 0 && (
+              <span className="resq-badge resq-badge-open" style={{ marginLeft: 8 }}>{openReportCount}</span>
+            )}
+          </Link>
           <Link href="/institution-admin/services" className="resq-btn-secondary" style={{ textDecoration: 'none' }}>
             🏥 Secondary Responders
           </Link>

@@ -1,9 +1,10 @@
 // app/api/emergency/check-responder-message/route.js
 //
-// Called right after a responder sends a chat message. Asks Groq
-// to flag anything that sounds unsafe, contradictory, or clearly
-// wrong so the user isn't misled — surfaces as a warning banner
-// on both the responder's and user's screens (ai_flag_to_responder).
+// Every responder chat message goes through here BEFORE it reaches
+// the user. If it looks unsafe, dangerous, or clearly wrong, it is
+// never delivered — instead the responder gets the reason plus a
+// corrected version of what to say, and can resend. Safe messages
+// are inserted here (server-side) and reach the user normally.
 
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
@@ -11,23 +12,23 @@ import { canAccessEmergency, getAuthenticatedUser } from '../../../../lib/author
 import { fetchWithTimeout } from '../../../../lib/fetchWithTimeout'
 
 const SYSTEM_PROMPT = `You are a safety reviewer for RESQ, an emergency dispatch app.
-A human responder just sent a chat message to someone in an active emergency.
+A human responder is about to send a chat message to someone in an active emergency.
 Decide if the message contains instructions that are unsafe, dangerous, or clearly wrong
 (e.g. telling someone to do something that could worsen a medical situation, contradicting
 basic safety practice, or giving confidently wrong information).
 
 Respond with ONLY a JSON object, no other text, in this exact shape:
-{"flag": true or false, "reason": "short explanation, under 20 words, empty string if flag is false"}
+{"flag": true or false, "reason": "short explanation, under 20 words, empty string if flag is false", "suggestion": "if flag is true, a corrected safe version of the message the responder should send instead; empty string if flag is false"}
 
 Be conservative — only flag genuinely concerning content, not just brief or informal responses.`
 
 export async function POST(request) {
   try {
-    const { profile, error: authError } = await getAuthenticatedUser(request)
+    const { user, profile, error: authError } = await getAuthenticatedUser(request)
     if (authError) return NextResponse.json({ success: false, error: authError }, { status: 401 })
     const { emergencyId, message } = await request.json()
 
-    if (!emergencyId || !message) {
+    if (!emergencyId || !message?.trim()) {
       return NextResponse.json({ success: false, error: 'Missing emergencyId or message' }, { status: 400 })
     }
 
@@ -36,53 +37,69 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Not authorized for this emergency' }, { status: 403 })
     }
 
-    let aiResponse
+    const trimmedMessage = message.trim()
+    let flagged = false
+    let reason = ''
+    let suggestion = ''
+
     try {
-      aiResponse = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: "Bearer " + process.env.GROQ_API_KEY,
-      },
-      body: JSON.stringify({
-        model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
-        max_tokens: 100,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: `Responder's message: "${message}"` }
-        ]
+      const aiResponse = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + process.env.GROQ_API_KEY
+        },
+        body: JSON.stringify({
+          model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
+          max_tokens: 200,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: `Responder's message: "${trimmedMessage}"` }
+          ]
+        })
       })
-      })
+
+      if (aiResponse.ok) {
+        const aiData = await aiResponse.json()
+        const raw = aiData.choices?.[0]?.message?.content?.trim() || '{"flag": false, "reason": "", "suggestion": ""}'
+        const normalizedRaw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+        try {
+          const parsed = JSON.parse(normalizedRaw)
+          flagged = !!parsed.flag
+          reason = parsed.reason || ''
+          suggestion = parsed.suggestion || ''
+        } catch {
+          // Unparseable AI response — fail open, let the message through
+        }
+      }
+      // Non-ok AI response also fails open — don't block chat over an AI hiccup
     } catch (error) {
       console.error('CHECK RESPONDER MESSAGE TIMEOUT/ERROR:', error.message)
-      return NextResponse.json({ success: true, flagged: false, reason: '', fallback: true })
+      // Fail open
     }
 
-    if (!aiResponse.ok) {
-      return NextResponse.json({ success: true, flagged: false }) // fail open — don't block chat over an AI hiccup
+    if (flagged) {
+      // Never delivered to the user. Record the flag on the emergency
+      // so admins can see it happened, and hand the responder a safe
+      // version they can send instead.
+      await supabaseAdmin.from('emergencies').update({ ai_flag_to_responder: reason }).eq('id', emergencyId)
+      return NextResponse.json({ success: true, blocked: true, reason, suggestion })
     }
 
-    const aiData = await aiResponse.json()
-    const raw = aiData.choices?.[0]?.message?.content?.trim() || '{"flag": false, "reason": ""}'
-    const normalizedRaw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+    const { error: insertError } = await supabaseAdmin.from('emergency_messages').insert({
+      emergency_id: emergencyId,
+      sender_id: user.id,
+      sender_role: profile.role,
+      message: trimmedMessage
+    })
 
-    let parsed
-    try {
-      parsed = JSON.parse(normalizedRaw)
-    } catch {
-      parsed = { flag: false, reason: '' }
+    if (insertError) {
+      return NextResponse.json({ success: false, error: insertError.message }, { status: 500 })
     }
 
-    if (parsed.flag) {
-      await supabaseAdmin
-        .from('emergencies')
-        .update({ ai_flag_to_responder: parsed.reason })
-        .eq('id', emergencyId)
-    }
-
-    return NextResponse.json({ success: true, flagged: !!parsed.flag, reason: parsed.reason || '' })
+    return NextResponse.json({ success: true, blocked: false })
   } catch (err) {
     console.error('CHECK RESPONDER MESSAGE ERROR:', err)
-    return NextResponse.json({ success: true, flagged: false }) // fail open
+    return NextResponse.json({ success: false, error: err.message || 'Unknown error' }, { status: 500 })
   }
 }

@@ -9,6 +9,7 @@ import { useEmergencySiren } from '../../lib/useEmergencySiren'
 import { pickMatchingServices } from '../../lib/serviceDispatch'
 import LanguageSwitcher from '../../components/LanguageSwitcher'
 import { useTranslation } from '../../lib/i18n/LanguageContext'
+import LoadingScreen from '../../components/LoadingScreen'
 
 const EMERGENCY_TYPES = [
   { key: 'medical', translationKey: 'medical', emoji: '\uD83C\uDFE5' },
@@ -53,12 +54,21 @@ export default function UserPage() {
   const [currentAdvice, setCurrentAdvice] = useState('')
   const [chatMessage, setChatMessage] = useState('')
   const [chatError, setChatError] = useState('')
+  const [chatSuggestion, setChatSuggestion] = useState('')
   const [chatBusy, setChatBusy] = useState(false)
   const [locationBusy, setLocationBusy] = useState(false)
   const [triggerBusy, setTriggerBusy] = useState(false)
 
   const [chatMessages, setChatMessages] = useState([])
   const [myUserId, setMyUserId] = useState('')
+
+  const [reportOpen, setReportOpen] = useState(false)
+  const [reportEmergencyId, setReportEmergencyId] = useState('')
+  const [reportCategory, setReportCategory] = useState('no_response')
+  const [reportMessage, setReportMessage] = useState('')
+  const [reportBusy, setReportBusy] = useState(false)
+  const [reportError, setReportError] = useState('')
+  const [reportSent, setReportSent] = useState(false)
 
   const isResponderView = RESPONDER_ROLES.includes(role)
   // Wails until someone claims it — once claimed_by is set (by any
@@ -194,7 +204,7 @@ export default function UserPage() {
 
       const { data: resolved } = await supabase
         .from('emergencies')
-        .select('id, emergency_type, status, resolved_at')
+        .select('id, emergency_type, status, resolved_at, claimed_by')
         .eq('triggered_by', userId)
         .eq('status', 'resolved')
         .order('resolved_at', { ascending: false })
@@ -420,6 +430,7 @@ export default function UserPage() {
 
   async function sendChatMessage() {
     setChatError('')
+    setChatSuggestion('')
     setChatBusy(true)
 
     const { data: authData } = await supabase.auth.getUser()
@@ -435,14 +446,9 @@ export default function UserPage() {
       return
     }
 
-    const { data: emergency, error: emergencyError } = await supabase
-      .from('emergencies')
-      .select('id, institution_id, triggered_by, claimed_by')
-      .eq('id', targetId)
-      .single()
-
-    if (emergencyError || !emergency) {
-      setChatError('No emergency selected.')
+    const message = chatMessage.trim()
+    if (!message) {
+      setChatError('Type a message first.')
       setChatBusy(false)
       return
     }
@@ -454,48 +460,91 @@ export default function UserPage() {
       return
     }
 
-    const message = chatMessage.trim()
-    if (!message) {
-      setChatError('Type a message first.')
-      setChatBusy(false)
-      return
-    }
-
-    const senderRole = role || 'user'
-
-    const { error: insertError } = await supabase
-      .from('emergency_messages')
-      .insert({
-        emergency_id: emergency.id,
-        sender_id: authData.user.id,
-        sender_role: senderRole,
-        message
-      })
-
-    if (insertError) {
-      setChatError(
-        insertError.code === '42501'
-          ? 'You are not allowed to message this emergency — responders must claim it first.'
-          : insertError.message
-      )
-      setChatBusy(false)
-      return
-    }
-
-    if (senderRole === 'responder') {
-      fetch('/api/emergency/check-responder-message', {
+    if (isResponderView) {
+      // Responder messages are AI-safety-checked server-side BEFORE
+      // they reach the user. If flagged, nothing is delivered — the
+      // responder sees why plus a corrected message to send instead.
+      const response = await fetch('/api/emergency/check-responder-message', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: 'Bearer ' + accessToken
         },
-        body: JSON.stringify({ emergencyId: emergency.id, message })
-      }).catch(() => null)
+        body: JSON.stringify({ emergencyId: targetId, message })
+      })
+      const result = await response.json()
+      setChatBusy(false)
+
+      if (!response.ok || !result.success) {
+        setChatError(result.error || 'Could not send message.')
+        return
+      }
+      if (result.blocked) {
+        setChatError((result.reason || 'That message was not sent — it looked unsafe or incorrect.') + ' Try the suggestion below, or rewrite it.')
+        setChatSuggestion(result.suggestion || '')
+        return
+      }
+
+      setChatMessage('')
+      setMessage('Message sent.')
+      return
+    }
+
+    const { error: insertError } = await supabase
+      .from('emergency_messages')
+      .insert({
+        emergency_id: targetId,
+        sender_id: authData.user.id,
+        sender_role: role || 'user',
+        message
+      })
+    setChatBusy(false)
+
+    if (insertError) {
+      setChatError(insertError.message)
+      return
     }
 
     setChatMessage('')
-    setChatBusy(false)
     setMessage('Message sent.')
+  }
+
+  const reportableEmergencies = [...activeEmergencies, ...resolvedEmergencies].filter((e) => e.claimed_by)
+
+  async function handleSubmitReport(e) {
+    e.preventDefault()
+    setReportError('')
+
+    if (!reportEmergencyId) {
+      setReportError('Choose which emergency this is about.')
+      return
+    }
+    const text = reportMessage.trim()
+    if (!text) {
+      setReportError('Describe what happened.')
+      return
+    }
+
+    setReportBusy(true)
+    const chosen = reportableEmergencies.find((e) => e.id === reportEmergencyId)
+
+    const { error: insertError } = await supabase.from('responder_reports').insert({
+      institution_id: institutionId,
+      emergency_id: reportEmergencyId,
+      reported_by: myUserId,
+      reported_responder_id: chosen?.claimed_by || null,
+      category: reportCategory,
+      message: text
+    })
+    setReportBusy(false)
+
+    if (insertError) {
+      setReportError(insertError.message)
+      return
+    }
+
+    setReportSent(true)
+    setReportMessage('')
   }
 
   const chatThread = chatMessages.length > 0 && (
@@ -538,7 +587,7 @@ export default function UserPage() {
     return (
       <main className="resq-shell">
         <EmergencyPulseBackground />
-        <div className="resq-content" style={{ padding: 40 }}>Loading...</div>
+        <div className="resq-content"><LoadingScreen /></div>
       </main>
     )
   }
@@ -613,6 +662,23 @@ export default function UserPage() {
                     <p className="resq-subtle">Claim an emergency below to message the person who reported it.</p>
                   )}
                   {chatError && <p style={{ color: '#ff8080' }}>{chatError}</p>}
+                  {chatSuggestion && (
+                    <div className="resq-advice-box">
+                      <strong>Suggested message</strong>
+                      <p style={{ margin: '6px 0 10px' }}>{chatSuggestion}</p>
+                      <button
+                        type="button"
+                        className="resq-btn-secondary"
+                        onClick={() => {
+                          setChatMessage(chatSuggestion)
+                          setChatSuggestion('')
+                          setChatError('')
+                        }}
+                      >
+                        Use this instead
+                      </button>
+                    </div>
+                  )}
                   {message && <p className="resq-green">{message}</p>}
                 </div>
               </>
@@ -676,6 +742,67 @@ export default function UserPage() {
                     {chatBusy ? t('sendingEllipsis') : t('sendMessage')}
                   </button>
                   {chatError && <p style={{ color: '#ff8080' }}>{chatError}</p>}
+                </div>
+
+                <div style={{ marginTop: 24, borderTop: '1px solid var(--resq-glass-border)', paddingTop: 16 }}>
+                  <button
+                    type="button"
+                    className="resq-btn-secondary"
+                    onClick={() => { setReportOpen((v) => !v); setReportSent(false); setReportError('') }}
+                  >
+                    🚩 Report a responder
+                  </button>
+                  {reportOpen && (
+                    <div style={{ marginTop: 12 }}>
+                      {reportSent ? (
+                        <p className="resq-green">Report sent to your institution admin. Thank you.</p>
+                      ) : reportableEmergencies.length === 0 ? (
+                        <p className="resq-subtle">You don't have any claimed emergencies yet to report on.</p>
+                      ) : (
+                        <form onSubmit={handleSubmitReport}>
+                          <label className="resq-subtle">Which emergency?</label>
+                          <select
+                            className="resq-input"
+                            style={{ marginTop: 4, marginBottom: 10 }}
+                            value={reportEmergencyId}
+                            onChange={(e) => setReportEmergencyId(e.target.value)}
+                          >
+                            <option value="">Select…</option>
+                            {reportableEmergencies.map((e) => (
+                              <option key={e.id} value={e.id}>
+                                {typeLabel(e.emergency_type, t)} — {new Date(e.created_at || e.resolved_at).toLocaleString()}
+                              </option>
+                            ))}
+                          </select>
+
+                          <label className="resq-subtle">What happened?</label>
+                          <select
+                            className="resq-input"
+                            style={{ marginTop: 4, marginBottom: 10 }}
+                            value={reportCategory}
+                            onChange={(e) => setReportCategory(e.target.value)}
+                          >
+                            <option value="no_response">No response / slow to help</option>
+                            <option value="unprofessional">Unprofessional conduct</option>
+                            <option value="wrong_advice">Gave wrong or unsafe advice</option>
+                            <option value="other">Other</option>
+                          </select>
+
+                          <textarea
+                            className="resq-input"
+                            style={{ minHeight: 90 }}
+                            placeholder="Describe what happened"
+                            value={reportMessage}
+                            onChange={(e) => setReportMessage(e.target.value)}
+                          />
+                          {reportError && <p style={{ color: '#ff8080' }}>{reportError}</p>}
+                          <button className="resq-btn-primary" style={{ width: '100%', marginTop: 10 }} disabled={reportBusy}>
+                            {reportBusy ? 'Sending…' : 'Send report to institution admin'}
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  )}
                 </div>
               </>
             )}
