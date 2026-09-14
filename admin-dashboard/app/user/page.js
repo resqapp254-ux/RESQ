@@ -663,7 +663,7 @@ export default function UserPage() {
                   )}
                   {chatError && <p style={{ color: '#ff8080' }}>{chatError}</p>}
                   {chatSuggestion && (
-                    <div className="resq-advice-box">
+                    <div className="resq-advice-box resq-fade-in">
                       <strong>Suggested message</strong>
                       <p style={{ margin: '6px 0 10px' }}>{chatSuggestion}</p>
                       <button
@@ -722,7 +722,7 @@ export default function UserPage() {
                 </div>
 
                 {currentAdvice && (
-                  <div className="resq-advice-box">
+                  <div className="resq-advice-box resq-fade-in">
                     <strong>{t('aiSafetyGuidance')}</strong>
                     <p style={{ margin: '6px 0 0' }}>{currentAdvice}</p>
                   </div>
@@ -753,7 +753,7 @@ export default function UserPage() {
                     🚩 Report a responder
                   </button>
                   {reportOpen && (
-                    <div style={{ marginTop: 12 }}>
+                    <div className="resq-fade-in" style={{ marginTop: 12 }}>
                       {reportSent ? (
                         <p className="resq-green">Report sent to your institution admin. Thank you.</p>
                       ) : reportableEmergencies.length === 0 ? (

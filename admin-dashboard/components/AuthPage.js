@@ -156,7 +156,7 @@ export default function AuthPage({ defaultMode = 'signin' }) {
           </div>
 
           {mode === 'signin' && (
-            <>
+            <div key="signin" className="resq-fade-in">
               <h1 className="resq-h1" style={{ fontSize: 26, marginBottom: 16 }}>{t('signIn')}</h1>
               <form onSubmit={handleSignIn}>
                 <div style={{ marginBottom: 12 }}>
@@ -184,11 +184,11 @@ export default function AuthPage({ defaultMode = 'signin' }) {
                   {loading ? t('signingIn') : t('signInButton')}
                 </button>
               </form>
-            </>
+            </div>
           )}
 
           {mode === 'signup' && (
-            <>
+            <div key="signup" className="resq-fade-in">
               <h1 className="resq-h1" style={{ fontSize: 26, marginBottom: 8 }}>{t('createAccountTitle')}</h1>
               <p className="resq-subtle" style={{ margin: '0 0 16px' }}>{t('createAccountSubtitle')}</p>
               <form onSubmit={handleSignUp}>
@@ -202,11 +202,11 @@ export default function AuthPage({ defaultMode = 'signin' }) {
                   {loading ? t('creatingAccount') : t('createAccountButton')}
                 </button>
               </form>
-            </>
+            </div>
           )}
 
           {mode === 'forgot' && (
-            <>
+            <div key="forgot" className="resq-fade-in">
               <h1 className="resq-h1" style={{ fontSize: 26, marginBottom: 8 }}>{t('resetPasswordTitle')}</h1>
               <p className="resq-subtle" style={{ margin: '0 0 16px' }}>{t('resetPasswordSubtitle')}</p>
               <form onSubmit={handleForgot}>
@@ -217,7 +217,7 @@ export default function AuthPage({ defaultMode = 'signin' }) {
                   {loading ? t('sending') : t('sendResetLink')}
                 </button>
               </form>
-            </>
+            </div>
           )}
         </div>
       </div>
