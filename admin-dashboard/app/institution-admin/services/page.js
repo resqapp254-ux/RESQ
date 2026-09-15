@@ -12,6 +12,7 @@ import Link from 'next/link'
 import { supabase } from '../../../lib/supabaseClient'
 import EmergencyPulseBackground from '../../../components/EmergencyPulseBackground'
 import LoadingScreen from '../../../components/LoadingScreen'
+import LanguageSwitcher from '../../../components/LanguageSwitcher'
 import { DEFAULT_HANDLES_BY_SERVICE_TYPE } from '../../../lib/serviceDispatch'
 
 const SERVICE_TYPES = [
@@ -22,7 +23,7 @@ const SERVICE_TYPES = [
   { key: 'other', label: 'Other service', emoji: '🧩' }
 ]
 
-const EMERGENCY_TYPES = ['medical', 'fire', 'accident', 'security', 'gbv', 'mental_health', 'other']
+const EMERGENCY_TYPES = ['medical', 'fire', 'accident', 'security', 'gbv', 'mental_health', 'property_damage', 'other']
 
 export default function ManageServicesPage() {
   const router = useRouter()
@@ -173,6 +174,7 @@ export default function ManageServicesPage() {
     return (
       <main className="resq-shell">
         <EmergencyPulseBackground />
+      <LanguageSwitcher />
         <div className="resq-content"><LoadingScreen /></div>
       </main>
     )
@@ -186,6 +188,7 @@ export default function ManageServicesPage() {
   return (
     <main className="resq-shell">
       <EmergencyPulseBackground />
+      <LanguageSwitcher />
       <div className="resq-content" style={{ padding: 32, maxWidth: 900, margin: '0 auto' }}>
         <Link href="/institution-admin">&larr; Back to Dashboard</Link>
 

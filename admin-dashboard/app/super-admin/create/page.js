@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../../lib/supabaseClient'
 import EmergencyPulseBackground from '../../../components/EmergencyPulseBackground'
+import LanguageSwitcher from '../../../components/LanguageSwitcher'
 
 export default function CreateInstitutionPage() {
   const [form, setForm] = useState({
@@ -68,6 +69,7 @@ export default function CreateInstitutionPage() {
     return (
       <main className="resq-shell">
         <EmergencyPulseBackground />
+      <LanguageSwitcher />
         <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <section className="glass-card resq-fade-in" style={{ width: '100%', maxWidth: 560 }}>
             <h1 className="resq-h1" style={{ fontSize: 24 }}>Institution Created</h1>
@@ -95,6 +97,7 @@ export default function CreateInstitutionPage() {
   return (
     <main className="resq-shell">
       <EmergencyPulseBackground />
+      <LanguageSwitcher />
       <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <section className="glass-card resq-fade-in" style={{ width: '100%', maxWidth: 480 }}>
           <Link href="/super-admin">&larr; Back to Dashboard</Link>

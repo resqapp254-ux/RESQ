@@ -47,13 +47,19 @@
           "cameraPermission": "RESQ needs camera access to let you photograph the situation during an emergency."
         }
       ],
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "RESQ needs microphone access to let you send a voice note during an emergency."
+        }
+      ],
       "expo-asset"
     ],
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "RESQ needs your location to send accurate help to your exact position during an emergency."
+        "NSLocationWhenInUseUsageDescription": "RESQ needs your location to send accurate help to your exact position during an emergency.",
+        "NSMicrophoneUsageDescription": "RESQ needs microphone access to let you send a voice note during an emergency."
       }
     },
     "android": {

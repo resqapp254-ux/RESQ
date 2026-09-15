@@ -92,6 +92,7 @@ export const translations = {
     security: 'Security',
     gbv: 'GBV',
     mentalHealth: 'Mental Health',
+    propertyDamage: 'Property Damage',
     other: 'Other'
   },
   sw: {
@@ -173,6 +174,7 @@ export const translations = {
     security: 'Usalama',
     gbv: 'Ukatili wa Kijinsia',
     mentalHealth: 'Afya ya Akili',
+    propertyDamage: 'Uharibifu wa Mali',
     other: 'Nyingine'
   },
   fr: {
@@ -254,6 +256,7 @@ export const translations = {
     security: 'Sécurité',
     gbv: 'Violence basée sur le genre',
     mentalHealth: 'Santé mentale',
+    propertyDamage: 'Dommage matériel',
     other: 'Autre'
   },
   zh: {
@@ -335,6 +338,7 @@ export const translations = {
     security: '安全',
     gbv: '性别暴力',
     mentalHealth: '心理健康',
+    propertyDamage: '财产损失',
     other: '其他'
   }
 }

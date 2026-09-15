@@ -8,7 +8,11 @@ export async function getAuthenticatedUser(request) {
   const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token)
   if (userError || !user) return { user: null, profile: null, error: 'Invalid authentication token' }
 
-  const { data: profile, error: profileError } = await supabaseAdmin.from('profiles').select('id, role, institution_id').eq('id', user.id).single()
+  const { data: profile, error: profileError } = await supabaseAdmin
+    .from('profiles')
+    .select('id, role, institution_id, service_id, responder_permission, responder_emergency_types')
+    .eq('id', user.id)
+    .single()
   if (profileError || !profile) return { user: null, profile: null, error: 'Account profile not found' }
   return { user, profile, error: null }
 }

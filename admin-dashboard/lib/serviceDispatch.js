@@ -68,8 +68,8 @@ export function pickMatchingServices(services, { emergencyType, lat, lng }) {
 
 export const DEFAULT_HANDLES_BY_SERVICE_TYPE = {
   hospital: ['medical', 'accident', 'gbv', 'mental_health'],
-  police: ['security', 'gbv'],
-  fire: ['fire', 'accident'],
+  police: ['security', 'gbv', 'property_damage'],
+  fire: ['fire', 'accident', 'property_damage'],
   ambulance: ['medical', 'accident'],
   other: []
 }

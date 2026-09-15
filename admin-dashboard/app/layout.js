@@ -1,5 +1,6 @@
 import '../styles/resq-design-system.css'
 import { LanguageProvider } from '../lib/i18n/LanguageContext'
+import ConsentBanner from '../components/ConsentBanner'
 
 export const metadata = {
   title: 'RESQ Admin',
@@ -10,7 +11,10 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <LanguageProvider>{children}</LanguageProvider>
+        <LanguageProvider>
+          {children}
+          <ConsentBanner />
+        </LanguageProvider>
       </body>
     </html>
   )

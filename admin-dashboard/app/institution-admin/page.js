@@ -9,6 +9,7 @@ import EmergencyPulseBackground from '../../components/EmergencyPulseBackground'
 import GuardianShield from '../../components/GuardianShield'
 import HeartMonitorLine from '../../components/HeartMonitorLine'
 import LoadingScreen from '../../components/LoadingScreen'
+import LanguageSwitcher from '../../components/LanguageSwitcher'
 
 export default function InstitutionAdminPage() {
   const [authorized, setAuthorized] = useState(false)
@@ -178,6 +179,50 @@ export default function InstitutionAdminPage() {
     router.replace('/login')
   }
 
+  async function updatePermission(responderId, permission) {
+    const { error: updateError } = await supabase.from('profiles').update({ responder_permission: permission }).eq('id', responderId)
+    if (updateError) {
+      alert('Failed to update: ' + updateError.message)
+      return
+    }
+    setResponders((prev) => prev.map((r) => (r.id === responderId ? { ...r, responder_permission: permission } : r)))
+  }
+
+  async function downloadReport() {
+    const { data: allResolved, error: fetchError } = await supabase
+      .from('emergencies')
+      .select('id, emergency_type, status, created_at, resolved_at')
+      .eq('institution_id', institution.id)
+      .eq('status', 'resolved')
+      .order('resolved_at', { ascending: false })
+
+    if (fetchError) {
+      alert('Failed to build report: ' + fetchError.message)
+      return
+    }
+
+    const rows = [
+      ['Type', 'Status', 'Created', 'Resolved', 'Emergency ID'],
+      ...(allResolved || []).map((e) => [
+        e.emergency_type || '',
+        e.status,
+        e.created_at ? new Date(e.created_at).toISOString() : '',
+        e.resolved_at ? new Date(e.resolved_at).toISOString() : '',
+        e.id
+      ])
+    ]
+    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `${institution?.name || 'resq'}-resolved-emergencies.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
   if (!authorized || loading) {
     return (
       <div className="resq-shell">
@@ -192,6 +237,7 @@ export default function InstitutionAdminPage() {
   return (
     <div className={'resq-shell' + (hasActiveAlert ? ' resq-alert-shell' : '')}>
       <EmergencyPulseBackground />
+      <LanguageSwitcher />
       <div className="resq-content" style={{ padding: 40, maxWidth: 1000, margin: '0 auto' }}>
       <div className="resq-fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 12 }}>
         <h1 className="resq-h1">{institution?.name}</h1>
@@ -250,6 +296,10 @@ export default function InstitutionAdminPage() {
       <div className="resq-fade-in resq-fade-in-3" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '30px 0 12px', flexWrap: 'wrap', gap: 12 }}>
         <h2 style={{ margin: 0 }}>Responders</h2>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button className="resq-btn-secondary" onClick={downloadReport}>⬇ Download Report</button>
+          <Link href="/institution-admin/settings" className="resq-btn-secondary" style={{ textDecoration: 'none' }}>
+            ⚙ Settings
+          </Link>
           <Link href="/institution-admin/reports" className="resq-btn-secondary" style={{ textDecoration: 'none', position: 'relative' }}>
             🚩 Reports
             {openReportCount > 0 && (
@@ -275,6 +325,7 @@ export default function InstitutionAdminPage() {
               <th style={{ padding: 10 }}>Name</th>
               <th style={{ padding: 10 }}>Email</th>
               <th style={{ padding: 10 }}>Phone</th>
+              <th style={{ padding: 10 }}>Permission</th>
               <th style={{ padding: 10 }}>Upcoming Shifts</th>
             </tr>
           </thead>
@@ -284,6 +335,17 @@ export default function InstitutionAdminPage() {
                 <td style={{ padding: 10 }}>{r.full_name}</td>
                 <td style={{ padding: 10 }}>{r.email}</td>
                 <td style={{ padding: 10 }}>{r.phone}</td>
+                <td style={{ padding: 10 }}>
+                  <select
+                    className="resq-input"
+                    value={r.responder_permission || 'full'}
+                    onChange={(e) => updatePermission(r.id, e.target.value)}
+                    style={{ minWidth: 120 }}
+                  >
+                    <option value="full">Full (claim & respond)</option>
+                    <option value="view_only">View only</option>
+                  </select>
+                </td>
                 <td style={{ padding: 10 }}>
                   {(shiftsByResponder[r.id] || []).length === 0 && <span className="resq-subtle">None scheduled</span>}
                   {(shiftsByResponder[r.id] || []).map((s) => (

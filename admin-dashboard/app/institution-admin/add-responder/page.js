@@ -6,9 +6,20 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../../lib/supabaseClient'
 import EmergencyPulseBackground from '../../../components/EmergencyPulseBackground'
+import LanguageSwitcher from '../../../components/LanguageSwitcher'
+
+const EMERGENCY_TYPES = ['medical', 'fire', 'accident', 'security', 'gbv', 'mental_health', 'property_damage', 'other']
 
 export default function AddResponderPage() {
-  const [form, setForm] = useState({ fullName: '', email: '', phone: '', tempPassword: '', serviceId: '' })
+  const [form, setForm] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    tempPassword: '',
+    serviceId: '',
+    permission: 'full',
+    emergencyTypes: []
+  })
   const [services, setServices] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -37,6 +48,15 @@ export default function AddResponderPage() {
 
   function update(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  function toggleType(key) {
+    setForm((prev) => ({
+      ...prev,
+      emergencyTypes: prev.emergencyTypes.includes(key)
+        ? prev.emergencyTypes.filter((k) => k !== key)
+        : [...prev.emergencyTypes, key]
+    }))
   }
 
   function generatePassword() {
@@ -80,6 +100,7 @@ export default function AddResponderPage() {
     return (
       <main className="resq-shell">
         <EmergencyPulseBackground />
+      <LanguageSwitcher />
         <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <section className="glass-card resq-fade-in" style={{ width: '100%', maxWidth: 480 }}>
             <h1 className="resq-h1" style={{ fontSize: 24 }}>Responder Added</h1>
@@ -104,6 +125,7 @@ export default function AddResponderPage() {
   return (
     <main className="resq-shell">
       <EmergencyPulseBackground />
+      <LanguageSwitcher />
       <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <section className="glass-card resq-fade-in" style={{ width: '100%', maxWidth: 440 }}>
           <Link href="/institution-admin">&larr; Back to Dashboard</Link>
@@ -132,10 +154,32 @@ export default function AddResponderPage() {
                 <option key={s.id} value={s.id}>{s.name} ({s.service_type})</option>
               ))}
             </select>
-            <p className="resq-subtle" style={{ marginTop: 4 }}>
+            <p className="resq-subtle" style={{ marginTop: 4, marginBottom: 14 }}>
               Leave as "Primary" for your main team. Pick a service to make this a secondary responder — see{' '}
               <Link href="/institution-admin/services">Secondary Responders</Link> to add one first.
             </p>
+
+            <label>Permission</label>
+            <select className="resq-input" style={{ marginTop: 4, marginBottom: 14 }} value={form.permission} onChange={(e) => update('permission', e.target.value)}>
+              <option value="full">Full — can claim, respond, and resolve</option>
+              <option value="view_only">View only — sees the log, cannot claim</option>
+            </select>
+
+            <label>Notify for these emergency types (leave all off for every type)</label>
+            <div className="resq-type-grid" style={{ marginBottom: 14 }}>
+              {EMERGENCY_TYPES.map((type) => (
+                <button
+                  type="button"
+                  key={type}
+                  aria-pressed={form.emergencyTypes.includes(type)}
+                  className={'resq-type-chip' + (form.emergencyTypes.includes(type) ? ' resq-type-chip-selected' : '')}
+                  onClick={() => toggleType(type)}
+                  style={{ textTransform: 'capitalize' }}
+                >
+                  <span>{type.replace('_', ' ')}</span>
+                </button>
+              ))}
+            </div>
 
             {error && <p style={{ color: '#ff8080' }}>{error}</p>}
 

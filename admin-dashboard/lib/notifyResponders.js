@@ -54,10 +54,13 @@ export async function notifyResponders(emergencyId) {
 
   const onShiftResponderIds = (onShiftIds || []).map((s) => s.responder_id)
 
-  // Primary responders — always notified for every emergency in their institution.
+  // Primary responders — notified for every emergency in their
+  // institution, unless an admin narrowed which types they handle
+  // (responder_emergency_types null/empty = all types, unchanged
+  // default behavior).
   let responderQuery = supabaseAdmin
     .from('profiles')
-    .select('id, push_token')
+    .select('id, push_token, responder_emergency_types')
     .eq('institution_id', emergency.institution_id)
     .eq('role', 'responder')
     .is('service_id', null)
@@ -102,8 +105,13 @@ export async function notifyResponders(emergencyId) {
     return { success: false, error: responderError.message }
   }
 
+  const filteredPrimary = (primaryResponders || []).filter((r) => {
+    const types = r.responder_emergency_types
+    return !types || types.length === 0 || types.includes(emergency.emergency_type)
+  })
+
   const seen = new Set()
-  const responders = [...(primaryResponders || []), ...secondaryResponders].filter((r) => {
+  const responders = [...filteredPrimary, ...secondaryResponders].filter((r) => {
     if (seen.has(r.id)) return false
     seen.add(r.id)
     return true

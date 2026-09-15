@@ -9,6 +9,7 @@ import EmergencyPulseBackground from '../../components/EmergencyPulseBackground'
 import GuardianShield from '../../components/GuardianShield'
 import HeartMonitorLine from '../../components/HeartMonitorLine'
 import LoadingScreen from '../../components/LoadingScreen'
+import LanguageSwitcher from '../../components/LanguageSwitcher'
 
 const STATUS_COLORS = {
   pending_verification: '#e0b34d',
@@ -147,6 +148,7 @@ export default function SuperAdminPage() {
   return (
     <div className={'resq-shell' + (hasActiveAlert ? ' resq-alert-shell' : '')}>
       <EmergencyPulseBackground />
+      <LanguageSwitcher />
       <div className="resq-content" style={{ padding: 40, maxWidth: 1100, margin: '0 auto' }}>
       <div className="resq-fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <h1 className="resq-h1">RESQ Super Admin</h1>

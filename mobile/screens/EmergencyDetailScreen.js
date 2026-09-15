@@ -7,6 +7,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, FlatList, TextInput,
   Linking, Alert, Platform, Image, Keyboard
 } from 'react-native'
+import { useAudioPlayer } from 'expo-audio'
 import { supabase } from '../lib/supabase'
 import { API_BASE_URL } from '../lib/config'
 
@@ -17,6 +18,7 @@ const EMERGENCY_TYPE_LABELS = {
   security: '🛡️ Security',
   gbv: '🤝 GBV',
   mental_health: '🧠 Mental Health',
+  property_damage: '🏚️ Property Damage',
   other: '⚠️ Other'
 }
 
@@ -209,6 +211,8 @@ export default function EmergencyDetailScreen({ route, navigation }) {
       .catch(() => {})
   }
 
+  const voiceNotePlayer = useAudioPlayer(emergency?.voice_note_url ? { uri: emergency.voice_note_url } : null)
+
   if (!emergency) {
     return <View style={styles.container}><Text style={{ color: '#9aa4bf' }}>Loading...</Text></View>
   }
@@ -238,6 +242,18 @@ export default function EmergencyDetailScreen({ route, navigation }) {
           <Text style={styles.photoLabel}>Photo from the scene:</Text>
           <Image source={{ uri: emergency.photo_url }} style={styles.photo} resizeMode="cover" />
         </View>
+      )}
+
+      {emergency.video_url && (
+        <TouchableOpacity style={styles.mediaLinkButton} onPress={() => Linking.openURL(emergency.video_url)}>
+          <Text style={styles.mediaLinkText}>🎥 View video from the scene</Text>
+        </TouchableOpacity>
+      )}
+
+      {emergency.voice_note_url && (
+        <TouchableOpacity style={styles.mediaLinkButton} onPress={() => voiceNotePlayer.play()}>
+          <Text style={styles.mediaLinkText}>▶️ Play voice note</Text>
+        </TouchableOpacity>
       )}
 
       {emergency.ai_advice_to_user && (
@@ -324,6 +340,8 @@ const styles = StyleSheet.create({
   typeBadgeText: { fontWeight: 'bold', fontSize: 13, color: '#f4f6fb' },
   person: { marginTop: 8, marginBottom: 8, color: '#9aa4bf' },
   photoBox: { marginBottom: 10 },
+  mediaLinkButton: { backgroundColor: 'rgba(53,208,232,0.12)', borderWidth: 1, borderColor: 'rgba(53,208,232,0.3)', borderRadius: 8, padding: 12, alignItems: 'center', marginBottom: 10 },
+  mediaLinkText: { color: '#35d0e8', fontWeight: '600' },
   photoLabel: { fontWeight: 'bold', fontSize: 12, color: '#9aa4bf', marginBottom: 6 },
   photo: { width: '100%', height: 200, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.08)' },
   aiBox: { backgroundColor: 'rgba(53,208,232,0.1)', padding: 10, borderRadius: 8, marginBottom: 8, borderWidth: 1, borderColor: 'rgba(53,208,232,0.25)' },

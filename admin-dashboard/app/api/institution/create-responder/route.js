@@ -45,7 +45,7 @@ export async function POST(request) {
     }
 
     const body = await request.json()
-    const { fullName, email, phone, tempPassword, serviceId } = body
+    const { fullName, email, phone, tempPassword, serviceId, permission, emergencyTypes } = body
 
     if (!fullName || !email || !tempPassword) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 })
@@ -82,13 +82,17 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: authError.message || 'Failed to create responder account' }, { status: 500 })
     }
 
-    if (serviceId) {
+    if (serviceId || permission === 'view_only' || emergencyTypes?.length > 0) {
       const { error: assignError } = await supabaseAdmin
         .from('profiles')
-        .update({ service_id: serviceId })
+        .update({
+          service_id: serviceId || null,
+          responder_permission: permission === 'view_only' ? 'view_only' : 'full',
+          responder_emergency_types: emergencyTypes?.length > 0 ? emergencyTypes : null
+        })
         .eq('id', authUser.user.id)
       if (assignError) {
-        console.error('RESPONDER SERVICE ASSIGN ERROR:', assignError.message)
+        console.error('RESPONDER SETTINGS ASSIGN ERROR:', assignError.message)
       }
     }
 

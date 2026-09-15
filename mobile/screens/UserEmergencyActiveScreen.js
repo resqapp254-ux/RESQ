@@ -9,6 +9,9 @@ import {
   Linking, Alert, Platform, Keyboard
 } from 'react-native'
 import * as Location from 'expo-location'
+import * as FileSystem from 'expo-file-system/legacy'
+import { decode } from 'base64-arraybuffer'
+import { useAudioRecorder, AudioModule, RecordingPresets } from 'expo-audio'
 import { supabase } from '../lib/supabase'
 
 const STATUS_LABELS = {
@@ -30,6 +33,9 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
   const listRef = useRef(null)
   const locationWatchRef = useRef(null)
   const advicePollRef = useRef(null)
+  const [isRecording, setIsRecording] = useState(false)
+  const [uploadingVoice, setUploadingVoice] = useState(false)
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
@@ -188,6 +194,46 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
     if (error) Alert.alert('Failed to send', error.message)
   }
 
+  async function startVoiceNote() {
+    const permission = await AudioModule.requestRecordingPermissionsAsync()
+    if (!permission.granted) {
+      Alert.alert('Microphone access needed', 'Enable microphone access in settings to send a voice note.')
+      return
+    }
+    await audioRecorder.prepareToRecordAsync()
+    audioRecorder.record()
+    setIsRecording(true)
+  }
+
+  async function stopVoiceNote() {
+    setIsRecording(false)
+    await audioRecorder.stop()
+    const uri = audioRecorder.uri
+    if (!uri) return
+
+    setUploadingVoice(true)
+    try {
+      const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 })
+      const arrayBuffer = decode(base64)
+      const path = `${emergencyId}-voice-${Date.now()}.m4a`
+
+      const { error: uploadError } = await supabase.storage
+        .from('emergency-photos')
+        .upload(path, arrayBuffer, { contentType: 'audio/m4a', upsert: true })
+
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage.from('emergency-photos').getPublicUrl(path)
+
+      await supabase.from('emergencies').update({ voice_note_url: urlData.publicUrl }).eq('id', emergencyId)
+      Alert.alert('Voice note sent', 'Your responder can now play it back.')
+    } catch (err) {
+      Alert.alert('Could not send voice note', err.message)
+    } finally {
+      setUploadingVoice(false)
+    }
+  }
+
   if (!emergency) {
     return <View style={styles.container}><Text style={{ color: '#9aa4bf' }}>Loading...</Text></View>
   }
@@ -238,10 +284,18 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
           placeholder="Message your responder..."
           placeholderTextColor="#5c6480"
         />
+        <TouchableOpacity
+          style={[styles.voiceButton, isRecording && styles.voiceButtonActive]}
+          onPress={isRecording ? stopVoiceNote : startVoiceNote}
+          disabled={uploadingVoice}
+        >
+          <Text style={{ fontSize: 16 }}>{uploadingVoice ? '⏳' : isRecording ? '⏹' : '🎙️'}</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
           <Text style={{ color: 'white' }}>Send</Text>
         </TouchableOpacity>
       </View>
+      {isRecording && <Text style={styles.recordingNotice}>Recording voice note… tap ⏹ to send</Text>}
     </View>
   )
 }
@@ -265,5 +319,8 @@ const styles = StyleSheet.create({
   bubbleTextTheirs: { color: '#f4f6fb' },
   inputRow: { flexDirection: 'row', marginTop: 8 },
   input: { flex: 1, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 8, padding: 10, marginRight: 8, backgroundColor: 'rgba(255,255,255,0.05)', color: '#f4f6fb' },
-  sendButton: { backgroundColor: '#cc0000', borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center' }
+  sendButton: { backgroundColor: '#cc0000', borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center' },
+  voiceButton: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 8, paddingHorizontal: 12, justifyContent: 'center', marginRight: 8 },
+  voiceButtonActive: { backgroundColor: 'rgba(255,43,43,0.3)' },
+  recordingNotice: { color: '#ff8080', fontSize: 12, textAlign: 'center', marginTop: 6 }
 })

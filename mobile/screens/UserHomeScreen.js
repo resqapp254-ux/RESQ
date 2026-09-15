@@ -3,7 +3,7 @@
 // a photo, then press the big button to send an emergency with the
 // user's live location, routing them to the active-emergency screen.
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image, ScrollView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as Location from 'expo-location'
@@ -14,19 +14,35 @@ import { supabase } from '../lib/supabase'
 import { API_BASE_URL } from '../lib/config'
 
 const EMERGENCY_TYPES = [
-  { key: 'medical', label: 'Medical', emoji: '🏥' },
-  { key: 'fire', label: 'Fire', emoji: '🔥' },
-  { key: 'accident', label: 'Accident', emoji: '🚑' },
-  { key: 'security', label: 'Security', emoji: '🛡️' },
-  { key: 'gbv', label: 'GBV', emoji: '🤝' },
-  { key: 'mental_health', label: 'Mental Health', emoji: '🧠' },
-  { key: 'other', label: 'Other', emoji: '⚠️' }
+  { key: 'medical', label: 'Medical', emoji: '🏥', color: '#ff5252' },
+  { key: 'fire', label: 'Fire', emoji: '🔥', color: '#ff8a3d' },
+  { key: 'accident', label: 'Accident', emoji: '🚑', color: '#ffca3d' },
+  { key: 'security', label: 'Security', emoji: '🛡️', color: '#35d0e8' },
+  { key: 'gbv', label: 'GBV', emoji: '🤝', color: '#c084fc' },
+  { key: 'mental_health', label: 'Mental Health', emoji: '🧠', color: '#7f9cf5' },
+  { key: 'property_damage', label: 'Property Damage', emoji: '🏚️', color: '#8d99ae' },
+  { key: 'other', label: 'Other', emoji: '⚠️', color: '#e0b34d' }
 ]
 
 export default function UserHomeScreen({ navigation }) {
   const [sending, setSending] = useState(false)
   const [selectedType, setSelectedType] = useState('other')
   const [photo, setPhoto] = useState(null) // { uri }
+  const [enabledTypes, setEnabledTypes] = useState(null)
+
+  useEffect(() => {
+    async function loadEnabledTypes() {
+      const { data: userData } = await supabase.auth.getUser()
+      if (!userData.user) return
+      const { data: profile } = await supabase.from('profiles').select('institution_id').eq('id', userData.user.id).single()
+      if (!profile?.institution_id) return
+      const { data: institution } = await supabase.from('institutions').select('enabled_emergency_types').eq('id', profile.institution_id).single()
+      if (institution?.enabled_emergency_types?.length) setEnabledTypes(institution.enabled_emergency_types)
+    }
+    loadEnabledTypes()
+  }, [])
+
+  const visibleTypes = EMERGENCY_TYPES.filter((t) => !enabledTypes || enabledTypes.includes(t.key))
 
   async function handleAttachPhoto() {
     Alert.alert('Attach a photo', 'Optional — a photo of the situation can help responders.', [
@@ -188,14 +204,16 @@ export default function UserHomeScreen({ navigation }) {
       <Text style={styles.subtitle}>What's happening?</Text>
 
       <View style={styles.typeRow}>
-        {EMERGENCY_TYPES.map((t) => (
+        {visibleTypes.map((t) => (
           <TouchableOpacity
             key={t.key}
             style={[styles.typeChip, selectedType === t.key && styles.typeChipSelected]}
             onPress={() => setSelectedType(t.key)}
             disabled={sending}
           >
-            <Text style={styles.typeEmoji}>{t.emoji}</Text>
+            <View style={[styles.typeEmojiBadge, { backgroundColor: `${t.color}26` }, selectedType === t.key && { shadowColor: t.color, shadowOpacity: 1, shadowRadius: 4, elevation: 3 }]}>
+              <Text style={styles.typeEmoji}>{t.emoji}</Text>
+            </View>
             <Text style={[styles.typeLabel, selectedType === t.key && styles.typeLabelSelected]}>{t.label}</Text>
           </TouchableOpacity>
         ))}
@@ -254,7 +272,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.04)'
   },
   typeChipSelected: { borderColor: '#ff2b2b', backgroundColor: 'rgba(255,43,43,0.16)' },
-  typeEmoji: { fontSize: 22, marginBottom: 4 },
+  typeEmojiBadge: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  typeEmoji: { fontSize: 20 },
   typeLabel: { fontSize: 11, color: '#9aa4bf', fontWeight: '600', textAlign: 'center' },
   typeLabelSelected: { color: '#ff8080' },
   attachButton: { marginBottom: 20, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.06)' },

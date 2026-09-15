@@ -3,7 +3,7 @@ import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { getAuthenticatedUser } from '../../../../lib/authorizeRequest'
 import { rateLimit } from '../../../../lib/rateLimit'
 
-const VALID_EMERGENCY_TYPES = ['medical', 'fire', 'accident', 'security', 'gbv', 'mental_health', 'other']
+const VALID_EMERGENCY_TYPES = ['medical', 'fire', 'accident', 'security', 'gbv', 'mental_health', 'property_damage', 'other']
 
 export async function POST(request) {
   try {

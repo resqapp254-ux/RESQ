@@ -124,7 +124,7 @@ export default function ResponderHomeScreen({ navigation }) {
     console.log('Loading emergencies for institution:', instId)
     const { data, error } = await supabase
       .from('emergencies')
-      .select('*')
+      .select('*, claimant:profiles!emergencies_claimed_by_fkey(full_name, service_id)')
       .eq('institution_id', instId)
       .in('status', ['triggered', 'claimed', 'in_progress'])
       .order('created_at', { ascending: false })
@@ -156,7 +156,10 @@ export default function ResponderHomeScreen({ navigation }) {
 
       <View style={styles.headerRow}>
         <Image source={require('../assets/icon.png')} style={styles.logo} />
-        <Text style={styles.header}>Active Emergencies</Text>
+        <Text style={[styles.header, { flex: 1 }]}>Active Emergencies</Text>
+        <TouchableOpacity style={styles.teamChatButton} onPress={() => navigation.navigate('InstitutionChat')}>
+          <Text style={styles.teamChatButtonText}>💬 Team</Text>
+        </TouchableOpacity>
       </View>
 
       {emergencies.length === 0 && (
@@ -187,6 +190,11 @@ export default function ResponderHomeScreen({ navigation }) {
             {item.triggered_via !== 'app' && (
               <Text style={styles.badge}>via {item.triggered_via.toUpperCase()}</Text>
             )}
+            {item.claimant && (
+              <Text style={styles.claimedBy}>
+                ✋ Claimed by {item.claimant.full_name}{item.claimant.service_id ? ' (secondary responder)' : ''}
+              </Text>
+            )}
           </TouchableOpacity>
         )}
       />
@@ -209,6 +217,8 @@ const styles = StyleSheet.create({
   sirenText: { color: '#ff8080', fontWeight: '700', fontSize: 13, flex: 1 },
   sirenMuteButton: { color: '#f4f6fb', fontWeight: '600', fontSize: 13 },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 16, paddingBottom: 8 },
+  teamChatButton: { backgroundColor: 'rgba(255,255,255,0.08)', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8 },
+  teamChatButtonText: { color: '#35d0e8', fontWeight: '600', fontSize: 13 },
   logo: { width: 32, height: 32, borderRadius: 8 },
   header: { fontSize: 22, fontWeight: 'bold', color: '#f4f6fb' },
   empty: { padding: 40, alignItems: 'center' },
@@ -225,5 +235,6 @@ const styles = StyleSheet.create({
   status: { fontWeight: 'bold', fontSize: 16 },
   time: { color: '#5c6480' },
   location: { color: '#9aa4bf' },
-  badge: { marginTop: 6, fontSize: 12, color: '#e0b34d', fontWeight: 'bold' }
+  badge: { marginTop: 6, fontSize: 12, color: '#e0b34d', fontWeight: 'bold' },
+  claimedBy: { marginTop: 6, fontSize: 12, color: '#35d0e8', fontWeight: '600' }
 })

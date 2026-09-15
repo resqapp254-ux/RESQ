@@ -11,6 +11,7 @@ import Link from 'next/link'
 import { supabase } from '../../../lib/supabaseClient'
 import EmergencyPulseBackground from '../../../components/EmergencyPulseBackground'
 import LoadingScreen from '../../../components/LoadingScreen'
+import LanguageSwitcher from '../../../components/LanguageSwitcher'
 
 const CATEGORY_LABELS = {
   no_response: 'No response / slow to help',
@@ -93,6 +94,7 @@ export default function ReportsPage() {
     return (
       <main className="resq-shell">
         <EmergencyPulseBackground />
+      <LanguageSwitcher />
         <div className="resq-content"><LoadingScreen /></div>
       </main>
     )
@@ -101,6 +103,7 @@ export default function ReportsPage() {
   return (
     <main className="resq-shell">
       <EmergencyPulseBackground />
+      <LanguageSwitcher />
       <div className="resq-content" style={{ padding: 32, maxWidth: 900, margin: '0 auto' }}>
         <Link href="/institution-admin">&larr; Back to Dashboard</Link>
         <div className="glass-card resq-fade-in" style={{ marginTop: 16, marginBottom: 24 }}>

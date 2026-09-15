@@ -26,6 +26,10 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Not authorized for this institution' }, { status: 403 })
     }
 
+    if (profile.role === 'responder' && profile.responder_permission === 'view_only') {
+      return NextResponse.json({ success: false, error: 'Your account is set to view-only and cannot claim emergencies. Ask your institution admin to change this.' }, { status: 403 })
+    }
+
     // Admins can reassign a stuck claim; a plain responder can't
     // steal another responder's case.
     if (profile.role === 'responder' && emergency.claimed_by && emergency.claimed_by !== profile.id) {

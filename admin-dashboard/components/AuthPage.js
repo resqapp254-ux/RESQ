@@ -77,7 +77,7 @@ export default function AuthPage({ defaultMode = 'signin' }) {
       email: signUpForm.email.trim(),
       password: signUpForm.password,
       options: {
-        emailRedirectTo: `${window.location.origin}/join-institution`,
+        emailRedirectTo: `${window.location.origin}/auth/confirmed`,
         data: { role: 'user', full_name: signUpForm.fullName.trim(), phone: signUpForm.phone.trim() }
       }
     })

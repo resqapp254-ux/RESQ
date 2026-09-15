@@ -38,7 +38,7 @@ export default function EnterInstitutionCodeScreen({ navigation }) {
 
   async function handleLogout() {
     await supabase.auth.signOut()
-    navigation.replace('Login')
+    navigation.replace('Auth')
   }
 
   return (
