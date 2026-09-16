@@ -17,7 +17,7 @@ export default function LanguageConsentScreen({ navigation }) {
   async function handleContinue() {
     setAccepting(true)
     await AsyncStorage.setItem(CONSENT_KEY, 'true')
-    navigation.replace('Auth')
+    navigation.replace('Bootstrap')
   }
 
   return (

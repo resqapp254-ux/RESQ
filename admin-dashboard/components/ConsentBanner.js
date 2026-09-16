@@ -48,7 +48,9 @@ export default function ConsentBanner() {
     >
       <p style={{ margin: 0, fontSize: 13, color: '#9aa4bf', lineHeight: 1.5 }}>
         RESQ uses essential cookies to keep you signed in, and collects your location and emergency reports solely to
-        route help to you and your institution's responders. We never sell your data or use it for advertising.
+        route help to you and your institution's responders. We never sell your data or use it for advertising. See our{' '}
+        <a href="/privacy" style={{ color: '#7fe3f2' }}>Privacy Policy</a> and{' '}
+        <a href="/terms" style={{ color: '#7fe3f2' }}>Terms of Service</a>.
       </p>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
         <button className="resq-btn-primary" onClick={accept}>

@@ -8,6 +8,8 @@ import { supabase } from '../lib/supabaseClient'
 // mobile browsers, file picker on desktop). Voice notes are handled
 // natively on the mobile app instead, where in-browser recording
 // isn't reliable across devices.
+const MAX_SIZE_MB = { photo: 10, video: 50 }
+
 export default function MediaAttach({ emergencyId, onUploaded }) {
   const photoInputRef = useRef(null)
   const videoInputRef = useRef(null)
@@ -17,6 +19,13 @@ export default function MediaAttach({ emergencyId, onUploaded }) {
   async function handleFile(file, kind) {
     if (!file || !emergencyId) return
     setError('')
+
+    const maxBytes = MAX_SIZE_MB[kind] * 1024 * 1024
+    if (file.size > maxBytes) {
+      setError(`That file is too large — ${kind} attachments are limited to ${MAX_SIZE_MB[kind]}MB.`)
+      return
+    }
+
     setBusy(kind)
 
     try {

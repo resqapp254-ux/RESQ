@@ -194,14 +194,13 @@ export default function UserHomeScreen({ navigation }) {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.container}>
-      <TouchableOpacity style={styles.guardiansLink} onPress={() => navigation.navigate('ManageGuardians')} disabled={sending}>
-        <Text style={styles.guardiansLinkText}>Trusted Contacts</Text>
-      </TouchableOpacity>
       <Image source={require('../assets/icon.png')} style={styles.logo} />
-      <Text style={styles.title}>RESQ</Text>
       <Text style={styles.subtitle}>What's happening?</Text>
+      <TouchableOpacity onPress={() => navigation.navigate('ManageGuardians')} disabled={sending}>
+        <Text style={styles.guardiansLinkText}>👥 Trusted Contacts</Text>
+      </TouchableOpacity>
 
       <View style={styles.typeRow}>
         {visibleTypes.map((t) => (
@@ -256,8 +255,7 @@ export default function UserHomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#05070d' },
   container: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  guardiansLink: { position: 'absolute', top: 12, right: 20, padding: 8 },
-  guardiansLinkText: { color: '#35d0e8', fontWeight: '600', fontSize: 13 },
+  guardiansLinkText: { color: '#35d0e8', fontWeight: '600', fontSize: 13, marginBottom: 16, padding: 8 },
   logo: { width: 64, height: 64, borderRadius: 14, marginBottom: 8 },
   title: { fontSize: 32, fontWeight: 'bold', color: '#f4f6fb', marginBottom: 8, letterSpacing: 1 },
   subtitle: { textAlign: 'center', color: '#9aa4bf', marginBottom: 16, fontSize: 15, fontWeight: '600' },

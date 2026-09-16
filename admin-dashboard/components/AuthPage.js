@@ -19,6 +19,7 @@ export default function AuthPage({ defaultMode = 'signin' }) {
 
   const [signInForm, setSignInForm] = useState({ email: '', password: '' })
   const [signUpForm, setSignUpForm] = useState({ fullName: '', email: '', phone: '', password: '' })
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [forgotEmail, setForgotEmail] = useState('')
 
   const [error, setError] = useState('')
@@ -71,6 +72,12 @@ export default function AuthPage({ defaultMode = 'signin' }) {
     e.preventDefault()
     setError('')
     setMessage('')
+
+    if (!agreedToTerms) {
+      setError('Please agree to the Terms and Privacy Policy to continue.')
+      return
+    }
+
     setLoading(true)
 
     const { data, error: signupError } = await supabase.auth.signUp({
@@ -196,6 +203,20 @@ export default function AuthPage({ defaultMode = 'signin' }) {
                 <input className="resq-input" style={{ marginTop: 12 }} type="email" placeholder={t('email')} value={signUpForm.email} onChange={(e) => setSignUpForm({ ...signUpForm, email: e.target.value })} required />
                 <input className="resq-input" style={{ marginTop: 12 }} placeholder={t('phoneNumber')} value={signUpForm.phone} onChange={(e) => setSignUpForm({ ...signUpForm, phone: e.target.value })} required />
                 <input className="resq-input" style={{ marginTop: 12 }} type="password" minLength={8} placeholder={t('passwordHint')} value={signUpForm.password} onChange={(e) => setSignUpForm({ ...signUpForm, password: e.target.value })} required />
+
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 14, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    style={{ marginTop: 3 }}
+                  />
+                  <span className="resq-subtle" style={{ fontSize: 13 }}>
+                    I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a> and{' '}
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+                  </span>
+                </label>
+
                 {error && <p style={{ color: '#ff8080' }}>{error}</p>}
                 {message && <p style={{ color: 'var(--resq-green)' }}>{message}</p>}
                 <button className="resq-btn-primary" style={{ width: '100%', marginTop: 16 }} disabled={loading}>
