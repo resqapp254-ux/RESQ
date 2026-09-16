@@ -20,6 +20,7 @@ Apply the SQL files in this order to a new or staging Supabase project:
 14. `day15-institution-controls-and-chat.sql`
 15. `day16-view-only-permission-enforcement.sql`
 16. `day17-chat-media-messages.sql`
+17. `day18-emergency-escalation.sql`
 
 All of the above are applied to the live project as of this writing. Each new migration going forward should be added both here and as a numbered `dayN-*.sql` file (mirrored into `supabase/migrations/` with a timestamped filename) — check the live project's actual state via a REST call before assuming a file in this list has been run.
 
@@ -43,6 +44,13 @@ The Vercel dashboard requires the values documented in `admin-dashboard/.env.exa
 - Editor diagnostics report no errors.
 
 The remaining release checks require a staging Supabase project, real authenticated accounts, a reachable Vercel deployment, Africa's Talking sandbox setup, and a physical-device/EAS push test.
+
+## Omnichannel escalation (Day 18)
+
+An unclaimed emergency now escalates automatically: push immediately (unchanged), SMS to every institution responder if still unclaimed after 3 minutes, and a voice call to one responder if still unclaimed after 8 minutes (`lib/escalateEmergency.js`). This only runs when something calls `GET /api/cron/escalate`:
+
+- `vercel.json` configures a native Vercel Cron hitting it every 5 minutes — but **Vercel's Hobby (free) plan only supports daily cron schedules**; on Hobby this config is effectively ignored or coerced. If you're on Hobby, point a free external pinger (cron-job.org, or an UptimeRobot HTTP(s) monitor — you may already have one from the uptime-monitoring setup) at your deployed `/api/cron/escalate` every few minutes instead, with `Authorization: Bearer <CRON_SECRET>` as a custom header.
+- The voice-call step additionally requires a Voice-enabled Africa's Talking number (`AFRICASTALKING_VOICE_NUMBER`) with its Voice Callback URL set to `/api/voice/callback` in their dashboard. Without it, escalation still runs and still sends SMS — the call step is silently skipped.
 
 ## Chat safety rule
 
