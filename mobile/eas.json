@@ -17,16 +17,10 @@
       "android": {
         "buildType": "apk"
       },
-      "channel": "preview",
-      "env": {
-        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
-      }
+      "channel": "preview"
     },
     "production": {
-      "channel": "production",
-      "env": {
-        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
-      }
+      "channel": "production"
     }
   },
   "submit": {

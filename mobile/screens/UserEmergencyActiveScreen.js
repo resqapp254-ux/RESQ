@@ -6,12 +6,14 @@
 import React, { useEffect, useState, useRef } from 'react'
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
-  Linking, Alert, Platform, Keyboard
+  Linking, Alert, Platform, Image, KeyboardAvoidingView
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import * as Location from 'expo-location'
+import * as ImagePicker from 'expo-image-picker'
 import * as FileSystem from 'expo-file-system/legacy'
 import { decode } from 'base64-arraybuffer'
-import { useAudioRecorder, AudioModule, RecordingPresets } from 'expo-audio'
+import { useAudioRecorder, useAudioPlayer, AudioModule, RecordingPresets } from 'expo-audio'
 import { supabase } from '../lib/supabase'
 
 const STATUS_LABELS = {
@@ -22,6 +24,27 @@ const STATUS_LABELS = {
   cancelled: 'Cancelled'
 }
 
+// Each voice message gets its own player, so playing one never affects
+// another and the same note can be replayed any number of times.
+function VoiceMessageBubble({ uri, textStyle }) {
+  const player = useAudioPlayer(uri)
+
+  async function handlePlay() {
+    try {
+      await player.seekTo(0)
+      player.play()
+    } catch {
+      // Ignore — a rare native playback hiccup shouldn't crash the chat
+    }
+  }
+
+  return (
+    <TouchableOpacity onPress={handlePlay}>
+      <Text style={textStyle}>▶️ Voice note</Text>
+    </TouchableOpacity>
+  )
+}
+
 export default function UserEmergencyActiveScreen({ route, navigation }) {
   const { emergencyId } = route.params
   const [emergency, setEmergency] = useState(null)
@@ -29,31 +52,14 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
   const [messages, setMessages] = useState([])
   const [messageText, setMessageText] = useState('')
   const [myId, setMyId] = useState(null)
-  const [keyboardHeight, setKeyboardHeight] = useState(0)
   const listRef = useRef(null)
   const locationWatchRef = useRef(null)
   const advicePollRef = useRef(null)
   const [isRecording, setIsRecording] = useState(false)
   const [uploadingVoice, setUploadingVoice] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
   const voiceNoteTimeoutRef = useRef(null)
-
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
-
-    const showSub = Keyboard.addListener(showEvent, (e) => {
-      setKeyboardHeight(e.endCoordinates.height)
-    })
-    const hideSub = Keyboard.addListener(hideEvent, () => {
-      setKeyboardHeight(0)
-    })
-
-    return () => {
-      showSub.remove()
-      hideSub.remove()
-    }
-  }, [])
 
   useEffect(() => {
     let emergencyChannel, messageChannel
@@ -88,7 +94,9 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'emergency_messages', filter: `emergency_id=eq.${emergencyId}` },
-          (payload) => setMessages((prev) => [...prev, payload.new])
+          // Dedupe by id — guards against the initial load and this
+          // event both delivering the same row.
+          (payload) => setMessages((prev) => (prev.some((m) => m.id === payload.new.id) ? prev : [...prev, payload.new]))
         )
         .subscribe()
 
@@ -196,6 +204,46 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
     if (error) Alert.alert('Failed to send', error.message)
   }
 
+  async function pickAndSendPhoto() {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!permission.granted) {
+      Alert.alert('Photo access needed', 'Enable photo library access in settings to attach a photo.')
+      return
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 })
+    if (result.canceled || !result.assets?.[0]) return
+
+    setUploadingPhoto(true)
+    try {
+      const asset = result.assets[0]
+      const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 })
+      const arrayBuffer = decode(base64)
+      const ext = asset.uri.split('.').pop() || 'jpg'
+      const path = `${emergencyId}-chat-photo-${Date.now()}.${ext}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('emergency-photos')
+        .upload(path, arrayBuffer, { contentType: asset.mimeType || 'image/jpeg', upsert: true })
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage.from('emergency-photos').getPublicUrl(path)
+
+      const { error: insertError } = await supabase.from('emergency_messages').insert({
+        emergency_id: emergencyId,
+        sender_id: myId,
+        sender_role: 'user',
+        message: '📷 Photo',
+        media_url: urlData.publicUrl,
+        media_type: 'photo'
+      })
+      if (insertError) throw insertError
+    } catch (err) {
+      Alert.alert('Could not send photo', err.message)
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
+
   const MAX_VOICE_NOTE_MS = 120000 // 2 minutes — long enough for a real update, short enough no one accidentally records for 20 minutes and eats their data plan uploading it
 
   async function startVoiceNote() {
@@ -234,6 +282,8 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
     try {
       const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 })
       const arrayBuffer = decode(base64)
+      // Unique per-recording path — a new voice note is a new message,
+      // never a replacement for the last one.
       const path = `${emergencyId}-voice-${Date.now()}.m4a`
 
       const { error: uploadError } = await supabase.storage
@@ -244,7 +294,15 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
 
       const { data: urlData } = supabase.storage.from('emergency-photos').getPublicUrl(path)
 
-      await supabase.from('emergencies').update({ voice_note_url: urlData.publicUrl }).eq('id', emergencyId)
+      const { error: insertError } = await supabase.from('emergency_messages').insert({
+        emergency_id: emergencyId,
+        sender_id: myId,
+        sender_role: 'user',
+        message: '🎙️ Voice note',
+        media_url: urlData.publicUrl,
+        media_type: 'voice'
+      })
+      if (insertError) throw insertError
       Alert.alert('Voice note sent', 'Your responder can now play it back.')
     } catch (err) {
       Alert.alert('Could not send voice note', err.message)
@@ -258,7 +316,8 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
   }
 
   return (
-    <View style={[styles.container, { paddingBottom: keyboardHeight }]}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Text style={styles.statusHeader}>{STATUS_LABELS[emergency.status]}</Text>
 
       {emergency.ai_advice_to_user ? (
@@ -288,14 +347,28 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
         keyExtractor={(item) => item.id}
         style={styles.chatList}
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
-        renderItem={({ item }) => (
-          <View style={[styles.bubble, item.sender_id === myId ? styles.bubbleMine : styles.bubbleTheirs]}>
-            <Text style={item.sender_id === myId ? styles.bubbleTextMine : styles.bubbleTextTheirs}>{item.message}</Text>
-          </View>
-        )}
+        renderItem={({ item }) => {
+          const mine = item.sender_id === myId
+          const bubbleStyle = mine ? styles.bubbleMine : styles.bubbleTheirs
+          const textStyle = mine ? styles.bubbleTextMine : styles.bubbleTextTheirs
+          return (
+            <View style={[styles.bubble, bubbleStyle]}>
+              {item.media_type === 'photo' && item.media_url ? (
+                <Image source={{ uri: item.media_url }} style={styles.chatPhoto} resizeMode="cover" />
+              ) : item.media_type === 'voice' && item.media_url ? (
+                <VoiceMessageBubble uri={item.media_url} textStyle={textStyle} />
+              ) : (
+                <Text style={textStyle}>{item.message}</Text>
+              )}
+            </View>
+          )
+        }}
       />
 
       <View style={styles.inputRow}>
+        <TouchableOpacity style={styles.photoButton} onPress={pickAndSendPhoto} disabled={uploadingPhoto}>
+          <Text style={{ fontSize: 16 }}>{uploadingPhoto ? '⏳' : '📷'}</Text>
+        </TouchableOpacity>
         <TextInput
           style={styles.input}
           value={messageText}
@@ -315,7 +388,8 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
         </TouchableOpacity>
       </View>
       {isRecording && <Text style={styles.recordingNotice}>Recording voice note… tap ⏹ to send</Text>}
-    </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   )
 }
 
@@ -336,9 +410,11 @@ const styles = StyleSheet.create({
   bubbleTheirs: { backgroundColor: 'rgba(255,255,255,0.1)', alignSelf: 'flex-start' },
   bubbleTextMine: { color: 'white' },
   bubbleTextTheirs: { color: '#f4f6fb' },
-  inputRow: { flexDirection: 'row', marginTop: 8 },
+  chatPhoto: { width: 180, height: 180, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.08)' },
+  inputRow: { flexDirection: 'row', marginTop: 8, alignItems: 'center' },
   input: { flex: 1, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 8, padding: 10, marginRight: 8, backgroundColor: 'rgba(255,255,255,0.05)', color: '#f4f6fb' },
   sendButton: { backgroundColor: '#cc0000', borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center' },
+  photoButton: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 8, paddingHorizontal: 12, justifyContent: 'center', marginRight: 8 },
   voiceButton: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 8, paddingHorizontal: 12, justifyContent: 'center', marginRight: 8 },
   voiceButtonActive: { backgroundColor: 'rgba(255,43,43,0.3)' },
   recordingNotice: { color: '#ff8080', fontSize: 12, textAlign: 'center', marginTop: 6 }

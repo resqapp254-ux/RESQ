@@ -34,7 +34,7 @@ export default function InstitutionChatScreen() {
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'institution_chat_messages', filter: `institution_id=eq.${profile.institution_id}` },
           async (payload) => {
-            setMessages((prev) => [...prev, payload.new])
+            setMessages((prev) => (prev.some((m) => m.id === payload.new.id) ? prev : [...prev, payload.new]))
             if (!names[payload.new.sender_id]) {
               const { data: senderProfile } = await supabase.from('profiles').select('full_name').eq('id', payload.new.sender_id).single()
               if (senderProfile) setNames((prev) => ({ ...prev, [payload.new.sender_id]: senderProfile.full_name }))

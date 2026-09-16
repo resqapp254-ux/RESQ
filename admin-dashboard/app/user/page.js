@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
 import EmergencyPulseBackground from '../../components/EmergencyPulseBackground'
@@ -61,6 +61,8 @@ export default function UserPage() {
   const [chatError, setChatError] = useState('')
   const [chatSuggestion, setChatSuggestion] = useState('')
   const [chatBusy, setChatBusy] = useState(false)
+  const [chatPhotoBusy, setChatPhotoBusy] = useState(false)
+  const chatPhotoInputRef = useRef(null)
   const [locationBusy, setLocationBusy] = useState(false)
   const [triggerBusy, setTriggerBusy] = useState(false)
 
@@ -168,7 +170,7 @@ export default function UserPage() {
   async function loadChatMessages(emergencyId) {
     const { data } = await supabase
       .from('emergency_messages')
-      .select('id, sender_id, sender_role, message, created_at, is_ai_generated')
+      .select('id, sender_id, sender_role, message, created_at, is_ai_generated, media_url, media_type')
       .eq('emergency_id', emergencyId)
       .order('created_at', { ascending: true })
       .limit(200)
@@ -189,7 +191,9 @@ export default function UserPage() {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'emergency_messages', filter: `emergency_id=eq.${chatTargetId}` },
-        (payload) => setChatMessages((prev) => [...prev, payload.new])
+        // Dedupe by id — guards against the initial load and this
+        // event both delivering the same row.
+        (payload) => setChatMessages((prev) => (prev.some((m) => m.id === payload.new.id) ? prev : [...prev, payload.new]))
       )
       .subscribe()
 
@@ -526,6 +530,50 @@ export default function UserPage() {
     setMessage('Message sent.')
   }
 
+  async function sendChatPhoto(file) {
+    if (!file || !chatTargetId) return
+    setChatError('')
+
+    const maxBytes = 10 * 1024 * 1024
+    if (file.size > maxBytes) {
+      setChatError('That photo is too large — attachments are limited to 10MB.')
+      return
+    }
+
+    setChatPhotoBusy(true)
+    try {
+      const { data: authData } = await supabase.auth.getUser()
+      if (!authData.user) {
+        router.replace('/login')
+        return
+      }
+
+      const ext = file.name.split('.').pop() || 'jpg'
+      const path = `${chatTargetId}-chat-photo-${Date.now()}.${ext}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('emergency-photos')
+        .upload(path, file, { contentType: file.type, upsert: true })
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage.from('emergency-photos').getPublicUrl(path)
+
+      const { error: insertError } = await supabase.from('emergency_messages').insert({
+        emergency_id: chatTargetId,
+        sender_id: authData.user.id,
+        sender_role: role || 'user',
+        message: '📷 Photo',
+        media_url: urlData.publicUrl,
+        media_type: 'photo'
+      })
+      if (insertError) throw insertError
+    } catch (err) {
+      setChatError(err.message || 'Upload failed')
+    } finally {
+      setChatPhotoBusy(false)
+    }
+  }
+
   const reportableEmergencies = [...activeEmergencies, ...resolvedEmergencies].filter((e) => e.claimed_by)
 
   async function handleSubmitReport(e) {
@@ -593,7 +641,14 @@ export default function UserPage() {
             <p className="resq-subtle" style={{ margin: 0, fontSize: 11, textTransform: 'capitalize' }}>
               {m.is_ai_generated ? 'AI' : m.sender_role} · {new Date(m.created_at).toLocaleTimeString()}
             </p>
-            <p style={{ margin: '2px 0 0' }}>{m.message}</p>
+            {m.media_type === 'photo' && m.media_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={m.media_url} alt="Attached" style={{ maxWidth: '100%', borderRadius: 8, marginTop: 6, display: 'block' }} />
+            ) : m.media_type === 'voice' && m.media_url ? (
+              <audio controls src={m.media_url} style={{ marginTop: 6, maxWidth: '100%' }} />
+            ) : (
+              <p style={{ margin: '2px 0 0' }}>{m.message}</p>
+            )}
           </div>
         )
       })}
@@ -651,6 +706,14 @@ export default function UserPage() {
           </div>
         )}
 
+        <input
+          ref={chatPhotoInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={(e) => { sendChatPhoto(e.target.files?.[0]); e.target.value = '' }}
+        />
+
         <div className="resq-two-col" style={{ gridTemplateColumns: '1.2fr 1fr', marginTop: isResponderView ? 20 : 0 }}>
           <section className="glass-card resq-fade-in resq-fade-in-2">
             {isResponderView ? (
@@ -671,9 +734,20 @@ export default function UserPage() {
                         value={chatMessage}
                         onChange={(e) => setChatMessage(e.target.value)}
                       />
-                      <button className="resq-btn-secondary" style={{ width: '100%', marginTop: 12 }} onClick={sendChatMessage} disabled={chatBusy}>
-                        {chatBusy ? t('sendingEllipsis') : t('sendMessage')}
-                      </button>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                        <button
+                          type="button"
+                          className="resq-btn-secondary"
+                          onClick={() => chatPhotoInputRef.current?.click()}
+                          disabled={chatPhotoBusy}
+                          title="Attach a photo"
+                        >
+                          {chatPhotoBusy ? '…' : '📷'}
+                        </button>
+                        <button className="resq-btn-secondary" style={{ flex: 1 }} onClick={sendChatMessage} disabled={chatBusy}>
+                          {chatBusy ? t('sendingEllipsis') : t('sendMessage')}
+                        </button>
+                      </div>
                     </>
                   ) : (
                     <p className="resq-subtle">Claim an emergency below to message the person who reported it.</p>
@@ -764,9 +838,20 @@ export default function UserPage() {
                         value={chatMessage}
                         onChange={(e) => setChatMessage(e.target.value)}
                       />
-                      <button className="resq-btn-secondary" style={{ width: '100%', marginTop: 12 }} onClick={sendChatMessage} disabled={chatBusy}>
-                        {chatBusy ? t('sendingEllipsis') : t('sendMessage')}
-                      </button>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                        <button
+                          type="button"
+                          className="resq-btn-secondary"
+                          onClick={() => chatPhotoInputRef.current?.click()}
+                          disabled={chatPhotoBusy}
+                          title="Attach a photo"
+                        >
+                          {chatPhotoBusy ? '…' : '📷'}
+                        </button>
+                        <button className="resq-btn-secondary" style={{ flex: 1 }} onClick={sendChatMessage} disabled={chatBusy}>
+                          {chatBusy ? t('sendingEllipsis') : t('sendMessage')}
+                        </button>
+                      </div>
                       {chatError && <p style={{ color: '#ff8080' }}>{chatError}</p>}
                     </div>
 

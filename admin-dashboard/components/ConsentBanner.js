@@ -6,6 +6,7 @@ const STORAGE_KEY = 'resq-consent-accepted'
 
 export default function ConsentBanner() {
   const [visible, setVisible] = useState(false)
+  const [agreed, setAgreed] = useState(false)
 
   useEffect(() => {
     try {
@@ -52,9 +53,23 @@ export default function ConsentBanner() {
         <a href="/privacy" style={{ color: '#7fe3f2' }}>Privacy Policy</a> and{' '}
         <a href="/terms" style={{ color: '#7fe3f2' }}>Terms of Service</a>.
       </p>
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 12, fontSize: 13, color: '#f4f6fb', cursor: 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={agreed}
+          onChange={(e) => setAgreed(e.target.checked)}
+          style={{ marginTop: 2 }}
+        />
+        I agree to the use of essential cookies and to the Privacy Policy and Terms of Service.
+      </label>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
-        <button className="resq-btn-primary" onClick={accept}>
-          Got it
+        <button
+          className="resq-btn-primary"
+          onClick={accept}
+          disabled={!agreed}
+          style={{ opacity: agreed ? 1 : 0.5, cursor: agreed ? 'pointer' : 'not-allowed' }}
+        >
+          Continue
         </button>
       </div>
     </div>

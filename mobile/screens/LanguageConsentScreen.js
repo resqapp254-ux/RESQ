@@ -13,6 +13,7 @@ const CONSENT_KEY = 'resq-consent-accepted'
 export default function LanguageConsentScreen({ navigation }) {
   const { t, language, setLanguage } = useTranslation()
   const [accepting, setAccepting] = useState(false)
+  const [agreed, setAgreed] = useState(false)
 
   async function handleContinue() {
     setAccepting(true)
@@ -45,7 +46,25 @@ export default function LanguageConsentScreen({ navigation }) {
         <Text style={styles.consentBody}>{t('dataConsentBody')}</Text>
       </View>
 
-      <TouchableOpacity style={styles.button} onPress={handleContinue} disabled={accepting} activeOpacity={0.85}>
+      <TouchableOpacity
+        style={styles.checkboxRow}
+        onPress={() => setAgreed((v) => !v)}
+        activeOpacity={0.8}
+      >
+        <View style={[styles.checkbox, agreed && styles.checkboxChecked]}>
+          {agreed && <Text style={styles.checkboxMark}>✓</Text>}
+        </View>
+        <Text style={styles.checkboxLabel}>
+          I agree to the use of cookies/local storage and to the Privacy Policy and Terms of Service.
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.button, !agreed && styles.buttonDisabled]}
+        onPress={handleContinue}
+        disabled={accepting || !agreed}
+        activeOpacity={0.85}
+      >
         <Text style={styles.buttonText}>{t('dataConsentAccept')}</Text>
       </TouchableOpacity>
     </ScrollView>
@@ -94,5 +113,20 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 4
   },
-  buttonText: { color: '#fff', fontWeight: '700', fontSize: 15 }
+  buttonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  buttonDisabled: { opacity: 0.4 },
+  checkboxRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 20 },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1
+  },
+  checkboxChecked: { backgroundColor: '#cc0000', borderColor: '#cc0000' },
+  checkboxMark: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
+  checkboxLabel: { flex: 1, color: '#9aa4bf', fontSize: 13, lineHeight: 18 }
 })

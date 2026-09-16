@@ -5,8 +5,12 @@
 import React, { useEffect, useState, useRef } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet, FlatList, TextInput,
-  Linking, Alert, Platform, Image, Keyboard
+  Linking, Alert, Platform, Image, KeyboardAvoidingView
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import * as ImagePicker from 'expo-image-picker'
+import * as FileSystem from 'expo-file-system/legacy'
+import { decode } from 'base64-arraybuffer'
 import { useAudioPlayer } from 'expo-audio'
 import { supabase } from '../lib/supabase'
 import { API_BASE_URL } from '../lib/config'
@@ -22,6 +26,27 @@ const EMERGENCY_TYPE_LABELS = {
   other: '⚠️ Other'
 }
 
+// Each voice message gets its own player, so playing one never affects
+// another and the same note can be replayed any number of times.
+function VoiceMessageBubble({ uri, textStyle }) {
+  const player = useAudioPlayer(uri)
+
+  async function handlePlay() {
+    try {
+      await player.seekTo(0)
+      player.play()
+    } catch {
+      // Ignore — a rare native playback hiccup shouldn't crash the chat
+    }
+  }
+
+  return (
+    <TouchableOpacity onPress={handlePlay}>
+      <Text style={textStyle}>▶️ Voice note</Text>
+    </TouchableOpacity>
+  )
+}
+
 export default function EmergencyDetailScreen({ route, navigation }) {
   const { emergencyId } = route.params
   const [emergency, setEmergency] = useState(null)
@@ -29,25 +54,8 @@ export default function EmergencyDetailScreen({ route, navigation }) {
   const [messages, setMessages] = useState([])
   const [messageText, setMessageText] = useState('')
   const [myId, setMyId] = useState(null)
-  const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const listRef = useRef(null)
-
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
-
-    const showSub = Keyboard.addListener(showEvent, (e) => {
-      setKeyboardHeight(e.endCoordinates.height)
-    })
-    const hideSub = Keyboard.addListener(hideEvent, () => {
-      setKeyboardHeight(0)
-    })
-
-    return () => {
-      showSub.remove()
-      hideSub.remove()
-    }
-  }, [])
 
   useEffect(() => {
     let emergencyChannel, messageChannel
@@ -70,7 +78,10 @@ export default function EmergencyDetailScreen({ route, navigation }) {
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'emergency_messages', filter: `emergency_id=eq.${emergencyId}` },
-          (payload) => setMessages((prev) => [...prev, payload.new])
+          // Guard against the same row arriving twice (e.g. the initial
+          // load and the realtime event overlapping) — dedupe by id
+          // rather than blindly appending.
+          (payload) => setMessages((prev) => (prev.some((m) => m.id === payload.new.id) ? prev : [...prev, payload.new]))
         )
         .subscribe()
 
@@ -87,12 +98,10 @@ export default function EmergencyDetailScreen({ route, navigation }) {
 
   async function loadEmergency() {
     const { data, error } = await supabase.from('emergencies').select('*').eq('id', emergencyId).single()
-    console.log('EMERGENCY LOAD:', JSON.stringify({ error, triggered_by: data?.triggered_by, triggered_by_phone: data?.triggered_by_phone, photo_url: data?.photo_url }))
     if (!error) {
       setEmergency(data)
       if (data.triggered_by) {
-        const { data: prof, error: profError } = await supabase.from('profiles').select('full_name, phone').eq('id', data.triggered_by).single()
-        console.log('TRIGGERED-BY PROFILE FETCH:', JSON.stringify({ prof, profError }))
+        const { data: prof } = await supabase.from('profiles').select('full_name, phone').eq('id', data.triggered_by).single()
         setTriggeredByProfile(prof)
       } else {
         // USSD/SMS-triggered — no app account, just a raw phone number
@@ -185,33 +194,69 @@ export default function EmergencyDetailScreen({ route, navigation }) {
     const text = messageText.trim()
     setMessageText('')
 
-    const { error } = await supabase.from('emergency_messages').insert({
-      emergency_id: emergencyId,
-      sender_id: myId,
-      sender_role: 'responder',
-      message: text
-    })
-
-    if (error) {
-      Alert.alert('Failed to send', error.message)
-      return
-    }
-
-    // Non-blocking safety check on what was just sent
+    // The safety-check route does the actual insert once the message
+    // clears review — inserting here too would double up every message.
     const { data: sessionData } = await supabase.auth.getSession()
-    fetch(`${API_BASE_URL}/api/emergency/check-responder-message`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData.session?.access_token || ''}` },
-      body: JSON.stringify({ emergencyId, message: text })
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.flagged) loadEmergency() // refresh to pick up the new ai_flag_to_responder
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/emergency/check-responder-message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData.session?.access_token || ''}` },
+        body: JSON.stringify({ emergencyId, message: text })
       })
-      .catch(() => {})
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        Alert.alert('Failed to send', data.error || 'Unknown error')
+        return
+      }
+      if (data.blocked) {
+        Alert.alert('Message not sent', (data.reason || 'That message looked unsafe or incorrect.') + (data.suggestion ? `\n\nTry instead: ${data.suggestion}` : ''))
+        return
+      }
+      if (data.flagged) loadEmergency() // refresh to pick up the new ai_flag_to_responder
+    } catch (err) {
+      Alert.alert('Failed to send', err.message)
+    }
   }
 
-  const voiceNotePlayer = useAudioPlayer(emergency?.voice_note_url ? { uri: emergency.voice_note_url } : null)
+  async function pickAndSendPhoto() {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!permission.granted) {
+      Alert.alert('Photo access needed', 'Enable photo library access in settings to attach a photo.')
+      return
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 })
+    if (result.canceled || !result.assets?.[0]) return
+
+    setUploadingPhoto(true)
+    try {
+      const asset = result.assets[0]
+      const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 })
+      const arrayBuffer = decode(base64)
+      const ext = asset.uri.split('.').pop() || 'jpg'
+      const path = `${emergencyId}-chat-photo-${Date.now()}.${ext}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('emergency-photos')
+        .upload(path, arrayBuffer, { contentType: asset.mimeType || 'image/jpeg', upsert: true })
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage.from('emergency-photos').getPublicUrl(path)
+
+      const { error: insertError } = await supabase.from('emergency_messages').insert({
+        emergency_id: emergencyId,
+        sender_id: myId,
+        sender_role: 'responder',
+        message: '📷 Photo',
+        media_url: urlData.publicUrl,
+        media_type: 'photo'
+      })
+      if (insertError) throw insertError
+    } catch (err) {
+      Alert.alert('Could not send photo', err.message)
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
 
   if (!emergency) {
     return <View style={styles.container}><Text style={{ color: '#9aa4bf' }}>Loading...</Text></View>
@@ -222,7 +267,8 @@ export default function EmergencyDetailScreen({ route, navigation }) {
   const typeLabel = EMERGENCY_TYPE_LABELS[emergency.emergency_type] || EMERGENCY_TYPE_LABELS.other
 
   return (
-    <View style={[styles.container, { paddingBottom: keyboardHeight }]}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.header}>
         <Text style={styles.title}>Emergency</Text>
         <Text style={styles.status}>{emergency.status.toUpperCase().replace('_', ' ')}</Text>
@@ -247,12 +293,6 @@ export default function EmergencyDetailScreen({ route, navigation }) {
       {emergency.video_url && (
         <TouchableOpacity style={styles.mediaLinkButton} onPress={() => Linking.openURL(emergency.video_url)}>
           <Text style={styles.mediaLinkText}>🎥 View video from the scene</Text>
-        </TouchableOpacity>
-      )}
-
-      {emergency.voice_note_url && (
-        <TouchableOpacity style={styles.mediaLinkButton} onPress={() => voiceNotePlayer.play()}>
-          <Text style={styles.mediaLinkText}>▶️ Play voice note</Text>
         </TouchableOpacity>
       )}
 
@@ -303,15 +343,29 @@ export default function EmergencyDetailScreen({ route, navigation }) {
         keyExtractor={(item) => item.id}
         style={styles.chatList}
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
-        renderItem={({ item }) => (
-          <View style={[styles.bubble, item.sender_id === myId ? styles.bubbleMine : styles.bubbleTheirs]}>
-            <Text style={item.sender_id === myId ? styles.bubbleTextMine : styles.bubbleTextTheirs}>{item.message}</Text>
-          </View>
-        )}
+        renderItem={({ item }) => {
+          const mine = item.sender_id === myId
+          const bubbleStyle = mine ? styles.bubbleMine : styles.bubbleTheirs
+          const textStyle = mine ? styles.bubbleTextMine : styles.bubbleTextTheirs
+          return (
+            <View style={[styles.bubble, bubbleStyle]}>
+              {item.media_type === 'photo' && item.media_url ? (
+                <Image source={{ uri: item.media_url }} style={styles.chatPhoto} resizeMode="cover" />
+              ) : item.media_type === 'voice' && item.media_url ? (
+                <VoiceMessageBubble uri={item.media_url} textStyle={textStyle} />
+              ) : (
+                <Text style={textStyle}>{item.message}</Text>
+              )}
+            </View>
+          )
+        }}
       />
 
       {isMine ? (
         <View style={styles.inputRow}>
+          <TouchableOpacity style={styles.photoButton} onPress={pickAndSendPhoto} disabled={uploadingPhoto}>
+            <Text style={{ fontSize: 16 }}>{uploadingPhoto ? '⏳' : '📷'}</Text>
+          </TouchableOpacity>
           <TextInput
             style={styles.input}
             value={messageText}
@@ -326,7 +380,8 @@ export default function EmergencyDetailScreen({ route, navigation }) {
       ) : (
         <Text style={styles.chatNotice}>Claim this emergency before sending messages.</Text>
       )}
-    </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   )
 }
 
@@ -344,6 +399,7 @@ const styles = StyleSheet.create({
   mediaLinkText: { color: '#35d0e8', fontWeight: '600' },
   photoLabel: { fontWeight: 'bold', fontSize: 12, color: '#9aa4bf', marginBottom: 6 },
   photo: { width: '100%', height: 200, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.08)' },
+  chatPhoto: { width: 180, height: 180, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.08)' },
   aiBox: { backgroundColor: 'rgba(53,208,232,0.1)', padding: 10, borderRadius: 8, marginBottom: 8, borderWidth: 1, borderColor: 'rgba(53,208,232,0.25)' },
   aiLabel: { fontWeight: 'bold', fontSize: 12, color: '#35d0e8' },
   aiWarnBox: { backgroundColor: 'rgba(224,179,77,0.12)', padding: 10, borderRadius: 8, marginBottom: 8, borderWidth: 1, borderColor: 'rgba(224,179,77,0.3)' },
@@ -363,7 +419,8 @@ const styles = StyleSheet.create({
   bubbleTheirs: { backgroundColor: 'rgba(255,255,255,0.1)', alignSelf: 'flex-start' },
   bubbleTextMine: { color: 'white' },
   bubbleTextTheirs: { color: '#f4f6fb' },
-  inputRow: { flexDirection: 'row', marginTop: 8 },
+  inputRow: { flexDirection: 'row', marginTop: 8, alignItems: 'center' },
   input: { flex: 1, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 8, padding: 10, marginRight: 8, backgroundColor: 'rgba(255,255,255,0.05)', color: '#f4f6fb' },
-  sendButton: { backgroundColor: '#cc0000', borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center' }
+  sendButton: { backgroundColor: '#cc0000', borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center' },
+  photoButton: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, justifyContent: 'center', marginRight: 8 }
 })
