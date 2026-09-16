@@ -53,7 +53,15 @@
           "microphonePermission": "RESQ needs microphone access to let you send a voice note during an emergency."
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "resqapp254",
+          "project": "resq-mobile",
+          "disableAutoUpload": true
+        }
+      ]
     ],
     "ios": {
       "supportsTablet": true,

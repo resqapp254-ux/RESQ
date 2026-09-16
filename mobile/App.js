@@ -1,8 +1,15 @@
 // App.js
 import React from 'react'
+import * as Sentry from '@sentry/react-native'
 import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+
+Sentry.init({
+  dsn: 'https://8d77a4b207ade3ee2dea53688c29b0a8@o4512097028014080.ingest.us.sentry.io/4512097037451264',
+  tracesSampleRate: 0.2,
+  enableAutoSessionTracking: true,
+})
 
 import { LanguageProvider } from './lib/i18n'
 import LogoutButton from './components/LogoutButton'
@@ -38,7 +45,7 @@ function withLogout(title) {
   })
 }
 
-export default function App() {
+function App() {
   return (
     <LanguageProvider>
       <SafeAreaProvider>
@@ -62,3 +69,5 @@ export default function App() {
     </LanguageProvider>
   )
 }
+
+export default Sentry.wrap(App)
