@@ -36,6 +36,7 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
   const [isRecording, setIsRecording] = useState(false)
   const [uploadingVoice, setUploadingVoice] = useState(false)
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
+  const voiceNoteTimeoutRef = useRef(null)
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
@@ -103,6 +104,7 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
       if (messageChannel) supabase.removeChannel(messageChannel)
       if (locationWatchRef.current) locationWatchRef.current.remove()
       if (advicePollRef.current) clearInterval(advicePollRef.current)
+      if (voiceNoteTimeoutRef.current) clearTimeout(voiceNoteTimeoutRef.current)
     }
   }, [emergencyId])
 
@@ -194,6 +196,8 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
     if (error) Alert.alert('Failed to send', error.message)
   }
 
+  const MAX_VOICE_NOTE_MS = 120000 // 2 minutes — long enough for a real update, short enough no one accidentally records for 20 minutes and eats their data plan uploading it
+
   async function startVoiceNote() {
     const permission = await AudioModule.requestRecordingPermissionsAsync()
     if (!permission.granted) {
@@ -203,13 +207,28 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
     await audioRecorder.prepareToRecordAsync()
     audioRecorder.record()
     setIsRecording(true)
+    voiceNoteTimeoutRef.current = setTimeout(() => {
+      Alert.alert('Voice note limit reached', 'Recording stopped automatically at 2 minutes.')
+      stopVoiceNote()
+    }, MAX_VOICE_NOTE_MS)
   }
 
   async function stopVoiceNote() {
+    if (voiceNoteTimeoutRef.current) {
+      clearTimeout(voiceNoteTimeoutRef.current)
+      voiceNoteTimeoutRef.current = null
+    }
     setIsRecording(false)
     await audioRecorder.stop()
     const uri = audioRecorder.uri
     if (!uri) return
+
+    const fileInfo = await FileSystem.getInfoAsync(uri)
+    const maxBytes = 15 * 1024 * 1024 // 15MB safety cap regardless of duration
+    if (fileInfo.exists && fileInfo.size > maxBytes) {
+      Alert.alert('Voice note too large', 'Please record a shorter message and try again.')
+      return
+    }
 
     setUploadingVoice(true)
     try {
