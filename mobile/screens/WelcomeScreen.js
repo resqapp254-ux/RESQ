@@ -1,10 +1,11 @@
 // screens/WelcomeScreen.js
 // The very first thing anyone sees, once, on first install — the RESQ
-// shield orbiting a globe (matching the web app's login animation),
-// then a warm hello before the language/consent step. Purely a first
-// impression; taps straight through to LanguageConsent (which itself
-// only shows once) or Bootstrap on every later launch, so this never
-// blocks a returning user.
+// shield orbiting a globe with a pseudo-3D depth effect (matches the
+// web app's login animation), then a warm hello before the
+// language/consent step. Purely a first impression; taps straight
+// through to LanguageConsent (which itself only shows once) or
+// Bootstrap on every later launch, so this never blocks a returning
+// user.
 
 import React, { useEffect, useRef } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, Image, Animated, Easing } from 'react-native'
@@ -14,18 +15,27 @@ const WELCOME_SEEN_KEY = 'resq-welcome-seen'
 
 // Precomputed points around an ellipse (matches the flattened orbit
 // path on the web login screen) — piecewise-linear interpolation
-// across enough steps reads as a smooth circular motion.
-const ORBIT_STEPS = 36
-const ORBIT_RADIUS_X = 110
-const ORBIT_RADIUS_Y = 60
+// across enough steps reads as a smooth circular motion. Scale/opacity
+// are derived from the same angle to fake depth: the shield is bigger
+// and fully opaque passing in "front" of the globe, smaller and dimmer
+// passing "behind" it.
+const ORBIT_STEPS = 72
+const ORBIT_RADIUS_X = 115
+const ORBIT_RADIUS_Y = 55
 const orbitInput = []
 const orbitX = []
 const orbitY = []
+const orbitScale = []
+const orbitOpacity = []
 for (let i = 0; i <= ORBIT_STEPS; i++) {
-  const angle = (i / ORBIT_STEPS) * Math.PI * 2
-  orbitInput.push(i / ORBIT_STEPS)
+  const progress = i / ORBIT_STEPS
+  const angle = progress * Math.PI * 2
+  orbitInput.push(progress)
   orbitX.push(Math.cos(angle) * ORBIT_RADIUS_X)
   orbitY.push(Math.sin(angle) * ORBIT_RADIUS_Y)
+  const depthFactor = (Math.sin(angle) + 1) / 2 // 0 at back, 1 at front
+  orbitScale.push(0.75 + depthFactor * 0.45) // 0.75x .. 1.2x
+  orbitOpacity.push(0.45 + depthFactor * 0.55) // 0.45 .. 1.0
 }
 
 export default function WelcomeScreen({ navigation }) {
@@ -47,13 +57,15 @@ export default function WelcomeScreen({ navigation }) {
       Animated.spring(scale, { toValue: 1, friction: 4, tension: 60, useNativeDriver: true })
     ]).start(() => {
       Animated.loop(
-        Animated.timing(orbit, { toValue: 1, duration: 8000, easing: Easing.linear, useNativeDriver: true })
+        Animated.timing(orbit, { toValue: 1, duration: 9000, easing: Easing.linear, useNativeDriver: true })
       ).start()
     })
   }, [fade, scale, orbit])
 
   const translateX = orbit.interpolate({ inputRange: orbitInput, outputRange: orbitX })
   const translateY = orbit.interpolate({ inputRange: orbitInput, outputRange: orbitY })
+  const shieldScale = orbit.interpolate({ inputRange: orbitInput, outputRange: orbitScale })
+  const depthOpacity = orbit.interpolate({ inputRange: orbitInput, outputRange: orbitOpacity })
 
   async function handleContinue() {
     await AsyncStorage.setItem(WELCOME_SEEN_KEY, 'true')
@@ -66,12 +78,18 @@ export default function WelcomeScreen({ navigation }) {
         <View style={styles.globeGlow} />
         <View style={styles.globe}>
           <View style={[styles.meridian, { transform: [{ rotate: '0deg' }] }]} />
-          <View style={[styles.meridian, { transform: [{ rotate: '60deg' }] }]} />
-          <View style={[styles.meridian, { transform: [{ rotate: '120deg' }] }]} />
+          <View style={[styles.meridian, { transform: [{ rotate: '45deg' }] }]} />
+          <View style={[styles.meridian, { transform: [{ rotate: '90deg' }] }]} />
+          <View style={[styles.meridian, { transform: [{ rotate: '135deg' }] }]} />
           <View style={styles.equator} />
         </View>
-        <Animated.View style={[styles.orbitingShield, { transform: [{ translateX }, { translateY }] }]}>
-          <Image source={require('../assets/welcome-shield.png')} style={styles.shield} />
+        <Animated.View
+          style={[
+            styles.orbitingShield,
+            { opacity: Animated.multiply(fade, depthOpacity), transform: [{ translateX }, { translateY }, { scale: shieldScale }] }
+          ]}
+        >
+          <Image source={require('../assets/welcome-shield.png')} style={styles.shield} resizeMode="contain" />
         </Animated.View>
       </Animated.View>
 
@@ -91,41 +109,41 @@ export default function WelcomeScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#05070d', padding: 32, gap: 28 },
-  globeWrap: { width: 260, height: 220, alignItems: 'center', justifyContent: 'center' },
+  globeWrap: { width: 280, height: 240, alignItems: 'center', justifyContent: 'center' },
   globeGlow: {
     position: 'absolute',
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    backgroundColor: 'rgba(204,0,0,0.08)'
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: 'rgba(255,43,43,0.08)'
   },
   globe: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
+    width: 170,
+    height: 170,
+    borderRadius: 85,
     borderWidth: 1.5,
-    borderColor: 'rgba(53,208,232,0.35)',
-    backgroundColor: 'rgba(24,33,66,0.4)',
+    borderColor: 'rgba(53,208,232,0.45)',
+    backgroundColor: 'rgba(12,18,38,0.6)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden'
   },
   meridian: {
     position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
+    width: 170,
+    height: 170,
+    borderRadius: 85,
     borderWidth: 1,
     borderColor: 'rgba(53,208,232,0.18)'
   },
   equator: {
     position: 'absolute',
-    width: 160,
-    height: 1,
-    backgroundColor: 'rgba(53,208,232,0.25)'
+    width: 170,
+    height: 1.2,
+    backgroundColor: 'rgba(53,208,232,0.35)'
   },
-  orbitingShield: { position: 'absolute' },
-  shield: { width: 44, height: 44 },
+  orbitingShield: { position: 'absolute', zIndex: 10 },
+  shield: { width: 48, height: 48 },
   title: { fontSize: 26, fontWeight: 'bold', color: '#f4f6fb', textAlign: 'center', marginBottom: 8 },
   subtitle: { fontSize: 14, color: '#9aa4bf', textAlign: 'center', lineHeight: 20, maxWidth: 300 },
   button: {
