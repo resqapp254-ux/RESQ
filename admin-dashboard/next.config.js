@@ -53,7 +53,7 @@ const { withSentryConfig } = require('@sentry/nextjs/config')
 module.exports = withSentryConfig(nextConfig, {
   silent: true,
   org: 'resqapp254',
-  project: 'resq-dashboard',
+  project: 'javascript-nextjs',
   // No auth token is configured, so source-map upload is skipped at build
   // time — errors still report fine, just with un-mapped stack traces
   // until SENTRY_AUTH_TOKEN is added as a manual step.

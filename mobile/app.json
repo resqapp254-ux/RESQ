@@ -58,7 +58,7 @@
         "@sentry/react-native/expo",
         {
           "organization": "resqapp254",
-          "project": "resq-mobile"
+          "project": "javascript-nextjs"
         }
       ]
     ],

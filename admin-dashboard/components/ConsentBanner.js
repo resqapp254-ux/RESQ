@@ -28,23 +28,25 @@ export default function ConsentBanner() {
   if (!visible) return null
 
   return (
+    // Deliberately NOT position:fixed — a floating overlay covered the
+    // bottom of long pages like /privacy and /terms while scrolling.
+    // Rendered in normal flow (see app/layout.js), it now appears once
+    // right after the page's own content, wherever that ends.
     <div
       role="dialog"
       aria-label="Cookie and data notice"
       style={{
-        position: 'fixed',
-        left: 16,
-        right: 16,
-        bottom: 16,
-        zIndex: 50,
         maxWidth: 640,
-        margin: '0 auto',
+        marginTop: 24,
+        marginBottom: 24,
+        marginLeft: 'auto',
+        marginRight: 'auto',
+        width: 'calc(100% - 32px)',
         background: 'rgba(11,16,32,0.97)',
         border: '1px solid rgba(255,255,255,0.12)',
         borderRadius: 14,
         padding: '16px 18px',
-        boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
-        backdropFilter: 'blur(10px)'
+        boxShadow: '0 12px 40px rgba(0,0,0,0.35)'
       }}
     >
       <p style={{ margin: 0, fontSize: 13, color: '#9aa4bf', lineHeight: 1.5 }}>
