@@ -134,6 +134,36 @@ export default function SuperAdminPage() {
     router.replace('/login')
   }
 
+  // Self-serve disaster-recovery snapshot — independent of whatever
+  // backup/PITR tier the Supabase project is on. Downloads a full JSON
+  // dump of every core table straight to the admin's device.
+  async function downloadBackup() {
+    setError('')
+    const { data: sessionData } = await supabase.auth.getSession()
+    if (!sessionData.session) return
+
+    try {
+      const res = await fetch('/api/admin/backup', {
+        headers: { Authorization: `Bearer ${sessionData.session.access_token}` }
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || `Backup failed (${res.status})`)
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `resq-backup-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
   const hasActiveAlert = activeEmergencyCount > 0
 
   if (!authorized) {
@@ -167,6 +197,9 @@ export default function SuperAdminPage() {
           <Link href="/super-admin/create" className="resq-btn-primary" style={{ textDecoration: 'none' }}>
             + New Institution
           </Link>
+          <button className="resq-btn-secondary" onClick={downloadBackup} title="Download a full JSON snapshot of all data — a self-serve recovery point in addition to Supabase's own backups">
+            ⬇ Download Backup
+          </button>
           <button className="resq-btn-secondary" onClick={handleLogout}>Log Out</button>
         </div>
       </div>

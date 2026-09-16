@@ -48,7 +48,17 @@ export default function PrivacyPage() {
           </p>
 
           <h2 style={{ marginTop: 20 }}>Contact</h2>
-          <p className="resq-subtle">Questions about this policy can be directed to your institution admin, or the RESQ team.</p>
+          <p className="resq-subtle">
+            Questions about this policy can be directed to your institution admin, or to us directly:
+            <br />
+            <strong style={{ color: 'var(--resq-text-primary)' }}>RESQ App 254</strong>
+            <br />
+            Kisumu, Kenya
+            <br />
+            Email: <a href="mailto:resqapp254@gmail.com">resqapp254@gmail.com</a>
+            <br />
+            Phone: <a href="tel:+254794698660">+254 794 698 660</a>
+          </p>
         </div>
       </div>
     </main>

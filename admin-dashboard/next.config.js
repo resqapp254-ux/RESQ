@@ -8,6 +8,9 @@
 // never in the browser, so it doesn't belong in a browser CSP.
 const supabaseOrigin = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/$/, '')
 const supabaseWs = supabaseOrigin.replace(/^http/, 'ws')
+// Sentry's ingest endpoint — error/performance reports are sent here from
+// the browser, so it must be explicitly allowed or the CSP silently drops them.
+const sentryIngest = 'https://o4512097028014080.ingest.us.sentry.io'
 
 const csp = [
   "default-src 'self'",
@@ -18,7 +21,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   `img-src 'self' data: https://api.qrserver.com ${supabaseOrigin}`,
-  `connect-src 'self' ${supabaseOrigin} ${supabaseWs}`,
+  `connect-src 'self' ${supabaseOrigin} ${supabaseWs} ${sentryIngest}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'"
@@ -45,4 +48,18 @@ const nextConfig = {
   }
 }
 
-module.exports = nextConfig
+const { withSentryConfig } = require('@sentry/nextjs/config')
+
+module.exports = withSentryConfig(nextConfig, {
+  silent: true,
+  org: 'resqapp254',
+  project: 'resq-dashboard',
+  // No auth token is configured, so source-map upload is skipped at build
+  // time — errors still report fine, just with un-mapped stack traces
+  // until SENTRY_AUTH_TOKEN is added as a manual step.
+  widenClientFileUpload: true,
+  webpack: {
+    removeDebugLogging: true,
+    automaticVercelMonitors: true,
+  },
+})
