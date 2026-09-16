@@ -4,9 +4,10 @@
 // once accepted (tracked in AsyncStorage).
 
 import React, { useState } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, Linking } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useTranslation, LANGUAGES } from '../lib/i18n'
+import { API_BASE_URL } from '../lib/config'
 
 const CONSENT_KEY = 'resq-consent-accepted'
 
@@ -44,6 +45,15 @@ export default function LanguageConsentScreen({ navigation }) {
       <View style={styles.consentBox}>
         <Text style={styles.consentTitle}>{t('dataConsentTitle')}</Text>
         <Text style={styles.consentBody}>{t('dataConsentBody')}</Text>
+        <View style={styles.legalLinksRow}>
+          <TouchableOpacity onPress={() => Linking.openURL(`${API_BASE_URL}/privacy`)}>
+            <Text style={styles.legalLink}>Privacy Policy</Text>
+          </TouchableOpacity>
+          <Text style={styles.consentBody}> · </Text>
+          <TouchableOpacity onPress={() => Linking.openURL(`${API_BASE_URL}/terms`)}>
+            <Text style={styles.legalLink}>Terms of Service</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <TouchableOpacity
@@ -55,7 +65,10 @@ export default function LanguageConsentScreen({ navigation }) {
           {agreed && <Text style={styles.checkboxMark}>✓</Text>}
         </View>
         <Text style={styles.checkboxLabel}>
-          I agree to the use of cookies/local storage and to the Privacy Policy and Terms of Service.
+          I agree to the use of cookies/local storage and to the{' '}
+          <Text style={styles.legalLink} onPress={() => Linking.openURL(`${API_BASE_URL}/privacy`)}>Privacy Policy</Text>
+          {' '}and{' '}
+          <Text style={styles.legalLink} onPress={() => Linking.openURL(`${API_BASE_URL}/terms`)}>Terms of Service</Text>.
         </Text>
       </TouchableOpacity>
 
@@ -103,6 +116,8 @@ const styles = StyleSheet.create({
   },
   consentTitle: { color: '#f4f6fb', fontWeight: '700', fontSize: 15, marginBottom: 8 },
   consentBody: { color: '#9aa4bf', fontSize: 13, lineHeight: 19 },
+  legalLinksRow: { flexDirection: 'row', marginTop: 10, flexWrap: 'wrap' },
+  legalLink: { color: '#7fe3f2', fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' },
   button: {
     backgroundColor: '#cc0000',
     borderRadius: 10,

@@ -73,43 +73,25 @@ export default function UserHomeScreen({ navigation }) {
   }
 
   async function uploadPhoto(emergencyId) {
-    console.log('PHOTO UPLOAD: starting, uri =', photo.uri)
     try {
       const base64 = await FileSystem.readAsStringAsync(photo.uri, { encoding: FileSystem.EncodingType.Base64 })
-      console.log('PHOTO UPLOAD: read base64, length =', base64.length)
       const arrayBuffer = decode(base64)
       const path = `${emergencyId}.jpg`
 
       const { error: uploadError } = await supabase.storage
         .from('emergency-photos')
         .upload(path, arrayBuffer, { contentType: 'image/jpeg', upsert: true })
-
-      if (uploadError) {
-        console.log('PHOTO UPLOAD FAILED at storage.upload:', JSON.stringify(uploadError))
-        return
-      }
-      console.log('PHOTO UPLOAD: storage upload succeeded, path =', path)
+      if (uploadError) return
 
       const { data: urlData } = supabase.storage.from('emergency-photos').getPublicUrl(path)
-      console.log('PHOTO UPLOAD: public URL =', urlData.publicUrl)
 
-      const { data: updateData, error: updateError } = await supabase
+      await supabase
         .from('emergencies')
         .update({ photo_url: urlData.publicUrl })
         .eq('id', emergencyId)
-        .select()
-
-      console.log('PHOTO UPLOAD: update result:', JSON.stringify({ updateData, updateError }))
-
-      if (updateError) {
-        console.log('PHOTO UPLOAD FAILED at emergencies update:', JSON.stringify(updateError))
-      } else if (!updateData || updateData.length === 0) {
-        console.log('PHOTO UPLOAD: update affected 0 rows — likely blocked by RLS')
-      } else {
-        console.log('PHOTO UPLOAD: emergency row updated successfully')
-      }
-    } catch (err) {
-      console.log('PHOTO UPLOAD FAILED (exception):', err.message)
+    } catch {
+      // Best-effort — the emergency itself was already created and
+      // dispatched; a failed evidence photo shouldn't surface an error.
     }
   }
 
@@ -170,18 +152,14 @@ export default function UserHomeScreen({ navigation }) {
         headers: authHeaders,
         body: JSON.stringify({ emergencyId: emergency.id })
       })
-        .then((res) => res.json())
-        .then((data) => console.log('AI advice response:', JSON.stringify(data)))
-        .catch((err) => console.log('AI advice fetch FAILED:', err.message))
+        .catch(() => {})
 
       fetch(`${API_BASE_URL}/api/emergency/notify-responders`, {
         method: 'POST',
         headers: authHeaders,
         body: JSON.stringify({ emergencyId: emergency.id })
       })
-        .then((res) => res.json())
-        .then((data) => console.log('Notify responders response:', JSON.stringify(data)))
-        .catch((err) => console.log('Notify responders fetch FAILED:', err.message))
+        .catch(() => {})
 
       if (photo) uploadPhoto(emergency.id)
 

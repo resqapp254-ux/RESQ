@@ -54,8 +54,8 @@ export default function ResponderHomeScreen({ navigation }) {
       try {
         sirenPlayer.seekTo(0)
         sirenPlayer.play()
-      } catch (err) {
-        console.log('SIREN PLAY FAILED (non-fatal):', err.message)
+      } catch {
+        // Non-fatal — a rare native playback hiccup shouldn't crash the screen
       }
     } else {
       sirenPlayer.pause()
@@ -81,12 +81,11 @@ export default function ResponderHomeScreen({ navigation }) {
             ]
           )
         }
-      } catch (err) {
-        console.log('PUSH NOTIFICATION REGISTRATION FAILED (non-fatal):', err.message)
+      } catch {
+        // Non-fatal — the responder can still use the app without push access
       }
 
       const { data: userData } = await supabase.auth.getUser()
-      console.log('Logged in as user id:', userData.user?.id, userData.user?.email)
 
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
@@ -94,11 +93,7 @@ export default function ResponderHomeScreen({ navigation }) {
         .eq('id', userData.user.id)
         .single()
 
-      if (profileError) {
-        console.log('PROFILE FETCH ERROR:', JSON.stringify(profileError))
-        return
-      }
-      console.log('Responder institution_id:', profile.institution_id)
+      if (profileError) return
 
       setInstitutionId(profile.institution_id)
       await loadEmergencies(profile.institution_id)
@@ -121,7 +116,6 @@ export default function ResponderHomeScreen({ navigation }) {
   }, [])
 
   async function loadEmergencies(instId) {
-    console.log('Loading emergencies for institution:', instId)
     const { data, error } = await supabase
       .from('emergencies')
       .select('*, claimant:profiles!emergencies_claimed_by_fkey(full_name, service_id)')
@@ -129,12 +123,7 @@ export default function ResponderHomeScreen({ navigation }) {
       .in('status', ['triggered', 'claimed', 'in_progress'])
       .order('created_at', { ascending: false })
 
-    if (error) {
-      console.log('LOAD EMERGENCIES ERROR:', JSON.stringify(error))
-    } else {
-      console.log('Loaded emergencies count:', data.length)
-      setEmergencies(data)
-    }
+    if (!error) setEmergencies(data)
     setRefreshing(false)
   }
 
