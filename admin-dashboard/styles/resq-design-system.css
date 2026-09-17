@@ -20,7 +20,36 @@
 .resq-content { position: relative; z-index: 1; }
 .resq-h1 { margin: 0; color: var(--resq-text-primary); font: 600 32px var(--resq-font-display); }
 .resq-subtle { color: var(--resq-text-secondary); font-size: 14px; }
-.glass-card { padding: 24px; border: 1px solid var(--resq-glass-border); border-radius: 16px; background: var(--resq-glass); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.glass-card {
+  position: relative;
+  padding: 24px; border: 1px solid var(--resq-glass-border); border-radius: 16px; background: var(--resq-glass);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+/* Glossy diagonal sheen — its own border-radius matches the card's, so
+   it never needs overflow:hidden on the card itself (which would risk
+   clipping any dropdown/tooltip a page nests inside one). */
+.glass-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0) 32%, rgba(255,255,255,0) 68%, rgba(255,255,255,0.05) 100%);
+  pointer-events: none;
+}
+
+/* Opt-in 3D hover tilt for a card that should feel like a physical
+   panel — used sparingly (auth card, dashboard highlight cards), not
+   applied to every .glass-card so dense tables/forms stay put. */
+.resq-tilt-card { transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s ease; will-change: transform; }
+.resq-tilt-card:hover {
+  transform: perspective(900px) rotateX(3deg) rotateY(-3deg) translateY(-4px);
+  box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(53,208,232,0.28);
+}
+@media (prefers-reduced-motion: reduce) {
+  .resq-tilt-card { transition: none; }
+  .resq-tilt-card:hover { transform: none; }
+}
 .resq-input { width: 100%; padding: 12px 14px; border: 1px solid var(--resq-glass-border); border-radius: 10px; background: rgba(255, 255, 255, 0.04); color: var(--resq-text-primary); font: 14px var(--resq-font-body); }
 .resq-input:focus { outline: none; border-color: var(--resq-red); }
 /* Native <option> popups ignore the parent's translucent background,
@@ -230,6 +259,56 @@
   50% { transform: scale(1.06); opacity: 1; filter: drop-shadow(0 0 14px rgba(255, 43, 43, 0.85)); }
 }
 
+/* ---------------- Radar sweep hub background (see RadarSweepBackground.js) ---------------- */
+.resq-radar-rings {
+  position: absolute; top: 50%; left: 50%; width: 1000px; height: 1000px;
+  transform: translate(-50%, -50%); border-radius: 50%;
+  background: repeating-radial-gradient(circle, rgba(53,208,232,0.09) 0, rgba(53,208,232,0.09) 1.5px, transparent 1.5px, transparent 110px);
+  opacity: 0.6;
+}
+.resq-radar-rings::after {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(rgba(53,208,232,0.07) 1.5px, transparent 1.5px) center / 110px 110px,
+    linear-gradient(90deg, rgba(53,208,232,0.07) 1.5px, transparent 1.5px) center / 110px 110px;
+  border-radius: 50%;
+  mask-image: radial-gradient(circle, #000 60%, transparent 72%);
+  -webkit-mask-image: radial-gradient(circle, #000 60%, transparent 72%);
+}
+.resq-radar-sweep {
+  position: absolute; top: 50%; left: 50%; width: 1000px; height: 1000px;
+  margin-top: -500px; margin-left: -500px; border-radius: 50%;
+  background: conic-gradient(from 0deg, rgba(63,224,138,0.4), rgba(63,224,138,0.08) 12%, transparent 24%);
+  animation: resq-radar-spin 5s linear infinite;
+  mix-blend-mode: screen;
+}
+@keyframes resq-radar-spin { to { transform: rotate(360deg); } }
+.resq-radar-blip {
+  position: absolute; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--resq-green); box-shadow: 0 0 12px 3px rgba(63,224,138,0.7);
+  animation: resq-radar-blip-pulse 2.4s ease-in-out infinite;
+}
+@keyframes resq-radar-blip-pulse {
+  0%, 100% { opacity: 0.25; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.3); }
+}
+
+/* ---------------- Slow ambient background drift — keeps a page from reading as a static screenshot ---------------- */
+/* Overrides the solid-color .resq-shell background (line ~18) with a
+   near-identical dark gradient — close enough in tone to change
+   nothing about existing pages at a glance, but with somewhere for the
+   animated position shift below to actually move. */
+.resq-shell {
+  background: linear-gradient(135deg, #05070d 0%, #070b16 40%, #05070d 70%, #060a14 100%);
+  background-size: 200% 200%;
+  animation: resq-shell-drift 24s ease-in-out infinite;
+}
+@keyframes resq-shell-drift {
+  0%, 100% { background-position: 0% 0%; }
+  50% { background-position: 100% 100%; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .resq-globe-orbit, .resq-globe-pulse,
   .resq-trigger-btn, .resq-trigger-btn::before, .resq-trigger-btn::after,
@@ -238,7 +317,9 @@
   .resq-monitor svg,
   .resq-guardian-heart, .resq-guardian-ring,
   .resq-alert-shell, .resq-siren-banner,
-  .resq-loading-mark {
+  .resq-loading-mark,
+  .resq-radar-sweep, .resq-radar-blip,
+  .resq-shell {
     animation: none !important;
     transition: none !important;
   }

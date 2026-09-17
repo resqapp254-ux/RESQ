@@ -9,6 +9,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabaseClient'
 import GlobeBackground from './GlobeBackground'
+import RadarSweepBackground from './RadarSweepBackground'
 import LanguageSwitcher from './LanguageSwitcher'
 import { useTranslation } from '../lib/i18n/LanguageContext'
 
@@ -126,9 +127,23 @@ export default function AuthPage({ defaultMode = 'signin' }) {
   return (
     <div className="resq-shell">
       <GlobeBackground />
+      <RadarSweepBackground />
       <LanguageSwitcher />
       <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <div className="glass-card resq-fade-in" style={{ width: '100%', maxWidth: 440 }}>
+        <div style={{ width: '100%', maxWidth: 440 }}>
+          <div
+            className="resq-fade-in"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              marginBottom: 14, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+              color: 'var(--resq-green)'
+            }}
+          >
+            <span className="resq-live-dot" style={{ background: 'var(--resq-green)', boxShadow: '0 0 8px rgba(63,224,138,0.8)' }} />
+            Emergency Response Hub · Secure Channel
+          </div>
+
+          <div className="glass-card resq-tilt-card resq-fade-in resq-fade-in-2">
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
             <div style={{ width: 100, height: 100 }}>
               <img src="/icon.svg" alt="RESQ" width="100" height="100" />
@@ -240,6 +255,7 @@ export default function AuthPage({ defaultMode = 'signin' }) {
               </form>
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>
