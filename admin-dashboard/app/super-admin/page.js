@@ -10,6 +10,7 @@ import GuardianShield from '../../components/GuardianShield'
 import HeartMonitorLine from '../../components/HeartMonitorLine'
 import LoadingScreen from '../../components/LoadingScreen'
 import LanguageSwitcher from '../../components/LanguageSwitcher'
+import SignOutOverlay from '../../components/SignOutOverlay'
 
 const STATUS_COLORS = {
   pending_verification: '#e0b34d',
@@ -24,6 +25,10 @@ export default function SuperAdminPage() {
   const [loading, setLoading] = useState(true)
   const [authorized, setAuthorized] = useState(false)
   const [error, setError] = useState('')
+  const [editingId, setEditingId] = useState(null)
+  const [editName, setEditName] = useState('')
+  const [uploadingLogoFor, setUploadingLogoFor] = useState(null)
+  const [signingOut, setSigningOut] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -111,6 +116,61 @@ export default function SuperAdminPage() {
     loadInstitutions()
   }
 
+  function startEditName(institution) {
+    setEditingId(institution.id)
+    setEditName(institution.name)
+  }
+
+  async function saveEditName(institution) {
+    const trimmed = editName.trim()
+    if (!trimmed) return
+    const { error: updateError } = await supabase
+      .from('institutions')
+      .update({ name: trimmed, updated_at: new Date().toISOString() })
+      .eq('id', institution.id)
+
+    if (updateError) {
+      alert('Failed to rename: ' + updateError.message)
+      return
+    }
+    setEditingId(null)
+    loadInstitutions()
+  }
+
+  async function uploadLogo(institution, file) {
+    if (!file) return
+    const maxBytes = 3 * 1024 * 1024
+    if (file.size > maxBytes) {
+      alert('Logo image is too large — please use one under 3MB.')
+      return
+    }
+
+    setUploadingLogoFor(institution.id)
+    try {
+      const ext = file.name.split('.').pop() || 'png'
+      const path = `${institution.id}-${Date.now()}.${ext}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('institution-logos')
+        .upload(path, file, { contentType: file.type, upsert: true })
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage.from('institution-logos').getPublicUrl(path)
+
+      const { error: updateError } = await supabase
+        .from('institutions')
+        .update({ logo_url: urlData.publicUrl, updated_at: new Date().toISOString() })
+        .eq('id', institution.id)
+      if (updateError) throw updateError
+
+      loadInstitutions()
+    } catch (err) {
+      alert('Failed to upload logo: ' + err.message)
+    } finally {
+      setUploadingLogoFor(null)
+    }
+  }
+
   async function deleteInstitution(institution) {
     const confirmed = window.confirm(
       `Delete "${institution.name}" permanently? This removes all its admins, responders, users, and emergency records. This cannot be undone.`
@@ -129,7 +189,11 @@ export default function SuperAdminPage() {
     loadInstitutions()
   }
 
-  async function handleLogout() {
+  function handleLogout() {
+    setSigningOut(true)
+  }
+
+  async function finishLogout() {
     await supabase.auth.signOut()
     router.replace('/login')
   }
@@ -177,7 +241,8 @@ export default function SuperAdminPage() {
 
   return (
     <div className={'resq-shell' + (hasActiveAlert ? ' resq-alert-shell' : '')}>
-      <EmergencyPulseBackground />
+      {signingOut && <SignOutOverlay onComplete={finishLogout} />}
+      <EmergencyPulseBackground alert={hasActiveAlert} />
       <LanguageSwitcher />
       <div className="resq-content" style={{ padding: 40, maxWidth: 1100, margin: '0 auto' }}>
       <div className="resq-fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
@@ -233,6 +298,7 @@ export default function SuperAdminPage() {
         <table style={{ width: '100%' }}>
           <thead>
             <tr>
+              <th style={{ padding: 10 }}>Logo</th>
               <th style={{ padding: 10 }}>Name</th>
               <th style={{ padding: 10 }}>Status</th>
               <th style={{ padding: 10 }}>Tier</th>
@@ -247,8 +313,52 @@ export default function SuperAdminPage() {
             {institutions.map((inst, i) => (
               <tr key={inst.id} className="resq-row-interactive resq-row-stagger" style={{ '--resq-row-index': i }}>
                 <td style={{ padding: 10 }}>
-                  <strong>{inst.name}</strong><br />
-                  <small className="resq-subtle">{inst.contact_email}</small>
+                  <label style={{ cursor: 'pointer', display: 'block' }} title="Click to upload a logo">
+                    {inst.logo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={inst.logo_url} alt={`${inst.name} logo`} width={44} height={44} style={{ borderRadius: 8, objectFit: 'cover', display: 'block' }} />
+                    ) : (
+                      <div style={{ width: 44, height: 44, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: '1px dashed var(--resq-glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🏢</div>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      disabled={uploadingLogoFor === inst.id}
+                      onChange={(e) => uploadLogo(inst, e.target.files?.[0])}
+                    />
+                    {uploadingLogoFor === inst.id && <span className="resq-subtle" style={{ fontSize: 10 }}>Uploading…</span>}
+                  </label>
+                </td>
+                <td style={{ padding: 10 }}>
+                  {editingId === inst.id ? (
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <input
+                        className="resq-input"
+                        style={{ padding: '6px 8px' }}
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && saveEditName(inst)}
+                        autoFocus
+                      />
+                      <button className="resq-btn-secondary" style={{ padding: '4px 10px' }} onClick={() => saveEditName(inst)}>Save</button>
+                      <button className="resq-btn-secondary" style={{ padding: '4px 10px' }} onClick={() => setEditingId(null)}>Cancel</button>
+                    </div>
+                  ) : (
+                    <>
+                      <strong>{inst.name}</strong>{' '}
+                      <button
+                        className="resq-btn-secondary"
+                        style={{ padding: '2px 8px', fontSize: 11, marginLeft: 4 }}
+                        onClick={() => startEditName(inst)}
+                        title="Edit institution name"
+                      >
+                        ✎ Edit
+                      </button>
+                      <br />
+                      <small className="resq-subtle">{inst.contact_email}</small>
+                    </>
+                  )}
                 </td>
                 <td style={{ padding: 10 }}>
                   <span style={{ color: STATUS_COLORS[inst.status] || 'var(--resq-text-primary)', fontWeight: 'bold' }}>

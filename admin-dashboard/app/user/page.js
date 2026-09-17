@@ -9,6 +9,7 @@ import HeartMonitorLine from '../../components/HeartMonitorLine'
 import { useEmergencySiren } from '../../lib/useEmergencySiren'
 import { pickMatchingServices } from '../../lib/serviceDispatch'
 import LanguageSwitcher from '../../components/LanguageSwitcher'
+import SignOutOverlay from '../../components/SignOutOverlay'
 import { useTranslation } from '../../lib/i18n/LanguageContext'
 import LoadingScreen from '../../components/LoadingScreen'
 import MediaAttach from '../../components/MediaAttach'
@@ -66,6 +67,7 @@ export default function UserPage() {
   const chatPhotoInputRef = useRef(null)
   const [locationBusy, setLocationBusy] = useState(false)
   const [triggerBusy, setTriggerBusy] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
 
   const [chatMessages, setChatMessages] = useState([])
   const [myUserId, setMyUserId] = useState('')
@@ -445,7 +447,11 @@ export default function UserPage() {
     await refreshEmergencies((await supabase.auth.getUser()).data.user.id, role)
   }
 
-  async function handleLogout() {
+  function handleLogout() {
+    setSigningOut(true)
+  }
+
+  async function finishLogout() {
     await supabase.auth.signOut()
     router.replace('/login')
   }
@@ -667,7 +673,8 @@ export default function UserPage() {
 
   return (
     <main className={'resq-shell' + (hasActiveAlert ? ' resq-alert-shell' : '')}>
-      <EmergencyPulseBackground />
+      {signingOut && <SignOutOverlay onComplete={finishLogout} />}
+      <EmergencyPulseBackground alert={hasActiveAlert} />
       <RadarSweepBackground />
       <LanguageSwitcher />
       <div className="resq-content" style={{ padding: 32, maxWidth: 1200, margin: '0 auto' }}>

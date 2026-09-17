@@ -1,16 +1,44 @@
 'use client'
 
-const HEART_PATH = 'M0,10 C0,-6 -18,-16 -18,-2 C-18,10 -6,18 0,28 C6,18 18,10 18,-2 C18,-16 0,-6 0,10 Z'
+// A classic heart silhouette (not a rounded emoji-style blob) with a
+// soft highlight for depth.
+const HEART_PATH =
+  'M0,26 C-22,10 -34,-4 -34,-20 C-34,-32 -25,-40 -14,-40 C-6,-40 -1,-35 0,-30 ' +
+  'C1,-35 6,-40 14,-40 C25,-40 34,-32 34,-20 C34,-4 22,10 0,26 Z'
 
+// Isometric block — front, side, and roof faces — so it reads as a 3D
+// building instead of a flat rectangle with dots on it.
 function Building({ x, scale = 1 }) {
+  const W = 15 // half-width of the front face
+  const H = 56 // height of the front face
+  const DX = 11 // depth offset (side/roof)
+  const DY = 7
+
   return (
     <g transform={`translate(${x} 0) scale(${scale})`}>
-      <rect x="-22" y="-10" width="44" height="70" rx="3" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.18)" strokeWidth="1.2" />
-      <rect x="-14" y="0" width="10" height="12" rx="1.5" fill="rgba(53,208,232,0.35)" />
-      <rect x="4" y="0" width="10" height="12" rx="1.5" fill="rgba(53,208,232,0.35)" />
-      <rect x="-14" y="20" width="10" height="12" rx="1.5" fill="rgba(53,208,232,0.35)" />
-      <rect x="4" y="20" width="10" height="12" rx="1.5" fill="rgba(53,208,232,0.35)" />
-      <rect x="-6" y="42" width="12" height="18" rx="1" fill="rgba(255,255,255,0.15)" />
+      {/* Roof */}
+      <path
+        d={`M${-W},${-H} L${W},${-H} L${W + DX},${-H - DY} L${-W + DX},${-H - DY} Z`}
+        fill="rgba(120,170,220,0.32)"
+        stroke="rgba(255,255,255,0.2)"
+        strokeWidth="0.75"
+      />
+      {/* Side face — darker, gives the depth cue */}
+      <path
+        d={`M${W},${-H} L${W},0 L${W + DX},${-DY} L${W + DX},${-H - DY} Z`}
+        fill="rgba(20,32,58,0.9)"
+        stroke="rgba(255,255,255,0.12)"
+        strokeWidth="0.75"
+      />
+      {/* Front face */}
+      <rect x={-W} y={-H} width={W * 2} height={H} fill="rgba(40,58,96,0.9)" stroke="rgba(255,255,255,0.22)" strokeWidth="1" />
+      {/* Windows, lit */}
+      {[0, 1, 2, 3].map((row) => (
+        <g key={row}>
+          <rect x={-W + 4} y={-H + 8 + row * 12} width={8} height={8} rx="1" fill="rgba(120,220,240,0.85)" />
+          <rect x={2} y={-H + 8 + row * 12} width={8} height={8} rx="1" fill="rgba(120,220,240,0.55)" />
+        </g>
+      ))}
     </g>
   )
 }
@@ -31,12 +59,20 @@ export default function GuardianShield({ buildingCount = 1, alert = false, size 
         aria-label={alert ? 'Shield protecting institutions, actively responding to an emergency' : 'Shield protecting institutions, all clear'}
         className={'resq-guardian' + (alert ? ' resq-guardian-alert' : '')}
       >
-        <g transform="translate(200 165)">
+        <defs>
+          <radialGradient id="guardianHeartGlow" cx="35%" cy="30%" r="70%">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="45%" stopColor={alert ? '#ffffff' : '#ff5252'} />
+            <stop offset="100%" stopColor={alert ? '#ffe5e5' : '#cc0000'} />
+          </radialGradient>
+        </defs>
+
+        <g transform="translate(200 175)">
           {Array.from({ length: shown }).map((_, i) => (
             <Building key={i} x={startX + i * spacing} />
           ))}
           {extra > 0 && (
-            <text x={startX + shown * spacing - 10} y="10" fill="rgba(255,255,255,0.6)" fontSize="16" fontWeight="700">
+            <text x={startX + shown * spacing - 10} y="-20" fill="rgba(255,255,255,0.7)" fontSize="16" fontWeight="700">
               +{extra}
             </text>
           )}
@@ -56,8 +92,14 @@ export default function GuardianShield({ buildingCount = 1, alert = false, size 
           />
 
           {/* Beating Heart Core */}
-          <g className="resq-guardian-heart" transform="translate(0 20) scale(1.6)">
-            <path d={HEART_PATH} fill={alert ? '#ffffff' : '#ff2b2b'} filter={alert ? 'drop-shadow(0 0 6px #ffffff)' : 'drop-shadow(0 0 4px rgba(255,43,43,0.8))'} />
+          <g className="resq-guardian-heart" transform="translate(0 20) scale(1.15)">
+            <path
+              d={HEART_PATH}
+              fill="url(#guardianHeartGlow)"
+              stroke={alert ? '#ffffff' : '#ff8080'}
+              strokeWidth="1.5"
+              filter={alert ? 'drop-shadow(0 0 10px #ffffff)' : 'drop-shadow(0 0 8px rgba(255,43,43,0.85))'}
+            />
           </g>
         </g>
       </svg>

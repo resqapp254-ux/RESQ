@@ -10,9 +10,11 @@ import GuardianShield from '../../components/GuardianShield'
 import HeartMonitorLine from '../../components/HeartMonitorLine'
 import LoadingScreen from '../../components/LoadingScreen'
 import LanguageSwitcher from '../../components/LanguageSwitcher'
+import SignOutOverlay from '../../components/SignOutOverlay'
 
 export default function InstitutionAdminPage() {
   const [authorized, setAuthorized] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
   const [institution, setInstitution] = useState(null)
   const [responders, setResponders] = useState([])
   const [shiftsByResponder, setShiftsByResponder] = useState({})
@@ -174,7 +176,11 @@ export default function InstitutionAdminPage() {
     await loadShifts(responders.map((r) => r.id))
   }
 
-  async function handleLogout() {
+  function handleLogout() {
+    setSigningOut(true)
+  }
+
+  async function finishLogout() {
     await supabase.auth.signOut()
     router.replace('/login')
   }
@@ -236,7 +242,8 @@ export default function InstitutionAdminPage() {
 
   return (
     <div className={'resq-shell' + (hasActiveAlert ? ' resq-alert-shell' : '')}>
-      <EmergencyPulseBackground />
+      {signingOut && <SignOutOverlay onComplete={finishLogout} />}
+      <EmergencyPulseBackground alert={hasActiveAlert} />
       <LanguageSwitcher />
       <div className="resq-content" style={{ padding: 40, maxWidth: 1000, margin: '0 auto' }}>
       <div className="resq-fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 12 }}>

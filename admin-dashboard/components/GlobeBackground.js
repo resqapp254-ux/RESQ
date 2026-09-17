@@ -44,6 +44,9 @@ export default function GlobeBackground() {
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
+          <clipPath id="sphereClip">
+            <circle r="185" />
+          </clipPath>
         </defs>
 
         <circle cx="400" cy="400" r="370" fill="url(#beaconGlow)" />
@@ -66,6 +69,28 @@ export default function GlobeBackground() {
 
           {/* Sphere + atmosphere, grid spinning on its own axis */}
           <circle r="185" fill="url(#globeFill)" stroke="#35d0e8" strokeOpacity="0.3" strokeWidth="1.2" />
+
+          {/* A city living inside the globe — institutions being
+              watched over, not an empty planet. Clipped to the sphere
+              and co-rotating slowly with it. */}
+          <g clipPath="url(#sphereClip)" opacity="0.85">
+            <g>
+              <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="36s" repeatCount="indefinite" />
+              <rect x="-150" y="60" width="300" height="140" fill="#050a18" />
+              {[
+                [-140, 30, 22], [-108, 45, 30], [-72, 20, 45], [-40, 55, 25], [-10, 10, 55],
+                [22, 40, 32], [56, 25, 42], [90, 50, 26], [122, 15, 48]
+              ].map(([bx, h, w], i) => (
+                <g key={i}>
+                  <rect x={bx} y={90 - h} width={w} height={h + 20} fill="#0d1a30" stroke="#35d0e8" strokeOpacity="0.25" strokeWidth="0.6" />
+                  {Array.from({ length: Math.max(1, Math.floor(h / 10)) }).map((_, wi) => (
+                    <rect key={wi} x={bx + 4} y={94 - h + wi * 10} width={w - 8} height={4} fill="#ffd76a" opacity={(i + wi) % 3 === 0 ? 0.9 : 0.35} />
+                  ))}
+                </g>
+              ))}
+            </g>
+          </g>
+
           <circle r="192" fill="url(#globeAtmosphere)" />
           <g>
             <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="36s" repeatCount="indefinite" />
@@ -103,25 +128,39 @@ export default function GlobeBackground() {
           </circle>
         </g>
 
-        {/* Orbit guide + the shield itself, sized to clear the rings entirely */}
+        {/* Orbit guide + the RESQ guardian, sized to clear the rings
+            entirely, scanning the planet with glowing eye-beams as it
+            circles — a guardian on patrol, not just a decoration. */}
         <ellipse cx="400" cy="400" rx="420" ry="185" fill="none" stroke="#ffffff" strokeOpacity="0.07" strokeDasharray="6 8" />
         <g>
           <animateMotion dur="20s" repeatCount="indefinite" path="M 820,400 A 420,185 0 1,1 819.99,400 A 420,185 0 1,1 820,400" />
           <g filter="url(#shieldBloom)">
-            <animateTransform attributeName="transform" type="scale" values="1.25; 1; 0.75; 1; 1.25" dur="20s" repeatCount="indefinite" />
+            <animateTransform attributeName="transform" type="scale" values="1.1; 0.9; 0.68; 0.9; 1.1" dur="20s" repeatCount="indefinite" />
             <animate attributeName="opacity" values="1; 0.85; 0.4; 0.85; 1" dur="20s" repeatCount="indefinite" />
-            <path
-              d="M0,-34 L31,-17 V10 C31,42 16,58 0,69 C-16,58 -31,42 -31,10 V-17 Z"
-              fill="#cc0000"
-              stroke="#ffffff"
-              strokeOpacity="0.6"
-              strokeWidth="2"
-            />
-            <g transform="translate(0 8) scale(0.5) translate(-70 -63.5)">
-              <path
-                d="M47 82V45h18c12 0 19 6 19 16 0 7-4 12-11 14l12 14H74L63 77h-5v5H47Zm11-14h7c5 0 8-2 8-7s-3-7-8-7h-7v14Z"
-                fill="#ffffff"
-              />
+
+            {/* Cape */}
+            <path d="M-8,-22 C-32,-8 -37,24 -16,43 C-19,21 -14,-3 -8,-22 Z" fill="#8a0000" opacity="0.9" />
+            <path d="M8,-22 C32,-8 37,24 16,43 C19,21 14,-3 8,-22 Z" fill="#8a0000" opacity="0.78" />
+            {/* Legs, streamlined for flight */}
+            <path d="M-6,27 C-13,37 -11,46 -5,51" stroke="#0d142d" strokeWidth="9" strokeLinecap="round" fill="none" />
+            <path d="M6,27 C13,37 11,46 5,51" stroke="#0d142d" strokeWidth="9" strokeLinecap="round" fill="none" />
+            {/* Body */}
+            <path d="M-14,-24 C-14,-34 14,-34 14,-24 L13,16 C13,26 -13,26 -14,16 Z" fill="#1e2a56" stroke="#35d0e8" strokeOpacity="0.4" strokeWidth="1.2" />
+            <path d="M0,-11 L6,-7 V2 C6,8 3,12 0,14 C-3,12 -6,8 -6,2 V-7 Z" fill="#cc0000" />
+            {/* Arms, swept back */}
+            <path d="M-11,-5 C-24,-2 -30,5 -27,13" stroke="#1e2a56" strokeWidth="8" strokeLinecap="round" fill="none" />
+            <path d="M11,-5 C24,-2 30,5 27,13" stroke="#1e2a56" strokeWidth="8" strokeLinecap="round" fill="none" />
+            {/* Head — the shield, scanning */}
+            <g transform="translate(0 -37)">
+              <path d="M0,-16 L14,-8 V5 C14,19 7,27 0,33 C-7,27 -14,19 -14,5 V-8 Z" fill="#cc0000" stroke="#ffffff" strokeOpacity="0.6" strokeWidth="1.2" />
+              <line x1="-6" y1="3" x2="-24" y2="-2" stroke="#ff2b2b" strokeWidth="1.6" strokeLinecap="round">
+                <animate attributeName="opacity" values="0.95;0.35;0.95" dur="0.5s" repeatCount="indefinite" />
+              </line>
+              <line x1="6" y1="3" x2="24" y2="-2" stroke="#ff2b2b" strokeWidth="1.6" strokeLinecap="round">
+                <animate attributeName="opacity" values="0.95;0.35;0.95" dur="0.5s" repeatCount="indefinite" />
+              </line>
+              <circle cx="-6" cy="3" r="2" fill="#ffffff" />
+              <circle cx="6" cy="3" r="2" fill="#ffffff" />
             </g>
           </g>
         </g>

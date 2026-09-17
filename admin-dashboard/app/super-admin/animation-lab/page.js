@@ -18,6 +18,8 @@ import GlobeBackground from '../../../components/GlobeBackground'
 import GuardianShield from '../../../components/GuardianShield'
 import HeartMonitorLine from '../../../components/HeartMonitorLine'
 import LoadingScreen from '../../../components/LoadingScreen'
+import ResqHero from '../../../components/ResqHero'
+import SignOutOverlay from '../../../components/SignOutOverlay'
 
 export default function AnimationLabPage() {
   const router = useRouter()
@@ -25,6 +27,7 @@ export default function AnimationLabPage() {
   const [alert, setAlert] = useState(false)
   const [buildingCount, setBuildingCount] = useState(3)
   const [speed, setSpeed] = useState(1) // multiplies every animation-duration below
+  const [previewSignOut, setPreviewSignOut] = useState(false)
 
   useEffect(() => {
     checkAccess()
@@ -61,6 +64,7 @@ export default function AnimationLabPage() {
 
   return (
     <main className={'resq-shell' + (alert ? ' resq-alert-shell' : '')}>
+      {previewSignOut && <SignOutOverlay onComplete={() => setPreviewSignOut(false)} />}
       <GlobeBackground />
       <div className="resq-content" style={{ padding: 40, maxWidth: 1000, margin: '0 auto' }}>
         <div className="resq-fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
@@ -118,6 +122,26 @@ export default function AnimationLabPage() {
           <section className="glass-card resq-fade-in resq-fade-in-4">
             <h3 style={{ marginTop: 0 }}>Loading Mark</h3>
             <div className="resq-loading-mark" style={{ ...speedStyle(1.4), fontSize: 40 }}>🛡️</div>
+          </section>
+
+          <section className="glass-card resq-fade-in resq-fade-in-4">
+            <h3 style={{ marginTop: 0 }}>Guardian Hero</h3>
+            <div style={{ display: 'flex', gap: 20, justifyContent: 'center' }}>
+              <div style={{ textAlign: 'center' }}>
+                <ResqHero pose="fly" scanning size={90} />
+                <p className="resq-subtle" style={{ fontSize: 11, marginTop: 4 }}>Scanning (globe orbit)</p>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <ResqHero pose="wave" size={90} />
+                <p className="resq-subtle" style={{ fontSize: 11, marginTop: 4 }}>Wave (sign-out)</p>
+              </div>
+            </div>
+          </section>
+
+          <section className="glass-card resq-fade-in resq-fade-in-4">
+            <h3 style={{ marginTop: 0 }}>Sign-out Sequence</h3>
+            <p className="resq-subtle" style={{ marginTop: 0 }}>Plays full-screen — the hero arrives from a random edge each time.</p>
+            <button className="resq-btn-secondary" onClick={() => setPreviewSignOut(true)}>▶ Preview</button>
           </section>
         </div>
       </div>
