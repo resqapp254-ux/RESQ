@@ -50,6 +50,10 @@ export default function InstitutionAdminPage() {
       router.replace('/institution-admin/verify')
       return
     }
+    if (statusData.next_step === 'sign_contract') {
+      router.replace('/institution-admin/contract')
+      return
+    }
 
     setAuthorized(true)
     await loadAll()

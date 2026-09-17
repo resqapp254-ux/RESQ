@@ -104,6 +104,50 @@ export default function SuperAdminPage() {
     loadInstitutions()
   }
 
+  async function downloadContract(institution) {
+    const { data: contract, error: fetchError } = await supabase
+      .from('institution_contracts')
+      .select('*')
+      .eq('institution_id', institution.id)
+      .maybeSingle()
+
+    if (fetchError) {
+      alert('Failed to load contract: ' + fetchError.message)
+      return
+    }
+    if (!contract) {
+      alert(`${institution.name} has not signed the service agreement yet.`)
+      return
+    }
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8" /><title>RESQ Service Agreement: ${contract.company_name}</title>
+<style>body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:640px;margin:32px auto;padding:0 16px;line-height:1.6;color:#1a1a1a}
+h1{font-size:20px;border-bottom:2px solid #cc0000;padding-bottom:8px}table{border-collapse:collapse;width:100%;margin-top:12px}
+th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:top}td{padding:6px 0}</style></head>
+<body><h1>RESQ Service Agreement</h1><table>
+<tr><th>Company / institution</th><td>${contract.company_name}</td></tr>
+<tr><th>Signed by</th><td>${contract.signee_name}${contract.signee_title ? ' (' + contract.signee_title + ')' : ''}</td></tr>
+<tr><th>Contact email</th><td>${contract.signee_email}</td></tr>
+<tr><th>Contact phone</th><td>${contract.signee_phone || 'Not provided'}</td></tr>
+<tr><th>Agreed to Terms of Service</th><td>${contract.agreed_terms ? 'Yes' : 'No'}</td></tr>
+<tr><th>Agreed to Privacy Policy</th><td>${contract.agreed_privacy ? 'Yes' : 'No'}</td></tr>
+<tr><th>Agreed to responsibilities</th><td>${contract.agreed_responsibilities ? 'Yes' : 'No'}</td></tr>
+<tr><th>Agreed to data handling</th><td>${contract.agreed_data_handling ? 'Yes' : 'No'}</td></tr>
+<tr><th>Contract version</th><td>${contract.contract_version}</td></tr>
+<tr><th>Signed at</th><td>${new Date(contract.signed_at).toLocaleString()}</td></tr>
+</table></body></html>`
+
+    const blob = new Blob([html], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `resq-contract-${institution.institution_code}.html`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
   async function toggleVisibility(institution) {
     const goingPublic = institution.visibility !== 'public'
     let lat = institution.lat
@@ -493,6 +537,9 @@ export default function SuperAdminPage() {
                   />
                 </td>
                 <td style={{ padding: 10 }}>
+                  <button className="resq-btn-secondary" onClick={() => downloadContract(inst)} style={{ marginRight: 8 }}>
+                    📄 Contract
+                  </button>
                   <button className="resq-btn-secondary" onClick={() => toggleStatus(inst)} style={{ marginRight: 8 }}>
                     {inst.status === 'suspended' ? 'Reactivate' : 'Suspend'}
                   </button>

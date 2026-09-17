@@ -25,6 +25,7 @@ import UserEmergencyActiveScreen from './screens/UserEmergencyActiveScreen'
 import ManageGuardiansScreen from './screens/ManageGuardiansScreen'
 import AdminWebViewScreen from './screens/AdminWebViewScreen'
 import InstitutionChatScreen from './screens/InstitutionChatScreen'
+import MyInstitutionsScreen from './screens/MyInstitutionsScreen'
 
 const Stack = createNativeStackNavigator()
 
@@ -62,6 +63,7 @@ function App() {
             <Stack.Screen name="ResponderHome" component={ResponderHomeScreen} options={withLogout('RESQ Responder')} />
             <Stack.Screen name="EmergencyDetail" component={EmergencyDetailScreen} options={withLogout('Emergency Details')} />
             <Stack.Screen name="InstitutionChat" component={InstitutionChatScreen} options={withLogout('Team Chat')} />
+            <Stack.Screen name="MyInstitutions" component={MyInstitutionsScreen} options={withLogout('My Institutions')} />
             <Stack.Screen name="AdminWebView" component={AdminWebViewScreen} options={withLogout('RESQ Admin')} />
           </Stack.Navigator>
         </NavigationContainer>

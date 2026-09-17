@@ -179,9 +179,14 @@ export default function UserHomeScreen({ navigation }) {
         </View>
       )}
       <Text style={styles.subtitle}>What's happening?</Text>
-      <TouchableOpacity onPress={() => navigation.navigate('ManageGuardians')} disabled={sending}>
-        <Text style={styles.guardiansLinkText}>👥 Trusted Contacts</Text>
-      </TouchableOpacity>
+      <View style={{ flexDirection: 'row', gap: 16, marginBottom: 4 }}>
+        <TouchableOpacity onPress={() => navigation.navigate('ManageGuardians')} disabled={sending}>
+          <Text style={styles.guardiansLinkText}>👥 Trusted Contacts</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('MyInstitutions')} disabled={sending}>
+          <Text style={styles.guardiansLinkText}>🏢 My Institutions</Text>
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.typeRow}>
         {visibleTypes.map((t) => (

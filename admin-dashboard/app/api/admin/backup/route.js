@@ -36,7 +36,9 @@ const TABLES = [
   'institution_services',
   'guardians',
   'responder_reports',
-  'institution_chat_messages'
+  'institution_chat_messages',
+  'institution_contracts',
+  'user_institutions'
 ]
 
 export async function GET(request) {
