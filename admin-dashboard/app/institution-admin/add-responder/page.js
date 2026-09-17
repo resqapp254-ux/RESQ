@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../../lib/supabaseClient'
 import EmergencyPulseBackground from '../../../components/EmergencyPulseBackground'
+import RadarSweepBackground from '../../../components/RadarSweepBackground'
 import LanguageSwitcher from '../../../components/LanguageSwitcher'
 
 const EMERGENCY_TYPES = ['medical', 'fire', 'accident', 'security', 'gbv', 'mental_health', 'property_damage', 'other']
@@ -100,6 +101,7 @@ export default function AddResponderPage() {
     return (
       <main className="resq-shell">
         <EmergencyPulseBackground />
+        <RadarSweepBackground />
       <LanguageSwitcher />
         <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <section className="glass-card resq-fade-in" style={{ width: '100%', maxWidth: 480 }}>
@@ -125,6 +127,7 @@ export default function AddResponderPage() {
   return (
     <main className="resq-shell">
       <EmergencyPulseBackground />
+      <RadarSweepBackground />
       <LanguageSwitcher />
       <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <section className="glass-card resq-fade-in" style={{ width: '100%', maxWidth: 440 }}>

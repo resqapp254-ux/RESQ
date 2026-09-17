@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../../lib/supabaseClient'
 import EmergencyPulseBackground from '../../../components/EmergencyPulseBackground'
+import RadarSweepBackground from '../../../components/RadarSweepBackground'
 import LoadingScreen from '../../../components/LoadingScreen'
 import LanguageSwitcher from '../../../components/LanguageSwitcher'
 
@@ -94,6 +95,7 @@ export default function ReportsPage() {
     return (
       <main className="resq-shell">
         <EmergencyPulseBackground />
+      <RadarSweepBackground />
       <LanguageSwitcher />
         <div className="resq-content"><LoadingScreen /></div>
       </main>
@@ -103,6 +105,7 @@ export default function ReportsPage() {
   return (
     <main className="resq-shell">
       <EmergencyPulseBackground />
+      <RadarSweepBackground />
       <LanguageSwitcher />
       <div className="resq-content" style={{ padding: 32, maxWidth: 900, margin: '0 auto' }}>
         <Link href="/institution-admin">&larr; Back to Dashboard</Link>

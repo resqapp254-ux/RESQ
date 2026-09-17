@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabaseClient'
 import GlobeBackground from '../../../components/GlobeBackground'
+import RadarSweepBackground from '../../../components/RadarSweepBackground'
 
 export default function MobileBridgePage() {
   const router = useRouter()
@@ -69,8 +70,9 @@ export default function MobileBridgePage() {
   return (
     <main className="resq-shell">
       <GlobeBackground />
+      <RadarSweepBackground />
       <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <div className="glass-card resq-fade-in" style={{ width: '100%', maxWidth: 420, textAlign: 'center' }}>
+        <div className="glass-card resq-tilt-card resq-fade-in" style={{ width: '100%', maxWidth: 420, textAlign: 'center' }}>
           {status === 'checking' && (
             <>
               <h1 className="resq-h1" style={{ fontSize: 22 }}>Signing you in…</h1>

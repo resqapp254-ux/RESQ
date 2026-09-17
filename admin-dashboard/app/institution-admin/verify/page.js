@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabaseClient'
 import GlobeBackground from '../../../components/GlobeBackground'
+import RadarSweepBackground from '../../../components/RadarSweepBackground'
 import LanguageSwitcher from '../../../components/LanguageSwitcher'
 
 export default function VerifyInstitutionPage() {
@@ -36,6 +37,7 @@ export default function VerifyInstitutionPage() {
   return (
     <main className="resq-shell">
       <GlobeBackground />
+      <RadarSweepBackground />
       <LanguageSwitcher />
       <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <section className="glass-card resq-fade-in" style={{ width: '100%', maxWidth: 420 }}>

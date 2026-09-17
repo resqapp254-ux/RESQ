@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabaseClient'
 import EmergencyPulseBackground from '../../components/EmergencyPulseBackground'
+import RadarSweepBackground from '../../components/RadarSweepBackground'
 import HeartMonitorLine from '../../components/HeartMonitorLine'
 import { useEmergencySiren } from '../../lib/useEmergencySiren'
 import { pickMatchingServices } from '../../lib/serviceDispatch'
@@ -667,6 +668,7 @@ export default function UserPage() {
   return (
     <main className={'resq-shell' + (hasActiveAlert ? ' resq-alert-shell' : '')}>
       <EmergencyPulseBackground />
+      <RadarSweepBackground />
       <LanguageSwitcher />
       <div className="resq-content" style={{ padding: 32, maxWidth: 1200, margin: '0 auto' }}>
         <div className="glass-card resq-fade-in" style={{ maxWidth: 720, marginBottom: 24 }}>

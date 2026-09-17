@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabaseClient'
 import GlobeBackground from '../../../components/GlobeBackground'
+import RadarSweepBackground from '../../../components/RadarSweepBackground'
 import LanguageSwitcher from '../../../components/LanguageSwitcher'
 
 export default function EmailConfirmedPage() {
@@ -50,9 +51,10 @@ export default function EmailConfirmedPage() {
   return (
     <main className="resq-shell">
       <GlobeBackground />
+      <RadarSweepBackground />
       <LanguageSwitcher />
       <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <div className="glass-card resq-fade-in" style={{ width: '100%', maxWidth: 420, textAlign: 'center' }}>
+        <div className="glass-card resq-tilt-card resq-fade-in" style={{ width: '100%', maxWidth: 420, textAlign: 'center' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
             <div style={{ width: 100, height: 100 }}>
               <img src="/icon.svg" alt="RESQ" width="100" height="100" />
