@@ -11,6 +11,7 @@ import { useTranslation } from '../lib/i18n'
 import { API_BASE_URL } from '../lib/config'
 import MiniGlobe from '../components/MiniGlobe'
 import RadarPulseBackground from '../components/RadarPulseBackground'
+import PasswordField from '../components/PasswordField'
 
 export default function AuthScreen({ navigation }) {
   const { t } = useTranslation()
@@ -140,13 +141,12 @@ export default function AuthScreen({ navigation }) {
             autoCapitalize="none"
             keyboardType="email-address"
           />
-          <TextInput
+          <PasswordField
             style={styles.input}
             placeholder={t('password')}
             placeholderTextColor="#5c6480"
             value={signInForm.password}
             onChangeText={(v) => setSignInForm({ ...signInForm, password: v })}
-            secureTextEntry
           />
           <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading} activeOpacity={0.85}>
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{t('logIn')}</Text>}
@@ -180,13 +180,12 @@ export default function AuthScreen({ navigation }) {
             onChangeText={(v) => setSignUpForm({ ...signUpForm, phone: v })}
             keyboardType="phone-pad"
           />
-          <TextInput
+          <PasswordField
             style={styles.input}
             placeholder={t('password')}
             placeholderTextColor="#5c6480"
             value={signUpForm.password}
             onChangeText={(v) => setSignUpForm({ ...signUpForm, password: v })}
-            secureTextEntry
           />
           <TouchableOpacity style={styles.button} onPress={handleSignUp} disabled={loading} activeOpacity={0.85}>
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{t('createAccount')}</Text>}

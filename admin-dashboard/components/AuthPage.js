@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabaseClient'
 import GlobeBackground from './GlobeBackground'
 import RadarSweepBackground from './RadarSweepBackground'
 import LanguageSwitcher from './LanguageSwitcher'
+import PasswordInput from './PasswordInput'
 import { useTranslation } from '../lib/i18n/LanguageContext'
 
 export default function AuthPage({ defaultMode = 'signin' }) {
@@ -232,8 +233,7 @@ export default function AuthPage({ defaultMode = 'signin' }) {
                 </div>
                 <div style={{ marginBottom: 12 }}>
                   <label className="resq-subtle">{t('password')}</label><br />
-                  <input
-                    type="password"
+                  <PasswordInput
                     className="resq-input"
                     value={signInForm.password}
                     onChange={(e) => setSignInForm({ ...signInForm, password: e.target.value })}
@@ -256,7 +256,7 @@ export default function AuthPage({ defaultMode = 'signin' }) {
                 <input className="resq-input" placeholder={t('fullName')} value={signUpForm.fullName} onChange={(e) => setSignUpForm({ ...signUpForm, fullName: e.target.value })} required />
                 <input className="resq-input" style={{ marginTop: 12 }} type="email" placeholder={t('email')} value={signUpForm.email} onChange={(e) => setSignUpForm({ ...signUpForm, email: e.target.value })} required />
                 <input className="resq-input" style={{ marginTop: 12 }} placeholder={t('phoneNumber')} value={signUpForm.phone} onChange={(e) => setSignUpForm({ ...signUpForm, phone: e.target.value })} required />
-                <input className="resq-input" style={{ marginTop: 12 }} type="password" minLength={8} placeholder={t('passwordHint')} value={signUpForm.password} onChange={(e) => setSignUpForm({ ...signUpForm, password: e.target.value })} required />
+                <PasswordInput className="resq-input" wrapperStyle={{ marginTop: 12 }} minLength={8} placeholder={t('passwordHint')} value={signUpForm.password} onChange={(e) => setSignUpForm({ ...signUpForm, password: e.target.value })} required />
 
                 <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 14, cursor: 'pointer' }}>
                   <input
