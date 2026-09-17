@@ -29,6 +29,8 @@ export default function UserHomeScreen({ navigation }) {
   const [selectedType, setSelectedType] = useState('other')
   const [photo, setPhoto] = useState(null) // { uri }
   const [enabledTypes, setEnabledTypes] = useState(null)
+  const [institutionName, setInstitutionName] = useState('')
+  const [institutionLogo, setInstitutionLogo] = useState('')
 
   useEffect(() => {
     async function loadEnabledTypes() {
@@ -36,8 +38,12 @@ export default function UserHomeScreen({ navigation }) {
       if (!userData.user) return
       const { data: profile } = await supabase.from('profiles').select('institution_id').eq('id', userData.user.id).single()
       if (!profile?.institution_id) return
-      const { data: institution } = await supabase.from('institutions').select('enabled_emergency_types').eq('id', profile.institution_id).single()
+      const { data: institution } = await supabase.from('institutions').select('name, enabled_emergency_types, logo_url').eq('id', profile.institution_id).single()
       if (institution?.enabled_emergency_types?.length) setEnabledTypes(institution.enabled_emergency_types)
+      if (institution) {
+        setInstitutionName(institution.name || '')
+        setInstitutionLogo(institution.logo_url || '')
+      }
     }
     loadEnabledTypes()
   }, [])
@@ -175,6 +181,12 @@ export default function UserHomeScreen({ navigation }) {
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.container}>
       <Image source={require('../assets/icon.png')} style={styles.logo} />
+      {!!institutionName && (
+        <View style={styles.institutionRow}>
+          {!!institutionLogo && <Image source={{ uri: institutionLogo }} style={styles.institutionLogo} />}
+          <Text style={styles.institutionName}>{institutionName}</Text>
+        </View>
+      )}
       <Text style={styles.subtitle}>What's happening?</Text>
       <TouchableOpacity onPress={() => navigation.navigate('ManageGuardians')} disabled={sending}>
         <Text style={styles.guardiansLinkText}>👥 Trusted Contacts</Text>
@@ -235,6 +247,9 @@ const styles = StyleSheet.create({
   container: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   guardiansLinkText: { color: '#35d0e8', fontWeight: '600', fontSize: 13, marginBottom: 16, padding: 8 },
   logo: { width: 64, height: 64, borderRadius: 14, marginBottom: 8 },
+  institutionRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  institutionLogo: { width: 18, height: 18, borderRadius: 4 },
+  institutionName: { fontSize: 13, color: '#9aa5c2' },
   title: { fontSize: 32, fontWeight: 'bold', color: '#f4f6fb', marginBottom: 8, letterSpacing: 1 },
   subtitle: { textAlign: 'center', color: '#9aa4bf', marginBottom: 16, fontSize: 15, fontWeight: '600' },
   typeRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginBottom: 16, gap: 10 },

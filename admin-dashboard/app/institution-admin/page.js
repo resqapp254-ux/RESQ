@@ -247,7 +247,13 @@ export default function InstitutionAdminPage() {
       <LanguageSwitcher />
       <div className="resq-content" style={{ padding: 40, maxWidth: 1000, margin: '0 auto' }}>
       <div className="resq-fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 12 }}>
-        <h1 className="resq-h1">{institution?.name}</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {institution?.logo_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={institution.logo_url} alt={`${institution.name} logo`} width={40} height={40} style={{ borderRadius: 8, objectFit: 'cover' }} />
+          )}
+          <h1 className="resq-h1">{institution?.name}</h1>
+        </div>
         <button className="resq-btn-secondary" onClick={handleLogout}>Log Out</button>
       </div>
       <p className="resq-fade-in resq-subtle">

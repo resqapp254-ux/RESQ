@@ -44,6 +44,7 @@ export default function UserPage() {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('')
   const [institutionName, setInstitutionName] = useState('')
+  const [institutionLogo, setInstitutionLogo] = useState('')
   const [institutionId, setInstitutionId] = useState('')
   const [myServiceId, setMyServiceId] = useState('')
   const [myPermission, setMyPermission] = useState('full')
@@ -117,10 +118,11 @@ export default function UserPage() {
         setInstitutionId(profile.institution_id)
         const { data: institution } = await supabase
           .from('institutions')
-          .select('name, enabled_emergency_types')
+          .select('name, enabled_emergency_types, logo_url')
           .eq('id', profile.institution_id)
           .single()
         setInstitutionName(institution?.name || '')
+        setInstitutionLogo(institution?.logo_url || '')
         if (institution?.enabled_emergency_types?.length) setEnabledTypes(institution.enabled_emergency_types)
       }
       if (profile?.service_id) setMyServiceId(profile.service_id)
@@ -688,10 +690,21 @@ export default function UserPage() {
             </div>
           </div>
           <h1 className="resq-h1">RESQ</h1>
-          <p className="resq-subtle" style={{ marginTop: 8 }}>
-            {t('signedInAs')} {email}
-            {role ? ' \u2022 ' + (isResponderView ? t('responderWorkspace') : t('userWorkspace')) + ' (' + role + ')' : ''}
-            {institutionName ? ' \u2022 ' + institutionName : ''}
+          <p className="resq-subtle" style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span>
+              {t('signedInAs')} {email}
+              {role ? ' \u2022 ' + (isResponderView ? t('responderWorkspace') : t('userWorkspace')) + ' (' + role + ')' : ''}
+            </span>
+            {institutionName && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                {' \u2022 '}
+                {institutionLogo && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={institutionLogo} alt={`${institutionName} logo`} width={18} height={18} style={{ borderRadius: 4, objectFit: 'cover' }} />
+                )}
+                {institutionName}
+              </span>
+            )}
           </p>
         </div>
 

@@ -35,6 +35,8 @@ const STATUS_COLORS = {
 export default function ResponderHomeScreen({ navigation }) {
   const [emergencies, setEmergencies] = useState([])
   const [institutionId, setInstitutionId] = useState(null)
+  const [institutionName, setInstitutionName] = useState('')
+  const [institutionLogo, setInstitutionLogo] = useState('')
   const [refreshing, setRefreshing] = useState(false)
   const [sirenMuted, setSirenMuted] = useState(false)
 
@@ -98,6 +100,16 @@ export default function ResponderHomeScreen({ navigation }) {
       setInstitutionId(profile.institution_id)
       await loadEmergencies(profile.institution_id)
 
+      const { data: institution } = await supabase
+        .from('institutions')
+        .select('name, logo_url')
+        .eq('id', profile.institution_id)
+        .single()
+      if (institution) {
+        setInstitutionName(institution.name || '')
+        setInstitutionLogo(institution.logo_url || '')
+      }
+
       // Live updates: any insert/update on emergencies for this institution
       channel = supabase
         .channel('emergencies-feed')
@@ -145,7 +157,15 @@ export default function ResponderHomeScreen({ navigation }) {
 
       <View style={styles.headerRow}>
         <Image source={require('../assets/icon.png')} style={styles.logo} />
-        <Text style={[styles.header, { flex: 1 }]}>Active Emergencies</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.header}>Active Emergencies</Text>
+          {!!institutionName && (
+            <View style={styles.institutionRow}>
+              {!!institutionLogo && <Image source={{ uri: institutionLogo }} style={styles.institutionLogo} />}
+              <Text style={styles.institutionName} numberOfLines={1}>{institutionName}</Text>
+            </View>
+          )}
+        </View>
         <TouchableOpacity style={styles.teamChatButton} onPress={() => navigation.navigate('InstitutionChat')}>
           <Text style={styles.teamChatButtonText}>💬 Team</Text>
         </TouchableOpacity>
@@ -210,6 +230,9 @@ const styles = StyleSheet.create({
   teamChatButtonText: { color: '#35d0e8', fontWeight: '600', fontSize: 13 },
   logo: { width: 32, height: 32, borderRadius: 8 },
   header: { fontSize: 22, fontWeight: 'bold', color: '#f4f6fb' },
+  institutionRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
+  institutionLogo: { width: 16, height: 16, borderRadius: 4 },
+  institutionName: { fontSize: 13, color: '#9aa5c2', flexShrink: 1 },
   empty: { padding: 40, alignItems: 'center' },
   emptyText: { color: '#5c6480' },
   card: {

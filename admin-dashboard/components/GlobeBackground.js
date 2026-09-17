@@ -1,11 +1,11 @@
 'use client'
 
-// The RESQ shield as a guardian satellite orbiting a ringed planet.
-// Three independent rotations run at once so it never reads as a
-// static illustration: the sphere's own grid spins on its axis, the
-// ring's tilt slowly breathes open and closed, and the whole
-// planet+ring assembly gently rocks — on top of the shield's orbit
-// around the entire system.
+// The RESQ shield emblem orbiting a ringed planet, on rails along the
+// ring's own outer edge. Three independent rotations run at once so
+// it never reads as a static illustration: the sphere's own grid
+// spins on its axis, the ring's tilt slowly breathes open and closed,
+// and the whole planet+ring assembly gently rocks — on top of the
+// shield's strict orbit around the entire system.
 
 export default function GlobeBackground() {
   return (
@@ -36,6 +36,10 @@ export default function GlobeBackground() {
             <stop offset="50%" stopColor="#35d0e8" stopOpacity="0.8" />
             <stop offset="80%" stopColor="#cdf5fb" stopOpacity="0.5" />
             <stop offset="100%" stopColor="#35d0e8" stopOpacity="0.08" />
+          </linearGradient>
+          <linearGradient id="resqShieldRed" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#ff2b2b" />
+            <stop offset="1" stopColor="#a80000" />
           </linearGradient>
           <filter id="shieldBloom" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
@@ -70,24 +74,79 @@ export default function GlobeBackground() {
           {/* Sphere + atmosphere, grid spinning on its own axis */}
           <circle r="185" fill="url(#globeFill)" stroke="#35d0e8" strokeOpacity="0.3" strokeWidth="1.2" />
 
-          {/* A city living inside the globe — institutions being
-              watched over, not an empty planet. Clipped to the sphere
-              and co-rotating slowly with it. */}
-          <g clipPath="url(#sphereClip)" opacity="0.85">
+          {/* A London-style skyline living inside the globe —
+              institutions being watched over, not an empty planet.
+              The buildings themselves never animate; they are fixed
+              to the sphere's surface, so the only thing that moves
+              them is the globe's own rotation (like fixed continents
+              riding a spinning Earth). Isometric front/side/roof
+              faces give them real depth instead of flat silhouettes,
+              and the tallest tower flies a waving RESQ flag. */}
+          <g clipPath="url(#sphereClip)" opacity="0.9">
             <g>
               <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="36s" repeatCount="indefinite" />
               <rect x="-150" y="60" width="300" height="140" fill="#050a18" />
               {[
-                [-140, 30, 22], [-108, 45, 30], [-72, 20, 45], [-40, 55, 25], [-10, 10, 55],
-                [22, 40, 32], [56, 25, 42], [90, 50, 26], [122, 15, 48]
-              ].map(([bx, h, w], i) => (
-                <g key={i}>
-                  <rect x={bx} y={90 - h} width={w} height={h + 20} fill="#0d1a30" stroke="#35d0e8" strokeOpacity="0.25" strokeWidth="0.6" />
-                  {Array.from({ length: Math.max(1, Math.floor(h / 10)) }).map((_, wi) => (
-                    <rect key={wi} x={bx + 4} y={94 - h + wi * 10} width={w - 8} height={4} fill="#ffd76a" opacity={(i + wi) % 3 === 0 ? 0.9 : 0.35} />
-                  ))}
-                </g>
-              ))}
+                { x: -140, h: 34, w: 20 },
+                { x: -112, h: 52, w: 26 },
+                { x: -78, h: 30, w: 34 },
+                { x: -38, h: 70, w: 20 },
+                { x: -10, h: 24, w: 46 },
+                { x: 42, h: 46, w: 28 },
+                { x: 76, h: 62, w: 24 },
+                { x: 106, h: 32, w: 40 }
+              ].map((b, i) => {
+                const baseY = 90
+                const topY = baseY - b.h
+                const depth = 9
+                const windowRows = Math.max(1, Math.floor(b.h / 11))
+                const windowCols = Math.max(1, Math.floor((b.w - depth) / 9))
+                const flagX = b.x + b.w / 2
+                return (
+                  <g key={i}>
+                    {/* side face — the iso depth that makes it read as a real block, not a flat card */}
+                    <polygon
+                      points={`${b.x + b.w},${topY} ${b.x + b.w + depth},${topY - depth} ${b.x + b.w + depth},${baseY - depth} ${b.x + b.w},${baseY}`}
+                      fill="#060d1c" stroke="#35d0e8" strokeOpacity="0.2" strokeWidth="0.5"
+                    />
+                    {/* roof face */}
+                    <polygon
+                      points={`${b.x},${topY} ${b.x + depth},${topY - depth} ${b.x + b.w + depth},${topY - depth} ${b.x + b.w},${topY}`}
+                      fill="#0f1c38" stroke="#35d0e8" strokeOpacity="0.25" strokeWidth="0.5"
+                    />
+                    {/* front face + lit windows */}
+                    <rect x={b.x} y={topY} width={b.w} height={b.h} fill="#0d1a30" stroke="#35d0e8" strokeOpacity="0.3" strokeWidth="0.6" />
+                    {Array.from({ length: windowRows }).map((_, ri) => (
+                      Array.from({ length: windowCols }).map((_, ci) => (
+                        <rect
+                          key={ri + '-' + ci}
+                          x={b.x + 3 + ci * 9}
+                          y={topY + 4 + ri * 11}
+                          width={4}
+                          height={5}
+                          fill="#ffd76a"
+                          opacity={(i + ri + ci) % 3 === 0 ? 0.9 : 0.3}
+                        />
+                      ))
+                    ))}
+                    {/* RESQ flag, on its own post bolted to the tallest tower's roof — the flag cloth is the
+                        only thing that moves on the whole skyline, fluttering independently of the globe's spin */}
+                    {b.h >= 70 && (
+                      <g>
+                        <rect x={flagX - 1} y={topY - 24} width="2" height="24" fill="#cdf5fb" />
+                        <path fill="url(#resqShieldRed)" stroke="#ffffff" strokeOpacity="0.75" strokeWidth="0.6">
+                          <animate
+                            attributeName="d"
+                            values={`M ${flagX + 1},${topY - 24} L ${flagX + 15},${topY - 22} L ${flagX + 11},${topY - 17} L ${flagX + 15},${topY - 12} L ${flagX + 1},${topY - 10} Z;M ${flagX + 1},${topY - 24} L ${flagX + 16},${topY - 23} L ${flagX + 10},${topY - 17} L ${flagX + 16},${topY - 11} L ${flagX + 1},${topY - 10} Z;M ${flagX + 1},${topY - 24} L ${flagX + 15},${topY - 22} L ${flagX + 11},${topY - 17} L ${flagX + 15},${topY - 12} L ${flagX + 1},${topY - 10} Z`}
+                            dur="1.4s"
+                            repeatCount="indefinite"
+                          />
+                        </path>
+                      </g>
+                    )}
+                  </g>
+                )
+              })}
             </g>
           </g>
 
@@ -128,43 +187,24 @@ export default function GlobeBackground() {
           </circle>
         </g>
 
-        {/* Orbit guide + the RESQ guardian, tracing the ring itself
-            (not a wide separate lap around it) at an unhurried pace —
-            a slow, deliberate patrol, not a frantic circuit. */}
-        <ellipse cx="400" cy="400" rx="345" ry="130" fill="none" stroke="#ffffff" strokeOpacity="0.06" strokeDasharray="6 8" />
+        {/* Orbit guide + the RESQ shield — the real emblem itself, not a
+            character — standing guard on the ring's outer edge. It
+            traces that exact edge strictly, on rails, with no drift
+            outside the ring's own geometry. */}
+        <ellipse cx="400" cy="400" rx="362" ry="85" fill="none" stroke="#ffffff" strokeOpacity="0.06" strokeDasharray="6 8" />
         <g>
-          <animateMotion dur="42s" repeatCount="indefinite" path="M 745,400 A 345,130 0 1,1 744.99,400 A 345,130 0 1,1 745,400" />
+          <animateMotion dur="42s" repeatCount="indefinite" path="M 762,400 A 362,85 0 1,1 761.99,400 A 362,85 0 1,1 762,400" />
           <g filter="url(#shieldBloom)">
             <animateTransform attributeName="transform" type="scale" values="1.05; 0.9; 0.75; 0.9; 1.05" dur="42s" repeatCount="indefinite" />
-            <animate attributeName="opacity" values="1; 0.85; 0.55; 0.85; 1" dur="42s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="1; 0.85; 0.6; 0.85; 1" dur="42s" repeatCount="indefinite" />
 
-            {/* Cape */}
-            <path d="M-8,-22 C-32,-8 -37,24 -16,43 C-19,21 -14,-3 -8,-22 Z" fill="#8a0000" opacity="0.9" />
-            <path d="M8,-22 C32,-8 37,24 16,43 C19,21 14,-3 8,-22 Z" fill="#8a0000" opacity="0.78" />
-            {/* Legs, streamlined for flight */}
-            <path d="M-6,27 C-13,37 -11,46 -5,51" stroke="#0d142d" strokeWidth="9" strokeLinecap="round" fill="none" />
-            <path d="M6,27 C13,37 11,46 5,51" stroke="#0d142d" strokeWidth="9" strokeLinecap="round" fill="none" />
-            {/* Body */}
-            <path d="M-14,-24 C-14,-34 14,-34 14,-24 L13,16 C13,26 -13,26 -14,16 Z" fill="#1e2a56" stroke="#35d0e8" strokeOpacity="0.4" strokeWidth="1.2" />
-            <path d="M0,-11 L6,-7 V2 C6,8 3,12 0,14 C-3,12 -6,8 -6,2 V-7 Z" fill="#cc0000" />
-            {/* Arms, swept back */}
-            <path d="M-11,-5 C-24,-2 -30,5 -27,13" stroke="#1e2a56" strokeWidth="8" strokeLinecap="round" fill="none" />
-            <path d="M11,-5 C24,-2 30,5 27,13" stroke="#1e2a56" strokeWidth="8" strokeLinecap="round" fill="none" />
-            {/* Head — rounded (not the pointed shield-chin that read as
-                devilish), friendly and always smiling. The scan is a
-                soft cyan sweep pointed down at the planet, like a
-                scanner visor — not red beams shooting up like horns. */}
-            <g transform="translate(0 -34)">
-              <path d="M0,-17 C10,-17 15,-11 15,-2 C15,12 9,23 0,29 C-9,23 -15,12 -15,-2 C-15,-11 -10,-17 0,-17 Z" fill="#cc0000" stroke="#ffffff" strokeOpacity="0.65" strokeWidth="1.2" />
-              <line x1="-6" y1="2" x2="-13" y2="16" stroke="#35d0e8" strokeWidth="1.6" strokeLinecap="round">
-                <animate attributeName="opacity" values="0.85;0.3;0.85" dur="0.7s" repeatCount="indefinite" />
-              </line>
-              <line x1="6" y1="2" x2="13" y2="16" stroke="#35d0e8" strokeWidth="1.6" strokeLinecap="round">
-                <animate attributeName="opacity" values="0.85;0.3;0.85" dur="0.7s" repeatCount="indefinite" />
-              </line>
-              <circle cx="-6" cy="2" r="2" fill="#ffffff" />
-              <circle cx="6" cy="2" r="2" fill="#ffffff" />
-              <path d="M-6,11 Q0,16 6,11" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+            <circle r="24" fill="none" stroke="#35d0e8" strokeWidth="1.2">
+              <animate attributeName="r" values="18;28;18" dur="2.4s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.55;0;0.55" dur="2.4s" repeatCount="indefinite" />
+            </circle>
+            <g transform="scale(0.75) translate(-64,-64)">
+              <path d="M64 17 101 31v29c0 25-15 40-37 51C42 100 27 85 27 60V31l37-14Z" fill="url(#resqShieldRed)" stroke="#ffffff" strokeOpacity="0.85" strokeWidth="4" />
+              <path d="M47 82V45h18c12 0 19 6 19 16 0 7-4 12-11 14l12 14H74L63 77h-5v5H47Zm11-14h7c5 0 8-2 8-7s-3-7-8-7h-7v14Z" fill="#ffffff" />
             </g>
           </g>
         </g>
