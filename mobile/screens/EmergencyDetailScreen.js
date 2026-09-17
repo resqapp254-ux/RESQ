@@ -111,7 +111,7 @@ export default function EmergencyDetailScreen({ route, navigation }) {
     if (!error) {
       setEmergency(data)
       if (data.triggered_by) {
-        const { data: prof } = await supabase.from('profiles').select('full_name, phone').eq('id', data.triggered_by).single()
+        const { data: prof } = await supabase.from('profiles').select('full_name, phone, admission_number').eq('id', data.triggered_by).single()
         setTriggeredByProfile(prof)
       } else {
         // USSD/SMS-triggered — no app account, just a raw phone number
@@ -335,6 +335,7 @@ export default function EmergencyDetailScreen({ route, navigation }) {
 
       <Text style={styles.person}>
         Triggered by: {triggeredByProfile?.full_name || 'Unknown'}
+        {triggeredByProfile?.admission_number ? ` (${triggeredByProfile.admission_number})` : ''}
         {triggeredByProfile?.phone ? ` · ${triggeredByProfile.phone}` : ' · No phone on file'}
       </Text>
 

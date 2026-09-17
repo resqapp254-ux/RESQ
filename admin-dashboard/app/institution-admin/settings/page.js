@@ -30,9 +30,13 @@ export default function InstitutionSettingsPage() {
   const router = useRouter()
   const [institutionId, setInstitutionId] = useState('')
   const [enabledTypes, setEnabledTypes] = useState([])
+  const [requireAdmissionNumber, setRequireAdmissionNumber] = useState(false)
+  const [requireResponderPhoto, setRequireResponderPhoto] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [savingIdentity, setSavingIdentity] = useState(false)
   const [message, setMessage] = useState('')
+  const [identityMessage, setIdentityMessage] = useState('')
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -61,7 +65,7 @@ export default function InstitutionSettingsPage() {
 
     const { data: institution, error: fetchError } = await supabase
       .from('institutions')
-      .select('enabled_emergency_types')
+      .select('enabled_emergency_types, require_admission_number, require_responder_photo')
       .eq('id', profile.institution_id)
       .single()
 
@@ -69,8 +73,25 @@ export default function InstitutionSettingsPage() {
       setError(fetchError.message)
     } else {
       setEnabledTypes(institution?.enabled_emergency_types || EMERGENCY_TYPES.map((t) => t.key))
+      setRequireAdmissionNumber(!!institution?.require_admission_number)
+      setRequireResponderPhoto(!!institution?.require_responder_photo)
     }
     setLoading(false)
+  }
+
+  async function handleSaveIdentity() {
+    setIdentityMessage('')
+    setSavingIdentity(true)
+    const { error: updateError } = await supabase
+      .from('institutions')
+      .update({ require_admission_number: requireAdmissionNumber, require_responder_photo: requireResponderPhoto, updated_at: new Date().toISOString() })
+      .eq('id', institutionId)
+    setSavingIdentity(false)
+    if (updateError) {
+      setError(updateError.message)
+      return
+    }
+    setIdentityMessage('Saved.')
   }
 
   function toggleType(key) {
@@ -145,7 +166,31 @@ export default function InstitutionSettingsPage() {
           {message && <p className="resq-green" style={{ marginTop: 12 }}>{message}</p>}
 
           <button className="resq-btn-primary" style={{ width: '100%', marginTop: 20 }} onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        </section>
+
+        <div className="glass-card resq-fade-in" style={{ marginTop: 24, marginBottom: 24 }}>
+          <h1 className="resq-h1" style={{ fontSize: 22 }}>Identity Requirements</h1>
+          <p className="resq-subtle" style={{ marginTop: 8 }}>
+            Collected once on first login, then shown whenever that person triggers or responds to an emergency.
+          </p>
+        </div>
+
+        <section className="glass-card resq-fade-in resq-fade-in-2">
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer', marginBottom: 14 }}>
+            <input type="checkbox" checked={requireAdmissionNumber} onChange={(e) => setRequireAdmissionNumber(e.target.checked)} style={{ marginTop: 3 }} />
+            <span>Require an admission/work ID or reference number from users and responders (e.g. student ID, staff ID, membership number).</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}>
+            <input type="checkbox" checked={requireResponderPhoto} onChange={(e) => setRequireResponderPhoto(e.target.checked)} style={{ marginTop: 3 }} />
+            <span>Require responders to upload a one-time profile picture, shown to reporters and other responders.</span>
+          </label>
+
+          {identityMessage && <p className="resq-green" style={{ marginTop: 12 }}>{identityMessage}</p>}
+
+          <button className="resq-btn-primary" style={{ width: '100%', marginTop: 20 }} onClick={handleSaveIdentity} disabled={savingIdentity}>
+            {savingIdentity ? 'Saving...' : 'Save'}
           </button>
         </section>
       </div>

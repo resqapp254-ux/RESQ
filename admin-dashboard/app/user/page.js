@@ -14,6 +14,7 @@ import { useTranslation } from '../../lib/i18n/LanguageContext'
 import LoadingScreen from '../../components/LoadingScreen'
 import MediaAttach from '../../components/MediaAttach'
 import MyInstitutionsPanel from '../../components/MyInstitutionsPanel'
+import IdentityPrompt from '../../components/IdentityPrompt'
 
 const EMERGENCY_TYPES = [
   { key: 'medical', translationKey: 'medical', emoji: '\uD83C\uDFE5', color: '#ff5252' },
@@ -61,6 +62,7 @@ export default function UserPage() {
   const [resolvingId, setResolvingId] = useState('')
   const [ratingDraft, setRatingDraft] = useState({})
   const [ratingSubmittingId, setRatingSubmittingId] = useState('')
+  const [identityNeeds, setIdentityNeeds] = useState({ admissionNumber: false, photo: false })
   const [currentEmergency, setCurrentEmergency] = useState(null)
   const [currentAdvice, setCurrentAdvice] = useState('')
   const [chatMessage, setChatMessage] = useState('')
@@ -113,7 +115,7 @@ export default function UserPage() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('institution_id, service_id, responder_permission, responder_emergency_types')
+        .select('institution_id, service_id, responder_permission, responder_emergency_types, admission_number, avatar_url')
         .eq('id', authData.user.id)
         .single()
 
@@ -121,12 +123,16 @@ export default function UserPage() {
         setInstitutionId(profile.institution_id)
         const { data: institution } = await supabase
           .from('institutions')
-          .select('name, enabled_emergency_types, logo_url')
+          .select('name, enabled_emergency_types, logo_url, require_admission_number, require_responder_photo')
           .eq('id', profile.institution_id)
           .single()
         setInstitutionName(institution?.name || '')
         setInstitutionLogo(institution?.logo_url || '')
         if (institution?.enabled_emergency_types?.length) setEnabledTypes(institution.enabled_emergency_types)
+
+        const needsAdmissionNumber = !!institution?.require_admission_number && !profile?.admission_number
+        const needsPhoto = status?.role === 'responder' && !!institution?.require_responder_photo && !profile?.avatar_url
+        setIdentityNeeds({ admissionNumber: needsAdmissionNumber, photo: needsPhoto })
       }
       if (profile?.service_id) setMyServiceId(profile.service_id)
       if (profile?.responder_permission) setMyPermission(profile.responder_permission)
@@ -247,7 +253,7 @@ export default function UserPage() {
       let openQuery = supabase
         .from('emergencies')
         .select(
-          'id, emergency_type, status, created_at, claimed_by, institution_id, triggered_by, triggered_by_phone, triggered_via, ai_flag_to_responder, lat, lng, reporter:profiles!emergencies_triggered_by_fkey(full_name, phone), claimant:profiles!emergencies_claimed_by_fkey(full_name, service_id)'
+          'id, emergency_type, status, created_at, claimed_by, institution_id, triggered_by, triggered_by_phone, triggered_via, ai_flag_to_responder, lat, lng, reporter:profiles!emergencies_triggered_by_fkey(full_name, phone, admission_number), claimant:profiles!emergencies_claimed_by_fkey(full_name, service_id, admission_number, avatar_url)'
         )
         .in('status', ['triggered', 'claimed', 'in_progress'])
         .order('created_at', { ascending: false })
@@ -714,6 +720,15 @@ export default function UserPage() {
   return (
     <main className={'resq-shell' + (hasActiveAlert ? ' resq-alert-shell' : '')}>
       {signingOut && <SignOutOverlay onComplete={finishLogout} />}
+      {(identityNeeds.admissionNumber || identityNeeds.photo) && (
+        <IdentityPrompt
+          userId={myUserId}
+          role={role}
+          needsAdmissionNumber={identityNeeds.admissionNumber}
+          needsPhoto={identityNeeds.photo}
+          onDone={() => setIdentityNeeds({ admissionNumber: false, photo: false })}
+        />
+      )}
       <EmergencyPulseBackground alert={hasActiveAlert} />
       <RadarSweepBackground />
       <LanguageSwitcher />
@@ -1012,14 +1027,18 @@ export default function UserPage() {
                         {emergency.claimed_by ? 'Claimed' : 'Open'} \u00b7 {emergency.status}
                       </span>
                       {isResponderView && emergency.claimant && (
-                        <p className="resq-subtle" style={{ margin: '4px 0 0', color: '#7fe3f2' }}>
-                          \u270b Claimed by {emergency.claimant.full_name}
+                        <p className="resq-subtle" style={{ margin: '4px 0 0', color: '#7fe3f2', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          {emergency.claimant.avatar_url && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={emergency.claimant.avatar_url} alt="" width={16} height={16} style={{ borderRadius: '50%', objectFit: 'cover' }} />
+                          )}
+                          \u270b Claimed by {emergency.claimant.full_name}{emergency.claimant.admission_number ? ' (' + emergency.claimant.admission_number + ')' : ''}
                         </p>
                       )}
                       {isResponderView && (
                         <p className="resq-subtle" style={{ margin: '6px 0 0' }}>
                           {emergency.reporter?.full_name ? (
-                            <>\ud83d\udc64 {emergency.reporter.full_name}{(emergency.reporter.phone || emergency.triggered_by_phone) ? ' \u00b7 ' + (emergency.reporter.phone || emergency.triggered_by_phone) : ''}</>
+                            <>\ud83d\udc64 {emergency.reporter.full_name}{emergency.reporter.admission_number ? ' (' + emergency.reporter.admission_number + ')' : ''}{(emergency.reporter.phone || emergency.triggered_by_phone) ? ' \u00b7 ' + (emergency.reporter.phone || emergency.triggered_by_phone) : ''}</>
                           ) : emergency.triggered_by_phone ? (
                             <>\ud83d\udcde {emergency.triggered_by_phone} {emergency.triggered_via === 'ussd' ? '(USSD)' : emergency.triggered_via === 'sms' ? '(SMS)' : ''}</>
                           ) : (

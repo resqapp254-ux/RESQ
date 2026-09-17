@@ -16,6 +16,7 @@ import { useAudioPlayer } from 'expo-audio'
 import { supabase } from '../lib/supabase'
 import { registerForPushNotifications } from '../lib/notifications'
 import { pickMatchingServices } from '../lib/serviceDispatch'
+import IdentityPrompt from '../components/IdentityPrompt'
 
 const STATUS_LABELS = {
   triggered: 'NEW: Unclaimed',
@@ -44,6 +45,8 @@ export default function ResponderHomeScreen({ navigation }) {
   const [myEmergencyTypes, setMyEmergencyTypes] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
   const [sirenMuted, setSirenMuted] = useState(false)
+  const [myUserId, setMyUserId] = useState('')
+  const [identityNeeds, setIdentityNeeds] = useState({ admissionNumber: false, photo: false })
 
   const sirenPlayer = useAudioPlayer(require('../assets/siren.wav'))
 
@@ -93,10 +96,11 @@ export default function ResponderHomeScreen({ navigation }) {
       }
 
       const { data: userData } = await supabase.auth.getUser()
+      setMyUserId(userData.user.id)
 
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('institution_id, service_id, responder_permission, responder_emergency_types')
+        .select('institution_id, service_id, responder_permission, responder_emergency_types, admission_number, avatar_url')
         .eq('id', userData.user.id)
         .single()
 
@@ -110,12 +114,16 @@ export default function ResponderHomeScreen({ navigation }) {
 
       const { data: institution } = await supabase
         .from('institutions')
-        .select('name, logo_url')
+        .select('name, logo_url, require_admission_number, require_responder_photo')
         .eq('id', profile.institution_id)
         .single()
       if (institution) {
         setInstitutionName(institution.name || '')
         setInstitutionLogo(institution.logo_url || '')
+        setIdentityNeeds({
+          admissionNumber: !!institution.require_admission_number && !profile.admission_number,
+          photo: !!institution.require_responder_photo && !profile.avatar_url
+        })
       }
 
       // Responders linked to a partner unit, look up its name so the
@@ -155,7 +163,7 @@ export default function ResponderHomeScreen({ navigation }) {
   async function loadEmergencies(instId, serviceIdArg, emergencyTypesArg) {
     const { data, error } = await supabase
       .from('emergencies')
-      .select('*, claimant:profiles!emergencies_claimed_by_fkey(full_name, service_id)')
+      .select('*, claimant:profiles!emergencies_claimed_by_fkey(full_name, service_id, admission_number, avatar_url)')
       .eq('institution_id', instId)
       .in('status', ['triggered', 'claimed', 'in_progress'])
       .order('created_at', { ascending: false })
@@ -197,6 +205,15 @@ export default function ResponderHomeScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
+      {(identityNeeds.admissionNumber || identityNeeds.photo) && (
+        <IdentityPrompt
+          userId={myUserId}
+          role="responder"
+          needsAdmissionNumber={identityNeeds.admissionNumber}
+          needsPhoto={identityNeeds.photo}
+          onDone={() => setIdentityNeeds({ admissionNumber: false, photo: false })}
+        />
+      )}
       {hasUnclaimed && (
         <View style={styles.sirenBanner}>
           <Text style={styles.sirenText}>🚨 Unclaimed emergency, respond now</Text>
@@ -258,7 +275,7 @@ export default function ResponderHomeScreen({ navigation }) {
             )}
             {item.claimant && (
               <Text style={styles.claimedBy}>
-                ✋ Claimed by {item.claimant.full_name}
+                ✋ Claimed by {item.claimant.full_name}{item.claimant.admission_number ? ` (${item.claimant.admission_number})` : ''}
               </Text>
             )}
           </TouchableOpacity>

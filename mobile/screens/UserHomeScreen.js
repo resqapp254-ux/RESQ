@@ -12,6 +12,7 @@ import * as FileSystem from 'expo-file-system/legacy'
 import { decode } from 'base64-arraybuffer'
 import { supabase } from '../lib/supabase'
 import { API_BASE_URL } from '../lib/config'
+import IdentityPrompt from '../components/IdentityPrompt'
 
 const EMERGENCY_TYPES = [
   { key: 'medical', label: 'Medical', emoji: '🏥', color: '#ff5252' },
@@ -31,18 +32,22 @@ export default function UserHomeScreen({ navigation }) {
   const [enabledTypes, setEnabledTypes] = useState(null)
   const [institutionName, setInstitutionName] = useState('')
   const [institutionLogo, setInstitutionLogo] = useState('')
+  const [myUserId, setMyUserId] = useState('')
+  const [identityNeeds, setIdentityNeeds] = useState({ admissionNumber: false, photo: false })
 
   useEffect(() => {
     async function loadEnabledTypes() {
       const { data: userData } = await supabase.auth.getUser()
       if (!userData.user) return
-      const { data: profile } = await supabase.from('profiles').select('institution_id').eq('id', userData.user.id).single()
+      setMyUserId(userData.user.id)
+      const { data: profile } = await supabase.from('profiles').select('institution_id, admission_number').eq('id', userData.user.id).single()
       if (!profile?.institution_id) return
-      const { data: institution } = await supabase.from('institutions').select('name, enabled_emergency_types, logo_url').eq('id', profile.institution_id).single()
+      const { data: institution } = await supabase.from('institutions').select('name, enabled_emergency_types, logo_url, require_admission_number').eq('id', profile.institution_id).single()
       if (institution?.enabled_emergency_types?.length) setEnabledTypes(institution.enabled_emergency_types)
       if (institution) {
         setInstitutionName(institution.name || '')
         setInstitutionLogo(institution.logo_url || '')
+        setIdentityNeeds({ admissionNumber: !!institution.require_admission_number && !profile.admission_number, photo: false })
       }
     }
     loadEnabledTypes()
@@ -170,6 +175,15 @@ export default function UserHomeScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      {identityNeeds.admissionNumber && (
+        <IdentityPrompt
+          userId={myUserId}
+          role="user"
+          needsAdmissionNumber
+          needsPhoto={false}
+          onDone={() => setIdentityNeeds({ admissionNumber: false, photo: false })}
+        />
+      )}
       <ScrollView contentContainerStyle={styles.container}>
       <Image source={require('../assets/icon.png')} style={styles.logo} />
       {!!institutionName && (
