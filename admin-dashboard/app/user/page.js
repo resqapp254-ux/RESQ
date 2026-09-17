@@ -13,6 +13,7 @@ import SignOutOverlay from '../../components/SignOutOverlay'
 import { useTranslation } from '../../lib/i18n/LanguageContext'
 import LoadingScreen from '../../components/LoadingScreen'
 import MediaAttach from '../../components/MediaAttach'
+import MyInstitutionsPanel from '../../components/MyInstitutionsPanel'
 
 const EMERGENCY_TYPES = [
   { key: 'medical', translationKey: 'medical', emoji: '\uD83C\uDFE5', color: '#ff5252' },
@@ -772,6 +773,8 @@ export default function UserPage() {
           style={{ display: 'none' }}
           onChange={(e) => { sendChatPhoto(e.target.files?.[0]); e.target.value = '' }}
         />
+
+        {!isResponderView && <MyInstitutionsPanel onChanged={() => window.location.reload()} />}
 
         <div className="resq-two-col" style={{ gridTemplateColumns: '1.2fr 1fr', marginTop: isResponderView ? 20 : 0 }}>
           <section className="glass-card resq-fade-in resq-fade-in-2">

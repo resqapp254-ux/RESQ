@@ -28,6 +28,7 @@ export default function SuperAdminPage() {
   const [editingId, setEditingId] = useState(null)
   const [editName, setEditName] = useState('')
   const [uploadingLogoFor, setUploadingLogoFor] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
   const [signingOut, setSigningOut] = useState(false)
   const router = useRouter()
 
@@ -94,6 +95,36 @@ export default function SuperAdminPage() {
     const { error: updateError } = await supabase
       .from('institutions')
       .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq('id', institution.id)
+
+    if (updateError) {
+      alert('Failed to update: ' + updateError.message)
+      return
+    }
+    loadInstitutions()
+  }
+
+  async function toggleVisibility(institution) {
+    const goingPublic = institution.visibility !== 'public'
+    let lat = institution.lat
+    let lng = institution.lng
+
+    if (goingPublic && (lat == null || lng == null)) {
+      const latInput = window.prompt('Public institutions are matched by distance to the emergency. Enter this institution\'s latitude:')
+      if (latInput === null) return
+      const lngInput = window.prompt('Longitude:')
+      if (lngInput === null) return
+      lat = parseFloat(latInput)
+      lng = parseFloat(lngInput)
+      if (Number.isNaN(lat) || Number.isNaN(lng)) {
+        alert('Latitude and longitude must be numbers.')
+        return
+      }
+    }
+
+    const { error: updateError } = await supabase
+      .from('institutions')
+      .update({ visibility: goingPublic ? 'public' : 'private', lat, lng, updated_at: new Date().toISOString() })
       .eq('id', institution.id)
 
     if (updateError) {
@@ -173,9 +204,56 @@ export default function SuperAdminPage() {
 
   async function deleteInstitution(institution) {
     const confirmed = window.confirm(
-      `Delete "${institution.name}" permanently? This removes all its admins, responders, users, and emergency records. This cannot be undone.`
+      `Delete "${institution.name}" permanently? This removes all its admins, responders, users, and emergency records. ` +
+      `This cannot be undone. A full record download will be prepared first, for your own record-keeping.`
     )
     if (!confirmed) return
+
+    setDeletingId(institution.id)
+    try {
+      const [profiles, emergencies, services, chatMessages] = await Promise.all([
+        supabase.from('profiles').select('*').eq('institution_id', institution.id),
+        supabase.from('emergencies').select('*').eq('institution_id', institution.id),
+        supabase.from('institution_services').select('*').eq('institution_id', institution.id),
+        supabase.from('institution_chat_messages').select('*').eq('institution_id', institution.id)
+      ])
+
+      const emergencyIds = (emergencies.data || []).map((e) => e.id)
+      const { data: emergencyMessages } = emergencyIds.length
+        ? await supabase.from('emergency_messages').select('*').in('emergency_id', emergencyIds)
+        : { data: [] }
+
+      const snapshot = {
+        generatedAt: new Date().toISOString(),
+        reason: 'Pre-deletion archive',
+        institution,
+        profiles: profiles.data || [],
+        emergencies: emergencies.data || [],
+        emergency_messages: emergencyMessages || [],
+        institution_services: services.data || [],
+        institution_chat_messages: chatMessages.data || []
+      }
+
+      const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `resq-${institution.institution_code}-pre-deletion-archive.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      alert('Could not prepare the download, deletion cancelled: ' + err.message)
+      setDeletingId(null)
+      return
+    }
+
+    const confirmedAfterDownload = window.confirm(
+      `The archive for "${institution.name}" has been downloaded. Proceed with permanent deletion now?`
+    )
+    setDeletingId(null)
+    if (!confirmedAfterDownload) return
 
     const { error: deleteError } = await supabase
       .from('institutions')
@@ -301,6 +379,7 @@ export default function SuperAdminPage() {
               <th style={{ padding: 10 }}>Logo</th>
               <th style={{ padding: 10 }}>Name</th>
               <th style={{ padding: 10 }}>Status</th>
+              <th style={{ padding: 10 }}>Visibility</th>
               <th style={{ padding: 10 }}>Tier</th>
               <th style={{ padding: 10 }}>Emergencies</th>
               <th style={{ padding: 10 }}>Institution Code</th>
@@ -366,6 +445,15 @@ export default function SuperAdminPage() {
                   </span>
                 </td>
                 <td style={{ padding: 10 }}>
+                  <button
+                    className="resq-btn-secondary"
+                    onClick={() => toggleVisibility(inst)}
+                    title={inst.visibility === 'public' ? 'Receives emergencies from general public accounts by nearest match' : 'Only receives emergencies from users connected via its institution code'}
+                  >
+                    {inst.visibility === 'public' ? '🌐 Public' : '🔒 Private'}
+                  </button>
+                </td>
+                <td style={{ padding: 10 }}>
                   <select className="resq-input" value={inst.subscription_tier} onChange={(e) => changeTier(inst, e.target.value)}>
                     <option value="trial">Trial</option>
                     <option value="basic">Basic</option>
@@ -408,8 +496,8 @@ export default function SuperAdminPage() {
                   <button className="resq-btn-secondary" onClick={() => toggleStatus(inst)} style={{ marginRight: 8 }}>
                     {inst.status === 'suspended' ? 'Reactivate' : 'Suspend'}
                   </button>
-                  <button className="resq-btn-secondary" onClick={() => deleteInstitution(inst)} style={{ color: '#ff8080' }}>
-                    Delete
+                  <button className="resq-btn-secondary" onClick={() => deleteInstitution(inst)} disabled={deletingId === inst.id} style={{ color: '#ff8080' }}>
+                    {deletingId === inst.id ? 'Preparing archive...' : 'Delete'}
                   </button>
                 </td>
               </tr>

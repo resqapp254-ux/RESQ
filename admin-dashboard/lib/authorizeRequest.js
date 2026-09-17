@@ -10,7 +10,7 @@ export async function getAuthenticatedUser(request) {
 
   const { data: profile, error: profileError } = await supabaseAdmin
     .from('profiles')
-    .select('id, role, institution_id, service_id, responder_permission, responder_emergency_types')
+    .select('id, role, institution_id, service_id, responder_permission, responder_emergency_types, account_mode')
     .eq('id', user.id)
     .single()
   if (profileError || !profile) return { user: null, profile: null, error: 'Account profile not found' }

@@ -116,59 +116,34 @@ export default function UserHomeScreen({ navigation }) {
       const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High })
       const { latitude, longitude } = position.coords
 
-      // 2. Get my institution
-      const { data: userData } = await supabase.auth.getUser()
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('institution_id')
-        .eq('id', userData.user.id)
-        .single()
-
-      if (profileError || !profile.institution_id) {
-        Alert.alert('Not linked to an institution', 'Please enter your institution code first.')
-        setSending(false)
-        return
-      }
-
-      // One open emergency per account at a time, also enforced at the
-      // DB level (day21 migration) so this holds even if this check is
-      // ever bypassed.
-      const { data: existingOpen } = await supabase
-        .from('emergencies')
-        .select('id')
-        .eq('triggered_by', userData.user.id)
-        .in('status', ['triggered', 'claimed', 'in_progress'])
-        .limit(1)
-        .maybeSingle()
-
-      if (existingOpen) {
-        navigation.replace('UserEmergencyActive', { emergencyId: existingOpen.id })
-        return
-      }
-
-      // 3. Create the emergency
-      const { data: emergency, error: insertError } = await supabase
-        .from('emergencies')
-        .insert({
-          institution_id: profile.institution_id,
-          triggered_by: userData.user.id,
-          lat: latitude,
-          lng: longitude,
-          triggered_via: 'app',
-          emergency_type: selectedType
-        })
-        .select()
-        .single()
-
-      if (insertError) {
-        Alert.alert('Could not send emergency', insertError.message)
-        setSending(false)
-        return
-      }
-
-      // 4. Fire-and-forget: AI advice, notify responders, and photo upload (don't block navigation)
+      // 2. Create the emergency server-side — this one route now
+      // handles both private accounts (routes to their institution)
+      // and public accounts (routes to the nearest matching public
+      // institution), plus the single-open-emergency check, so mobile
+      // doesn't duplicate that logic in a second place.
       const { data: sessionData } = await supabase.auth.getSession()
       const authHeaders = { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData.session?.access_token || ''}` }
+
+      const triggerRes = await fetch(`${API_BASE_URL}/api/emergency/trigger`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ emergencyType: selectedType, lat: latitude, lng: longitude })
+      })
+      const triggerResult = await triggerRes.json()
+
+      if (!triggerResult.success) {
+        if (triggerResult.existingEmergencyId) {
+          navigation.replace('UserEmergencyActive', { emergencyId: triggerResult.existingEmergencyId })
+          return
+        }
+        Alert.alert('Could not send emergency', triggerResult.error || 'Something went wrong')
+        setSending(false)
+        return
+      }
+
+      const emergency = triggerResult.emergency
+
+      // 3. Fire-and-forget: AI advice, notify responders, and photo upload (don't block navigation)
       fetch(`${API_BASE_URL}/api/emergency/generate-advice`, {
         method: 'POST',
         headers: authHeaders,

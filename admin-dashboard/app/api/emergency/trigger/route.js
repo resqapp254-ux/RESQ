@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { getAuthenticatedUser } from '../../../../lib/authorizeRequest'
 import { rateLimit } from '../../../../lib/rateLimit'
+import { pickPublicInstitution } from '../../../../lib/publicInstitutionRouting'
 
 const VALID_EMERGENCY_TYPES = ['medical', 'fire', 'accident', 'security', 'gbv', 'mental_health', 'property_damage', 'other']
 
@@ -27,8 +28,28 @@ export async function POST(request) {
     const lat = typeof body.lat === 'number' ? body.lat : null
     const lng = typeof body.lng === 'number' ? body.lng : null
 
-    if (profile.role === 'user' && !profile.institution_id) {
+    const isPublicUser = profile.role === 'user' && profile.account_mode === 'public'
+
+    if (profile.role === 'user' && !isPublicUser && !profile.institution_id) {
       return NextResponse.json({ success: false, error: 'Enter your institution code first' }, { status: 400 })
+    }
+
+    // Public accounts aren't tied to one institution's code — route to
+    // the nearest active public institution that handles this type,
+    // same nearest-match idea used for institution_services.
+    let institutionId = profile.institution_id
+    if (isPublicUser) {
+      const { data: publicInstitutions } = await supabaseAdmin
+        .from('institutions')
+        .select('id, status, visibility, lat, lng, enabled_emergency_types')
+        .eq('visibility', 'public')
+        .eq('status', 'active')
+
+      const match = pickPublicInstitution(publicInstitutions, { emergencyType, lat, lng })
+      if (!match) {
+        return NextResponse.json({ success: false, error: 'No public institution is available to receive this emergency right now. If this is urgent, call local emergency services directly.' }, { status: 503 })
+      }
+      institutionId = match.id
     }
 
     // One open emergency per account at a time — a second SOS while
@@ -53,7 +74,7 @@ export async function POST(request) {
     const { data: emergency, error: insertError } = await supabaseAdmin
       .from('emergencies')
       .insert({
-        institution_id: profile.institution_id,
+        institution_id: institutionId,
         triggered_by: user.id,
         lat,
         lng,
