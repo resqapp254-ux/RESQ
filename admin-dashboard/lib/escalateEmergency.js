@@ -85,21 +85,32 @@ export async function escalateStaleEmergencies() {
     const institutionName = emergency.institutions?.name || 'your institution'
     const message = `RESQ ALERT: An unclaimed ${emergency.emergency_type} emergency at ${institutionName} needs a responder now. Open the app to claim it.`
 
-    if (targetLevel >= 1) {
-      await Promise.all(responders.map((r) => sendSms(r.phone, message)))
+    // Each step only advances the recorded level if it actually got
+    // through, and only fires once per step (guarded by newLevel, not
+    // just targetLevel) — otherwise a voice call that never succeeds
+    // (e.g. AFRICASTALKING_VOICE_NUMBER not configured, the documented
+    // default) would block the SMS step from ever being recorded too,
+    // and the same SMS would resend on every single cron tick forever.
+    let newLevel = emergency.escalation_level
+
+    if (targetLevel >= 1 && newLevel < 1) {
+      const results = await Promise.all(responders.map((r) => sendSms(r.phone, message)))
+      if (results.some(Boolean)) newLevel = 1
     }
-    if (targetLevel >= 2) {
-      // Call just the first responder — calling every responder for
-      // every stale emergency would be disruptive and costly.
-      await placeCall(responders[0].phone)
+
+    if (targetLevel >= 2 && newLevel >= 1) {
+      const callSucceeded = await placeCall(responders[0].phone)
+      if (callSucceeded) newLevel = 2
     }
+
+    if (newLevel === emergency.escalation_level) continue
 
     // Guard the update on the level we just read, so two overlapping
     // cron runs can't both escalate (and both SMS/call) the same
     // emergency at once.
     await supabaseAdmin
       .from('emergencies')
-      .update({ escalation_level: targetLevel, last_escalated_at: new Date().toISOString() })
+      .update({ escalation_level: newLevel, last_escalated_at: new Date().toISOString() })
       .eq('id', emergency.id)
       .eq('escalation_level', emergency.escalation_level)
 
