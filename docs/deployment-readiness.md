@@ -52,6 +52,14 @@ An unclaimed emergency now escalates automatically: push immediately (unchanged)
 - There is deliberately no `vercel.json` cron config — an early version of this feature added one scheduled every 5 minutes, and Vercel's Hobby (free) plan can reject the *entire deployment* when a cron schedule exceeds what the plan allows (daily only), not just ignore or coerce it. Rather than depend on knowing the account's plan tier, trigger `/api/cron/escalate` from a free external pinger instead — cron-job.org, or an UptimeRobot HTTP(s) monitor (you may already have one from the uptime-monitoring setup) — every few minutes, with `Authorization: Bearer <CRON_SECRET>` as a custom header. This works identically regardless of plan and can never break a deployment.
 - The voice-call step additionally requires a Voice-enabled Africa's Talking number (`AFRICASTALKING_VOICE_NUMBER`) with its Voice Callback URL set to `/api/voice/callback` in their dashboard. Without it, escalation still runs and still sends SMS — the call step is silently skipped.
 
+## Weekly report email (Day 30)
+
+`GET /api/cron/weekly-report` emails each active institution's admin a full case report (type, who triggered/handled, timestamps, chat transcript, media, rating) for whatever's been resolved since its last run, then deletes the `emergency_messages` rows for those cases — the case record itself (type, timestamps, rating, photo/video URLs) is kept forever; only the raw chat text is pruned, since it's now archived in the emailed report. See `lib/weeklyReport.js` for the exact logic.
+
+- Same external-pinger setup as `/api/cron/escalate`, protected by the same `CRON_SECRET` — but point this one at a **weekly** schedule (e.g. cron-job.org's "every Monday" option), not every few minutes. Running it more often than weekly is harmless (an institution with nothing newly resolved is skipped without emailing), but pointless.
+- Requires `RESEND_API_KEY` (same as the existing resolution-email feature) and the institution to have either an `institution_admin` profile with an email, or a `contact_email` on the institution row. Without either, that institution is skipped and logged in the response, not silently dropped.
+- An institution admin should still download the same detail on demand from `/institution-admin/case-reports` at any time; the weekly email is a push, not the only way to get it.
+
 ## Chat safety rule
 
 Responder messages are now allowed only when `emergency_messages.sender_id = auth.uid()` and the responder is the emergency's `claimed_by` user. The mobile responder screen hides the composer until the responder claims the emergency. User chat remains allowed for the user who triggered the emergency.
