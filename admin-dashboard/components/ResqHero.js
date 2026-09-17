@@ -59,26 +59,25 @@ export default function ResqHero({ pose = 'fly', scanning = false, size = 90 }) 
       <path d={p.armRight} stroke="url(#heroSuit)" strokeWidth="10" strokeLinecap="round" fill="none" />
 
       {/* Head — the shield, smiling, with optional scanning eye-beams */}
-      <g transform="translate(0 -46)">
-        <path d="M0,-20 L18,-10 V6 C18,24 9,34 0,41 C-9,34 -18,24 -18,6 V-10 Z" fill="#cc0000" stroke="#fff" strokeOpacity="0.55" strokeWidth="1.5" />
-        {scanning ? (
+      {/* Rounded, friendly head — a pointed shield-chin plus glowing red
+          eyes read as devilish, so this is softer, the scan is a cyan
+          downward sweep (like a visor looking at what's below it, not
+          horns), and the smile stays visible even while scanning. */}
+      <g transform="translate(0 -42)">
+        <path d="M0,-22 C13,-22 20,-14 20,-3 C20,16 12,30 0,38 C-12,30 -20,16 -20,-3 C-20,-14 -13,-22 0,-22 Z" fill="#cc0000" stroke="#fff" strokeOpacity="0.6" strokeWidth="1.5" />
+        {scanning && (
           <>
-            <line x1="-7" y1="4" x2="-30" y2="-2" stroke="#ff2b2b" strokeWidth="2" strokeLinecap="round" opacity="0.9">
-              <animate attributeName="opacity" values="0.9;0.3;0.9" dur="0.6s" repeatCount="indefinite" />
+            <line x1="-7" y1="3" x2="-16" y2="20" stroke="#35d0e8" strokeWidth="2" strokeLinecap="round" opacity="0.85">
+              <animate attributeName="opacity" values="0.85;0.3;0.85" dur="0.7s" repeatCount="indefinite" />
             </line>
-            <line x1="7" y1="4" x2="30" y2="-2" stroke="#ff2b2b" strokeWidth="2" strokeLinecap="round" opacity="0.9">
-              <animate attributeName="opacity" values="0.9;0.3;0.9" dur="0.6s" repeatCount="indefinite" />
+            <line x1="7" y1="3" x2="16" y2="20" stroke="#35d0e8" strokeWidth="2" strokeLinecap="round" opacity="0.85">
+              <animate attributeName="opacity" values="0.85;0.3;0.85" dur="0.7s" repeatCount="indefinite" />
             </line>
-            <circle cx="-7" cy="4" r="2.4" fill="#ffffff" />
-            <circle cx="7" cy="4" r="2.4" fill="#ffffff" />
-          </>
-        ) : (
-          <>
-            <circle cx="-7" cy="4" r="2.4" fill="#ffffff" />
-            <circle cx="7" cy="4" r="2.4" fill="#ffffff" />
-            <path d="M-7,13 Q0,20 7,13" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" fill="none" />
           </>
         )}
+        <circle cx="-7" cy="3" r="2.4" fill="#ffffff" />
+        <circle cx="7" cy="3" r="2.4" fill="#ffffff" />
+        <path d="M-7,14 Q0,20 7,14" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" fill="none" />
       </g>
     </svg>
   )

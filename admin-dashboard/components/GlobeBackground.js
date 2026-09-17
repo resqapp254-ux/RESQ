@@ -128,15 +128,15 @@ export default function GlobeBackground() {
           </circle>
         </g>
 
-        {/* Orbit guide + the RESQ guardian, sized to clear the rings
-            entirely, scanning the planet with glowing eye-beams as it
-            circles — a guardian on patrol, not just a decoration. */}
-        <ellipse cx="400" cy="400" rx="420" ry="185" fill="none" stroke="#ffffff" strokeOpacity="0.07" strokeDasharray="6 8" />
+        {/* Orbit guide + the RESQ guardian, tracing the ring itself
+            (not a wide separate lap around it) at an unhurried pace —
+            a slow, deliberate patrol, not a frantic circuit. */}
+        <ellipse cx="400" cy="400" rx="345" ry="130" fill="none" stroke="#ffffff" strokeOpacity="0.06" strokeDasharray="6 8" />
         <g>
-          <animateMotion dur="20s" repeatCount="indefinite" path="M 820,400 A 420,185 0 1,1 819.99,400 A 420,185 0 1,1 820,400" />
+          <animateMotion dur="42s" repeatCount="indefinite" path="M 745,400 A 345,130 0 1,1 744.99,400 A 345,130 0 1,1 745,400" />
           <g filter="url(#shieldBloom)">
-            <animateTransform attributeName="transform" type="scale" values="1.1; 0.9; 0.68; 0.9; 1.1" dur="20s" repeatCount="indefinite" />
-            <animate attributeName="opacity" values="1; 0.85; 0.4; 0.85; 1" dur="20s" repeatCount="indefinite" />
+            <animateTransform attributeName="transform" type="scale" values="1.05; 0.9; 0.75; 0.9; 1.05" dur="42s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="1; 0.85; 0.55; 0.85; 1" dur="42s" repeatCount="indefinite" />
 
             {/* Cape */}
             <path d="M-8,-22 C-32,-8 -37,24 -16,43 C-19,21 -14,-3 -8,-22 Z" fill="#8a0000" opacity="0.9" />
@@ -150,17 +150,21 @@ export default function GlobeBackground() {
             {/* Arms, swept back */}
             <path d="M-11,-5 C-24,-2 -30,5 -27,13" stroke="#1e2a56" strokeWidth="8" strokeLinecap="round" fill="none" />
             <path d="M11,-5 C24,-2 30,5 27,13" stroke="#1e2a56" strokeWidth="8" strokeLinecap="round" fill="none" />
-            {/* Head — the shield, scanning */}
-            <g transform="translate(0 -37)">
-              <path d="M0,-16 L14,-8 V5 C14,19 7,27 0,33 C-7,27 -14,19 -14,5 V-8 Z" fill="#cc0000" stroke="#ffffff" strokeOpacity="0.6" strokeWidth="1.2" />
-              <line x1="-6" y1="3" x2="-24" y2="-2" stroke="#ff2b2b" strokeWidth="1.6" strokeLinecap="round">
-                <animate attributeName="opacity" values="0.95;0.35;0.95" dur="0.5s" repeatCount="indefinite" />
+            {/* Head — rounded (not the pointed shield-chin that read as
+                devilish), friendly and always smiling. The scan is a
+                soft cyan sweep pointed down at the planet, like a
+                scanner visor — not red beams shooting up like horns. */}
+            <g transform="translate(0 -34)">
+              <path d="M0,-17 C10,-17 15,-11 15,-2 C15,12 9,23 0,29 C-9,23 -15,12 -15,-2 C-15,-11 -10,-17 0,-17 Z" fill="#cc0000" stroke="#ffffff" strokeOpacity="0.65" strokeWidth="1.2" />
+              <line x1="-6" y1="2" x2="-13" y2="16" stroke="#35d0e8" strokeWidth="1.6" strokeLinecap="round">
+                <animate attributeName="opacity" values="0.85;0.3;0.85" dur="0.7s" repeatCount="indefinite" />
               </line>
-              <line x1="6" y1="3" x2="24" y2="-2" stroke="#ff2b2b" strokeWidth="1.6" strokeLinecap="round">
-                <animate attributeName="opacity" values="0.95;0.35;0.95" dur="0.5s" repeatCount="indefinite" />
+              <line x1="6" y1="2" x2="13" y2="16" stroke="#35d0e8" strokeWidth="1.6" strokeLinecap="round">
+                <animate attributeName="opacity" values="0.85;0.3;0.85" dur="0.7s" repeatCount="indefinite" />
               </line>
-              <circle cx="-6" cy="3" r="2" fill="#ffffff" />
-              <circle cx="6" cy="3" r="2" fill="#ffffff" />
+              <circle cx="-6" cy="2" r="2" fill="#ffffff" />
+              <circle cx="6" cy="2" r="2" fill="#ffffff" />
+              <path d="M-6,11 Q0,16 6,11" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" fill="none" />
             </g>
           </g>
         </g>

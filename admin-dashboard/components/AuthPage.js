@@ -17,6 +17,7 @@ export default function AuthPage({ defaultMode = 'signin' }) {
   const { t } = useTranslation()
   const router = useRouter()
   const [mode, setMode] = useState(defaultMode)
+  const [caseOpen, setCaseOpen] = useState(false)
 
   const [signInForm, setSignInForm] = useState({ email: '', password: '' })
   const [signUpForm, setSignUpForm] = useState({ fullName: '', email: '', phone: '', password: '' })
@@ -154,7 +155,34 @@ export default function AuthPage({ defaultMode = 'signin' }) {
             Emergency Response Hub · Secure Channel
           </div>
 
-          <div className="glass-card resq-tilt-card resq-fade-in resq-fade-in-2">
+          {!caseOpen ? (
+            <button
+              type="button"
+              onClick={() => setCaseOpen(true)}
+              className="resq-fade-in resq-fade-in-2"
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
+                width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '40px 0'
+              }}
+              aria-label="Open sign-in"
+            >
+              <svg width="140" height="120" viewBox="0 0 140 120">
+                <path d="M50,28 C50,16 58,10 70,10 C82,10 90,16 90,28" fill="none" stroke="#e0b34d" strokeWidth="6" strokeLinecap="round" />
+                <rect x="14" y="28" width="112" height="76" rx="12" fill="#101a30" stroke="#35d0e8" strokeOpacity="0.4" strokeWidth="1.5" />
+                <rect x="14" y="28" width="112" height="30" rx="12" fill="#182142" />
+                <rect x="58" y="18" width="24" height="20" rx="4" fill="#e0b34d" stroke="#0d142d" strokeWidth="1.5" />
+                <rect x="66" y="60" width="8" height="24" rx="2" fill="#cc0000" />
+                <rect x="58" y="68" width="24" height="8" rx="2" fill="#cc0000" />
+                <circle cx="70" cy="72" r="46" fill="none" stroke="#35d0e8" strokeOpacity="0.18" strokeWidth="1">
+                  <animate attributeName="r" values="40;52;40" dur="2.4s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0.3;0;0.3" dur="2.4s" repeatCount="indefinite" />
+                </circle>
+              </svg>
+              <span style={{ color: 'var(--resq-text-primary)', fontWeight: 700, fontSize: 15 }}>Tap to open RESQ Access Kit</span>
+              <span className="resq-subtle" style={{ fontSize: 12 }}>Sign in, create an account, or reset your password</span>
+            </button>
+          ) : (
+          <div className="glass-card resq-tilt-card resq-fade-in" style={{ background: 'rgba(11,16,32,0.42)' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
             <div style={{ width: 100, height: 100 }}>
               <img src="/icon.svg" alt="RESQ" width="100" height="100" />
@@ -267,6 +295,7 @@ export default function AuthPage({ defaultMode = 'signin' }) {
             </div>
           )}
           </div>
+          )}
         </div>
       </div>
     </div>
