@@ -44,7 +44,7 @@ export default function IdentityPrompt({ userId, role, needsAdmissionNumber, nee
       if (needsPhoto && photo) {
         const ext = photo.uri.split('.').pop() || 'jpg'
         const path = `${userId}-${Date.now()}.${ext}`
-        const base64 = await FileSystem.readAsStringAsync(photo.uri, { encoding: 'base64' })
+        const base64 = await FileSystem.readAsStringAsync(photo.uri, { encoding: FileSystem.EncodingType.Base64 })
         const { error: uploadError } = await supabase.storage.from('avatars').upload(path, decode(base64), { upsert: true, contentType: `image/${ext}` })
         if (uploadError) throw uploadError
         const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(path)

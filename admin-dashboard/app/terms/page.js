@@ -14,32 +14,52 @@ export default function TermsPage() {
 
           <h2 style={{ marginTop: 28 }}>What RESQ is</h2>
           <p className="resq-subtle">
-            RESQ routes emergency reports from a user to the responders of the institution they're connected to
-            (a school, workplace, or community organization). RESQ is a routing and coordination tool; it does not
-            replace, and is not a substitute for, contacting national emergency services (police, ambulance, fire)
-            directly when they are available and appropriate.
+            RESQ routes emergency reports to the responders best placed to handle them, either an institution
+            (a school, workplace, hospital, police service, or community organization) a user is connected to, or,
+            for a general public account, the nearest institution that has opted to receive public reports of that
+            type. RESQ is a routing and coordination tool; it does not replace, and is not a substitute for,
+            contacting national emergency services directly when they are available and appropriate.
           </p>
 
           <h2 style={{ marginTop: 20 }}>Accounts and roles</h2>
           <p className="resq-subtle">
-            Institutions are created only by RESQ super admins. Institution admins manage their own responders and
-            settings. Users connect to one institution via a code provided by that institution. Misrepresenting your
-            role, impersonating another person, or submitting false emergency reports is prohibited and may result
-            in account suspension.
+            Institutions are created only by RESQ super admins, who also decide whether an institution is private
+            (reachable only by its own code) or public (able to receive reports from general public accounts by
+            location and emergency type). Institution admins manage their own responders, partner units, and
+            settings, and must accept RESQ's service agreement before their institution goes live.
+          </p>
+          <p className="resq-subtle">
+            A user account can be private, connected to one or more institutions by entering each one's code and
+            switching between them at any time, or public, with no institution code, routed by nearest match instead.
+            Misrepresenting your role, impersonating another person, or submitting false emergency reports is
+            prohibited and may result in account suspension.
           </p>
 
-          <h2 style={{ marginTop: 20 }}>Responder conduct</h2>
+          <h2 style={{ marginTop: 20 }}>Responders: primary, secondary, and individual</h2>
           <p className="resq-subtle">
-            Responders are expected to act in good faith when claiming and resolving emergencies. Users may report a
-            responder's conduct to their institution admin from the app; institution admins are responsible for
-            reviewing those reports.
+            An institution admin assigns each responder a role: a primary responder can claim and resolve
+            emergencies; a secondary responder sees the full emergency feed, logs, and team chat, and can alert
+            primary responders, but cannot claim a case themselves. A responder may also be linked to a specific
+            partner unit (a hospital, police post, or other service, including a single individual with no fixed
+            location) so their queue only shows emergencies routed to that unit. Responders are expected to act in
+            good faith when claiming and resolving emergencies. Users may report a responder's conduct to their
+            institution admin from the app, and may rate a responder's handling of their case after it is resolved.
           </p>
 
           <h2 style={{ marginTop: 20 }}>Content you submit</h2>
           <p className="resq-subtle">
-            Photos, video, voice notes, and messages you attach to an emergency are shared with that institution's
-            responders and admin for the purpose of resolving the emergency, as described in our{' '}
-            <a href="/privacy">Privacy Policy</a>.
+            Photos, video, voice notes, and messages you attach to an emergency are shared with the responding
+            institution's responders and admin for the purpose of resolving the emergency, as described in our{' '}
+            <a href="/privacy">Privacy Policy</a>. An admission/work ID number or profile picture, if your
+            institution requires one, is collected once and shown to the responders and reporters you interact with.
+          </p>
+
+          <h2 style={{ marginTop: 20 }}>Records and reporting</h2>
+          <p className="resq-subtle">
+            Institution admins can download a full report of any resolved case, or a weekly bundle of every case
+            resolved in the last week, at any time, and also receive that weekly report by email automatically. It is
+            the institution's responsibility to keep its own copies of these reports for follow-up and investigation,
+            per the retention terms in our <a href="/privacy">Privacy Policy</a>.
           </p>
 
           <h2 style={{ marginTop: 20 }}>Availability</h2>

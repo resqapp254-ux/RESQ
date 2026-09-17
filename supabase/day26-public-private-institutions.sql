@@ -36,9 +36,26 @@ create index if not exists idx_user_institutions_user on user_institutions(user_
 
 alter table user_institutions enable row level security;
 
+-- SELECT and DELETE only (a user can see and "leave" their own
+-- links), deliberately NOT insert/update: joining an institution
+-- must go through join_institution_by_code, which validates the
+-- code and the institution's active status first. A plain "for all"
+-- policy here would let a user insert an arbitrary institution_id
+-- directly, then call switch_active_institution() to route their
+-- emergencies to an institution they were never given a code for —
+-- the RPC only checks user_institutions membership, not how that
+-- membership was created. join_institution_by_code's own insert
+-- still works despite this, since it runs SECURITY DEFINER as the
+-- function owner, which bypasses RLS.
 drop policy if exists "users manage their own institution links" on user_institutions;
-create policy "users manage their own institution links"
-  on user_institutions for all
+drop policy if exists "users view their own institution links" on user_institutions;
+create policy "users view their own institution links"
+  on user_institutions for select
+  using (user_id = auth.uid());
+
+drop policy if exists "users leave their own institution links" on user_institutions;
+create policy "users leave their own institution links"
+  on user_institutions for delete
   using (user_id = auth.uid());
 
 drop policy if exists "super_admin full access on user_institutions" on user_institutions;

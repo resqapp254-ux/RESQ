@@ -190,9 +190,15 @@ export default function InstitutionAdminPage() {
   }
 
   async function updatePermission(responderId, permission) {
-    const { error: updateError } = await supabase.from('profiles').update({ responder_permission: permission }).eq('id', responderId)
-    if (updateError) {
-      alert('Failed to update: ' + updateError.message)
+    const { data: sessionData } = await supabase.auth.getSession()
+    const res = await fetch('/api/institution/update-responder-permission', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (sessionData.session?.access_token || '') },
+      body: JSON.stringify({ responderId, permission })
+    })
+    const result = await res.json()
+    if (!result.success) {
+      alert('Failed to update: ' + result.error)
       return
     }
     setResponders((prev) => prev.map((r) => (r.id === responderId ? { ...r, responder_permission: permission } : r)))

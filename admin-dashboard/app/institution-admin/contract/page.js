@@ -20,6 +20,7 @@ export default function InstitutionContractPage() {
   const router = useRouter()
   const [institutionId, setInstitutionId] = useState('')
   const [institutionName, setInstitutionName] = useState('')
+  const [userId, setUserId] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -58,6 +59,8 @@ export default function InstitutionContractPage() {
       return
     }
 
+    setUserId(sessionData.session.user.id)
+
     const { data: profile } = await supabase
       .from('profiles')
       .select('institution_id, email, full_name')
@@ -92,6 +95,7 @@ export default function InstitutionContractPage() {
     setSaving(true)
     const { error: insertError } = await supabase.from('institution_contracts').insert({
       institution_id: institutionId,
+      signed_by: userId,
       company_name: form.companyName.trim(),
       signee_name: form.signeeName.trim(),
       signee_title: form.signeeTitle.trim() || null,
