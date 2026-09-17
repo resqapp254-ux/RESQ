@@ -12,6 +12,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import Guardian from '../components/Guardian'
 
 const WELCOME_SEEN_KEY = 'resq-welcome-seen'
 
@@ -30,33 +31,6 @@ const dots = Array.from({ length: DOT_COUNT }).map((_, i) => {
 // The guardian, built from simple View shapes at the scale this screen
 // needs — a stylized figure, not a rendered character model, matching
 // the same flat-vector language used everywhere else in the app.
-function Guardian({ pose }) {
-  const arms =
-    pose === 'push'
-      ? { left: '25deg', right: '-65deg' }
-      : pose === 'carry'
-        ? { left: '150deg', right: '-150deg' }
-        : { left: '35deg', right: '-35deg' }
-
-  return (
-    <View style={heroStyles.wrap}>
-      <View style={[heroStyles.cape, heroStyles.capeLeft]} />
-      <View style={[heroStyles.cape, heroStyles.capeRight]} />
-      <View style={[heroStyles.arm, { transform: [{ rotate: arms.left }] }]} />
-      <View style={[heroStyles.arm, { transform: [{ rotate: arms.right }] }]} />
-      <View style={heroStyles.body}>
-        <View style={heroStyles.emblem} />
-      </View>
-      <View style={heroStyles.head}>
-        <View style={heroStyles.eyeRow}>
-          <View style={heroStyles.eye} />
-          <View style={heroStyles.eye} />
-        </View>
-      </View>
-    </View>
-  )
-}
-
 export default function WelcomeScreen({ navigation }) {
   const fade = useRef(new Animated.Value(0)).current
   const scale = useRef(new Animated.Value(0.4)).current
@@ -184,48 +158,6 @@ export default function WelcomeScreen({ navigation }) {
     </View>
   )
 }
-
-const heroStyles = StyleSheet.create({
-  wrap: { width: 60, height: 76, alignItems: 'center' },
-  cape: { position: 'absolute', top: 6, width: 22, height: 44, backgroundColor: '#8a0000', borderRadius: 10 },
-  capeLeft: { left: 2, transform: [{ rotate: '-12deg' }] },
-  capeRight: { right: 2, transform: [{ rotate: '12deg' }] },
-  body: {
-    width: 26,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: '#1e2a56',
-    borderWidth: 1,
-    borderColor: 'rgba(53,208,232,0.4)',
-    marginTop: 24,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  emblem: { width: 9, height: 11, borderRadius: 3, backgroundColor: '#cc0000' },
-  arm: {
-    position: 'absolute',
-    top: 28,
-    left: 26,
-    width: 22,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#1e2a56'
-  },
-  head: {
-    position: 'absolute',
-    top: 0,
-    width: 26,
-    height: 30,
-    borderRadius: 8,
-    backgroundColor: '#cc0000',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  eyeRow: { flexDirection: 'row', gap: 5, marginTop: 2 },
-  eye: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#fff' }
-})
 
 const styles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#05070d', padding: 32, gap: 28 },
