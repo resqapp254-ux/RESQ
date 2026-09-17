@@ -111,7 +111,7 @@ export default function AddResponderPage() {
               <p style={{ marginTop: 10 }}>Email: <strong>{form.email}</strong><br />Password: <strong>{form.tempPassword}</strong></p>
               {form.serviceId && (
                 <p className="resq-subtle" style={{ marginTop: 10 }}>
-                  Assigned as a secondary responder to: <strong style={{ color: 'var(--resq-text-primary)' }}>{services.find((s) => s.id === form.serviceId)?.name}</strong>
+                  Linked to partner unit: <strong style={{ color: 'var(--resq-text-primary)' }}>{services.find((s) => s.id === form.serviceId)?.name}</strong>
                 </p>
               )}
             </div>
@@ -150,22 +150,23 @@ export default function AddResponderPage() {
               <button type="button" className="resq-btn-secondary" onClick={generatePassword}>Generate</button>
             </div>
 
-            <label>Assign to a service (optional)</label>
+            <label>Linked partner unit (optional)</label>
             <select className="resq-input" style={{ marginTop: 4 }} value={form.serviceId} onChange={(e) => update('serviceId', e.target.value)}>
-              <option value="">Primary responder (all emergencies)</option>
+              <option value="">Not linked (sees every emergency for this institution)</option>
               {services.map((s) => (
                 <option key={s.id} value={s.id}>{s.name} ({s.service_type})</option>
               ))}
             </select>
             <p className="resq-subtle" style={{ marginTop: 4, marginBottom: 14 }}>
-              Leave as "Primary" for your main team. Pick a service to make this a secondary responder, see{' '}
-              <Link href="/institution-admin/services">Secondary Responders</Link> to add one first.
+              Leave unlinked for your main team. Link a responder to a partner hospital, police post, or other unit so
+              their queue only shows emergencies routed to that unit, see{' '}
+              <Link href="/institution-admin/services">Partner Units</Link> to add one first.
             </p>
 
-            <label>Permission</label>
+            <label>Role</label>
             <select className="resq-input" style={{ marginTop: 4, marginBottom: 14 }} value={form.permission} onChange={(e) => update('permission', e.target.value)}>
-              <option value="full">Full: can claim, respond, and resolve</option>
-              <option value="view_only">View only: sees the log, cannot claim</option>
+              <option value="full">Primary responder: claims, responds, and resolves emergencies</option>
+              <option value="view_only">Secondary responder: sees the full feed and logs, cannot claim</option>
             </select>
 
             <label>Notify for these emergency types (leave all off for every type)</label>

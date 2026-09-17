@@ -258,8 +258,9 @@ export default function UserPage() {
 
       let { data: open } = await openQuery
 
-      // Secondary responders (linked to an institution_service) only
-      // see emergencies routed to their service — see lib/serviceDispatch.js.
+      // Responders linked to a partner unit (institution_service) only
+      // see emergencies routed to that unit, see lib/serviceDispatch.js.
+      // Independent of whether they're a primary or secondary responder.
       if (roleName === 'responder' && serviceIdValue && institutionIdValue) {
         const { data: services } = await supabase
           .from('institution_services')
@@ -1009,7 +1010,7 @@ export default function UserPage() {
                       </span>
                       {isResponderView && emergency.claimant && (
                         <p className="resq-subtle" style={{ margin: '4px 0 0', color: '#7fe3f2' }}>
-                          \u270b Claimed by {emergency.claimant.full_name}{emergency.claimant.service_id ? ' (secondary responder)' : ''}
+                          \u270b Claimed by {emergency.claimant.full_name}
                         </p>
                       )}
                       {isResponderView && (
@@ -1063,7 +1064,7 @@ export default function UserPage() {
                     )}
                     {isResponderView && myPermission === 'view_only' && (
                       <span className="resq-badge" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--resq-text-secondary)', alignSelf: 'flex-start' }}>
-                        View only
+                        Secondary responder: view only
                       </span>
                     )}
                   </div>

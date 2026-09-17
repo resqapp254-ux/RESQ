@@ -118,7 +118,7 @@ export default function ResponderHomeScreen({ navigation }) {
         setInstitutionLogo(institution.logo_url || '')
       }
 
-      // Secondary responders — look up their own service's name so the
+      // Responders linked to a partner unit, look up its name so the
       // header can tell them plainly which unit they're logged in as,
       // instead of leaving them to guess from the shared queue.
       if (profile.service_id) {
@@ -148,9 +148,9 @@ export default function ResponderHomeScreen({ navigation }) {
   }, [])
 
   // Mirrors admin-dashboard/app/user/page.js's refreshEmergencies: a
-  // secondary responder (service_id set) only sees emergencies routed
-  // to their own service; a primary responder whose admin narrowed
-  // which types they handle only sees those types. Everyone else sees
+  // responder linked to a partner unit (service_id set) only sees
+  // emergencies routed to that unit; one whose admin narrowed which
+  // types they handle only sees those types. Everyone else sees
   // every open emergency for the institution, unchanged.
   async function loadEmergencies(instId, serviceIdArg, emergencyTypesArg) {
     const { data, error } = await supabase
@@ -217,10 +217,10 @@ export default function ResponderHomeScreen({ navigation }) {
             </View>
           )}
           {!!myServiceName && (
-            <Text style={styles.roleBadge} numberOfLines={1}>🚑 Secondary responder · {myServiceName}</Text>
+            <Text style={styles.roleBadge} numberOfLines={1}>🏥 Partner unit: {myServiceName}</Text>
           )}
           {myPermission === 'view_only' && (
-            <Text style={styles.viewOnlyBadge}>👁️ View only: cannot claim</Text>
+            <Text style={styles.viewOnlyBadge}>👁️ Secondary responder: cannot claim</Text>
           )}
         </View>
         <TouchableOpacity style={styles.teamChatButton} onPress={() => navigation.navigate('InstitutionChat')}>
@@ -258,7 +258,7 @@ export default function ResponderHomeScreen({ navigation }) {
             )}
             {item.claimant && (
               <Text style={styles.claimedBy}>
-                ✋ Claimed by {item.claimant.full_name}{item.claimant.service_id ? ' (secondary responder)' : ''}
+                ✋ Claimed by {item.claimant.full_name}
               </Text>
             )}
           </TouchableOpacity>

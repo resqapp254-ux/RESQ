@@ -4,9 +4,10 @@
 // chat with the person who reported it (see EmergencyDetailScreen).
 
 import React, { useEffect, useRef, useState } from 'react'
-import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native'
+import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { supabase } from '../lib/supabase'
+import { API_BASE_URL } from '../lib/config'
 
 export default function InstitutionChatScreen() {
   const [messages, setMessages] = useState([])
@@ -81,6 +82,34 @@ export default function InstitutionChatScreen() {
     })
   }
 
+  async function sendAlert() {
+    Alert.alert(
+      'Alert the team',
+      'This sends a push notification to every responder and admin in your institution. Use it for something that needs immediate attention, like an unclaimed emergency.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Send Alert',
+          style: 'destructive',
+          onPress: async () => {
+            const { data: sessionData } = await supabase.auth.getSession()
+            const trimmed = text.trim()
+            setText('')
+            try {
+              await fetch(`${API_BASE_URL}/api/institution/alert-team`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData.session?.access_token || ''}` },
+                body: JSON.stringify({ message: trimmed })
+              })
+            } catch {
+              Alert.alert('Could not send alert', 'Check your connection and try again.')
+            }
+          }
+        }
+      ]
+    )
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -91,14 +120,19 @@ export default function InstitutionChatScreen() {
           contentContainerStyle={{ padding: 16 }}
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
           renderItem={({ item }) => (
-            <View style={[styles.bubble, item.sender_id === myId ? styles.bubbleMine : styles.bubbleTheirs]}>
+            <View style={[styles.bubble, item.is_alert ? styles.bubbleAlert : item.sender_id === myId ? styles.bubbleMine : styles.bubbleTheirs]}>
               {item.sender_id !== myId && <Text style={styles.senderName}>{names[item.sender_id] || 'Teammate'}</Text>}
-              <Text style={item.sender_id === myId ? styles.bubbleTextMine : styles.bubbleTextTheirs}>{item.message}</Text>
+              <Text style={item.is_alert ? styles.bubbleTextAlert : item.sender_id === myId ? styles.bubbleTextMine : styles.bubbleTextTheirs}>
+                {item.is_alert ? '🚨 ' : ''}{item.message}
+              </Text>
             </View>
           )}
           ListEmptyComponent={<Text style={styles.empty}>No messages yet. Say hello to your team.</Text>}
         />
         <View style={styles.inputRow}>
+          <TouchableOpacity style={styles.alertButton} onPress={sendAlert}>
+            <Text style={{ fontSize: 18 }}>🚨</Text>
+          </TouchableOpacity>
           <TextInput
             style={styles.input}
             value={text}
@@ -121,10 +155,13 @@ const styles = StyleSheet.create({
   bubble: { padding: 10, borderRadius: 10, marginVertical: 4, maxWidth: '80%' },
   bubbleMine: { backgroundColor: '#cc0000', alignSelf: 'flex-end' },
   bubbleTheirs: { backgroundColor: 'rgba(255,255,255,0.1)', alignSelf: 'flex-start' },
+  bubbleAlert: { backgroundColor: 'rgba(255,43,43,0.22)', borderWidth: 1, borderColor: '#ff2b2b', alignSelf: 'stretch' },
   senderName: { color: '#35d0e8', fontSize: 11, fontWeight: '700', marginBottom: 2 },
   bubbleTextMine: { color: 'white' },
   bubbleTextTheirs: { color: '#f4f6fb' },
+  bubbleTextAlert: { color: '#ffb3b3', fontWeight: '700' },
   inputRow: { flexDirection: 'row', padding: 12, gap: 8, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' },
+  alertButton: { backgroundColor: 'rgba(255,43,43,0.18)', borderRadius: 8, paddingHorizontal: 12, justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,43,43,0.4)' },
   input: {
     flex: 1,
     borderWidth: 1,

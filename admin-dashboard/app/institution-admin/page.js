@@ -287,7 +287,7 @@ export default function InstitutionAdminPage() {
             )}
           </Link>
           <Link href="/institution-admin/services" className="resq-btn-secondary" style={{ textDecoration: 'none' }}>
-            🏥 Secondary Responders
+            🏥 Partner Units
           </Link>
           <Link href="/institution-admin/add-responder" className="resq-btn-primary" style={{ textDecoration: 'none' }}>
             + Add Responder

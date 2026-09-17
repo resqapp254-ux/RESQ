@@ -1,8 +1,10 @@
 // app/institution-admin/services/page.js
-// Institution admins add secondary responders here — a partner
-// hospital, police post, fire unit, or any custom service. These
-// use the same responder accounts as primary responders (see
-// add-responder), just linked to one of these service records.
+// Institution admins register partner units here: a partner
+// hospital, police post, fire unit, or any custom service. A
+// responder can optionally be linked to one of these (see
+// add-responder) so their queue only shows emergencies routed to
+// that unit — independent of whether they're a primary responder
+// (can claim) or secondary responder (sees the feed, cannot claim).
 
 'use client'
 
@@ -196,10 +198,11 @@ export default function ManageServicesPage() {
         <Link href="/institution-admin">&larr; Back to Dashboard</Link>
 
         <div className="glass-card resq-fade-in" style={{ marginTop: 16, marginBottom: 24 }}>
-          <h1 className="resq-h1" style={{ fontSize: 26 }}>Secondary Responders</h1>
+          <h1 className="resq-h1" style={{ fontSize: 26 }}>Partner Units</h1>
           <p className="resq-subtle" style={{ marginTop: 8 }}>
-            Add hospitals, police stations, or any other partner service. They use the same responder accounts as
-            your primary team (add them from "Add Responder" and pick a service there). {routingNote}
+            Add hospitals, police stations, or any other partner service. Link a responder to one from "Add
+            Responder" so their queue only shows emergencies routed here, whether they're a primary responder (can
+            claim) or a secondary responder (sees the feed, cannot claim). {routingNote}
           </p>
         </div>
 
@@ -274,7 +277,7 @@ export default function ManageServicesPage() {
 
         <section className="glass-card resq-fade-in resq-fade-in-3">
           <h2 style={{ marginTop: 0 }}>Your services ({services.length})</h2>
-          {services.length === 0 && <p className="resq-subtle">No secondary services yet.</p>}
+          {services.length === 0 && <p className="resq-subtle">No partner units yet.</p>}
           {services.map((s) => (
             <div key={s.id} className="resq-row-interactive" style={{ padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <div>
