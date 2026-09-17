@@ -140,7 +140,7 @@ export default function AnimationLabPage() {
 
           <section className="glass-card resq-fade-in resq-fade-in-4">
             <h3 style={{ marginTop: 0 }}>Sign-out Sequence</h3>
-            <p className="resq-subtle" style={{ marginTop: 0 }}>Plays full-screen — the hero arrives from a random edge each time.</p>
+            <p className="resq-subtle" style={{ marginTop: 0 }}>Plays full-screen. The hero arrives from a random edge each time.</p>
             <button className="resq-btn-secondary" onClick={() => setPreviewSignOut(true)}>▶ Preview</button>
           </section>
         </div>

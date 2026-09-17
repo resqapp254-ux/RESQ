@@ -141,7 +141,7 @@ export default function SuperAdminPage() {
     if (!file) return
     const maxBytes = 3 * 1024 * 1024
     if (file.size > maxBytes) {
-      alert('Logo image is too large — please use one under 3MB.')
+      alert('Logo image is too large. Please use one under 3MB.')
       return
     }
 
@@ -265,7 +265,7 @@ export default function SuperAdminPage() {
           <Link href="/super-admin/animation-lab" className="resq-btn-secondary" style={{ textDecoration: 'none' }}>
             🎛 Animation Lab
           </Link>
-          <button className="resq-btn-secondary" onClick={downloadBackup} title="Download a full JSON snapshot of all data — a self-serve recovery point in addition to Supabase's own backups">
+          <button className="resq-btn-secondary" onClick={downloadBackup} title="Download a full JSON snapshot of all data: a self-serve recovery point in addition to Supabase's own backups">
             ⬇ Download Backup
           </button>
           <button className="resq-btn-secondary" onClick={handleLogout}>Log Out</button>

@@ -158,14 +158,14 @@ export default function AddResponderPage() {
               ))}
             </select>
             <p className="resq-subtle" style={{ marginTop: 4, marginBottom: 14 }}>
-              Leave as "Primary" for your main team. Pick a service to make this a secondary responder — see{' '}
+              Leave as "Primary" for your main team. Pick a service to make this a secondary responder, see{' '}
               <Link href="/institution-admin/services">Secondary Responders</Link> to add one first.
             </p>
 
             <label>Permission</label>
             <select className="resq-input" style={{ marginTop: 4, marginBottom: 14 }} value={form.permission} onChange={(e) => update('permission', e.target.value)}>
-              <option value="full">Full — can claim, respond, and resolve</option>
-              <option value="view_only">View only — sees the log, cannot claim</option>
+              <option value="full">Full: can claim, respond, and resolve</option>
+              <option value="view_only">View only: sees the log, cannot claim</option>
             </select>
 
             <label>Notify for these emergency types (leave all off for every type)</label>

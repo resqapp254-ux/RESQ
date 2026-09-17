@@ -1,7 +1,9 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { translate } from './translations'
+import { translate, LANGUAGES } from './translations'
+
+const RTL_LANGUAGES = ['ar']
 
 const LanguageContext = createContext({ language: 'en', setLanguage: () => {}, t: (key) => key })
 
@@ -17,19 +19,28 @@ export function LanguageProvider({ children }) {
         setLanguageState(saved)
       } else {
         const browserLang = (navigator.language || 'en').slice(0, 2)
-        if (['en', 'sw', 'fr', 'zh'].includes(browserLang)) setLanguageState(browserLang)
+        if (LANGUAGES.some((l) => l.code === browserLang)) setLanguageState(browserLang)
       }
     } catch {
-      // localStorage unavailable — stay on English
+      // localStorage unavailable, stay on English
     }
   }, [])
+
+  useEffect(() => {
+    try {
+      document.documentElement.dir = RTL_LANGUAGES.includes(language) ? 'rtl' : 'ltr'
+      document.documentElement.lang = language
+    } catch {
+      // Non-fatal — direction only affects text alignment, not functionality
+    }
+  }, [language])
 
   function setLanguage(lang) {
     setLanguageState(lang)
     try {
       window.localStorage.setItem(STORAGE_KEY, lang)
     } catch {
-      // ignore — per-session only
+      // ignore, per-session only
     }
   }
 

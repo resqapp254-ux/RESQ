@@ -22,7 +22,7 @@ export default function MediaAttach({ emergencyId, onUploaded }) {
 
     const maxBytes = MAX_SIZE_MB[kind] * 1024 * 1024
     if (file.size > maxBytes) {
-      setError(`That file is too large — ${kind} attachments are limited to ${MAX_SIZE_MB[kind]}MB.`)
+      setError(`That file is too large. ${kind} attachments are limited to ${MAX_SIZE_MB[kind]}MB.`)
       return
     }
 

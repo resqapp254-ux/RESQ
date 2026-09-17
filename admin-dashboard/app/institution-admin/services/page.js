@@ -199,7 +199,7 @@ export default function ManageServicesPage() {
           <h1 className="resq-h1" style={{ fontSize: 26 }}>Secondary Responders</h1>
           <p className="resq-subtle" style={{ marginTop: 8 }}>
             Add hospitals, police stations, or any other partner service. They use the same responder accounts as
-            your primary team (add them from "Add Responder" and pick a service there) — {routingNote}
+            your primary team (add them from "Add Responder" and pick a service there). {routingNote}
           </p>
         </div>
 

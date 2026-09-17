@@ -471,7 +471,7 @@ export default function UserPage() {
 
     const targetId = chatTargetId
     if (!targetId) {
-      setChatError(isResponderView ? 'Claim an emergency first — you can only message its reporter once you have.' : 'No emergency selected.')
+      setChatError(isResponderView ? 'Claim an emergency first. You can only message its reporter once you have.' : 'No emergency selected.')
       setChatBusy(false)
       return
     }
@@ -510,7 +510,7 @@ export default function UserPage() {
         return
       }
       if (result.blocked) {
-        setChatError((result.reason || 'That message was not sent — it looked unsafe or incorrect.') + ' Try the suggestion below, or rewrite it.')
+        setChatError((result.reason || 'That message was not sent. It looked unsafe or incorrect.') + ' Try the suggestion below, or rewrite it.')
         setChatSuggestion(result.suggestion || '')
         return
       }
@@ -545,7 +545,7 @@ export default function UserPage() {
 
     const maxBytes = 10 * 1024 * 1024
     if (file.size > maxBytes) {
-      setChatError('That photo is too large — attachments are limited to 10MB.')
+      setChatError('That photo is too large. Attachments are limited to 10MB.')
       return
     }
 
@@ -840,7 +840,7 @@ export default function UserPage() {
                 ) : (
                   <>
                     <p className="resq-subtle resq-fade-in" style={{ marginTop: 0 }}>
-                      Your emergency has been sent. Stay on this page to chat with responders and share photos, video, or a voice note — a new SOS can be sent once this one is resolved.
+                      Your emergency has been sent. Stay on this page to chat with responders and share photos, video, or a voice note. A new SOS can be sent once this one is resolved.
                     </p>
 
                     {currentAdvice && (
@@ -910,7 +910,7 @@ export default function UserPage() {
                             <option value="">Select…</option>
                             {reportableEmergencies.map((e) => (
                               <option key={e.id} value={e.id}>
-                                {typeLabel(e.emergency_type, t)} — {new Date(e.created_at || e.resolved_at).toLocaleString()}
+                                {typeLabel(e.emergency_type, t)} · {new Date(e.created_at || e.resolved_at).toLocaleString()}
                               </option>
                             ))}
                           </select>

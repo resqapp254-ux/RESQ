@@ -51,6 +51,21 @@ export default function GlobeBackground() {
           <clipPath id="sphereClip">
             <circle r="185" />
           </clipPath>
+          {/* Hidden guide path the shield's animateMotion follows via
+              <mpath> below — its `d` is keyframed with the exact same
+              values/timing as the outer ring ellipse (rx 360, ry
+              84<->51 every 10s), so the shield is mathematically glued
+              to the ring's own edge at every instant, including while
+              it breathes open and closed, instead of drifting off a
+              static path that only matched the ring some of the time. */}
+          <path id="shieldOrbitGuide" fill="none">
+            <animate
+              attributeName="d"
+              values="M 360,0 A 360,84 0 1,1 359.99,0 A 360,84 0 1,1 360,0;M 360,0 A 360,51 0 1,1 359.99,0 A 360,51 0 1,1 360,0;M 360,0 A 360,84 0 1,1 359.99,0 A 360,84 0 1,1 360,0"
+              dur="10s"
+              repeatCount="indefinite"
+            />
+          </path>
         </defs>
 
         <circle cx="400" cy="400" r="370" fill="url(#beaconGlow)" />
@@ -185,26 +200,30 @@ export default function GlobeBackground() {
             <animate attributeName="r" values="185;320" dur="4.5s" repeatCount="indefinite" />
             <animate attributeName="opacity" values="0.55;0" dur="4.5s" repeatCount="indefinite" />
           </circle>
-        </g>
 
-        {/* Orbit guide + the RESQ shield — the real emblem itself, not a
-            character — standing guard on the ring's outer edge. It
-            traces that exact edge strictly, on rails, with no drift
-            outside the ring's own geometry. */}
-        <ellipse cx="400" cy="400" rx="362" ry="85" fill="none" stroke="#ffffff" strokeOpacity="0.06" strokeDasharray="6 8" />
-        <g>
-          <animateMotion dur="42s" repeatCount="indefinite" path="M 762,400 A 362,85 0 1,1 761.99,400 A 362,85 0 1,1 762,400" />
-          <g filter="url(#shieldBloom)">
-            <animateTransform attributeName="transform" type="scale" values="1.05; 0.9; 0.75; 0.9; 1.05" dur="42s" repeatCount="indefinite" />
-            <animate attributeName="opacity" values="1; 0.85; 0.6; 0.85; 1" dur="42s" repeatCount="indefinite" />
+          {/* The RESQ shield — the real emblem itself, not a character —
+              riding the ring's own outer edge via <mpath>, so it is
+              glued to the ring at every instant of its breathing cycle.
+              It lives inside this same rocking/translated group as the
+              ring and globe, so it rocks in lockstep with them too,
+              instead of a top-level path that stayed still while the
+              ring tilted underneath it. */}
+          <g>
+            <animateMotion dur="42s" repeatCount="indefinite">
+              <mpath href="#shieldOrbitGuide" />
+            </animateMotion>
+            <g filter="url(#shieldBloom)">
+              <animateTransform attributeName="transform" type="scale" values="1.05; 0.9; 0.75; 0.9; 1.05" dur="42s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="1; 0.85; 0.6; 0.85; 1" dur="42s" repeatCount="indefinite" />
 
-            <circle r="24" fill="none" stroke="#35d0e8" strokeWidth="1.2">
-              <animate attributeName="r" values="18;28;18" dur="2.4s" repeatCount="indefinite" />
-              <animate attributeName="opacity" values="0.55;0;0.55" dur="2.4s" repeatCount="indefinite" />
-            </circle>
-            <g transform="scale(0.75) translate(-64,-64)">
-              <path d="M64 17 101 31v29c0 25-15 40-37 51C42 100 27 85 27 60V31l37-14Z" fill="url(#resqShieldRed)" stroke="#ffffff" strokeOpacity="0.85" strokeWidth="4" />
-              <path d="M47 82V45h18c12 0 19 6 19 16 0 7-4 12-11 14l12 14H74L63 77h-5v5H47Zm11-14h7c5 0 8-2 8-7s-3-7-8-7h-7v14Z" fill="#ffffff" />
+              <circle r="24" fill="none" stroke="#35d0e8" strokeWidth="1.2">
+                <animate attributeName="r" values="18;28;18" dur="2.4s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.55;0;0.55" dur="2.4s" repeatCount="indefinite" />
+              </circle>
+              <g transform="scale(0.75) translate(-64,-64)">
+                <path d="M64 17 101 31v29c0 25-15 40-37 51C42 100 27 85 27 60V31l37-14Z" fill="url(#resqShieldRed)" stroke="#ffffff" strokeOpacity="0.85" strokeWidth="4" />
+                <path d="M47 82V45h18c12 0 19 6 19 16 0 7-4 12-11 14l12 14H74L63 77h-5v5H47Zm11-14h7c5 0 8-2 8-7s-3-7-8-7h-7v14Z" fill="#ffffff" />
+              </g>
             </g>
           </g>
         </g>

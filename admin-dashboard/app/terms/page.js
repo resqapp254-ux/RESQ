@@ -1,7 +1,7 @@
 // app/terms/page.js
 import GlobeBackground from '../../components/GlobeBackground'
 
-export const metadata = { title: 'Terms of Service — RESQ' }
+export const metadata = { title: 'Terms of Service | RESQ' }
 
 export default function TermsPage() {
   return (
@@ -15,7 +15,7 @@ export default function TermsPage() {
           <h2 style={{ marginTop: 28 }}>What RESQ is</h2>
           <p className="resq-subtle">
             RESQ routes emergency reports from a user to the responders of the institution they're connected to
-            (a school, workplace, or community organization). RESQ is a routing and coordination tool — it does not
+            (a school, workplace, or community organization). RESQ is a routing and coordination tool; it does not
             replace, and is not a substitute for, contacting national emergency services (police, ambulance, fire)
             directly when they are available and appropriate.
           </p>
@@ -45,7 +45,7 @@ export default function TermsPage() {
           <h2 style={{ marginTop: 20 }}>Availability</h2>
           <p className="resq-subtle">
             RESQ is provided on an "as available" basis. Network, device, or third-party service (SMS, push
-            notification, email) outages can delay or prevent delivery of an alert — RESQ does not guarantee
+            notification, email) outages can delay or prevent delivery of an alert. RESQ does not guarantee
             uninterrupted service and is not a replacement for direct emergency calls where those are available.
           </p>
 

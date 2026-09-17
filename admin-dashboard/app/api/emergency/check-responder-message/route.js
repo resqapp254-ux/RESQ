@@ -20,7 +20,7 @@ basic safety practice, or giving confidently wrong information).
 Respond with ONLY a JSON object, no other text, in this exact shape:
 {"flag": true or false, "reason": "short explanation, under 20 words, empty string if flag is false", "suggestion": "if flag is true, a corrected safe version of the message the responder should send instead; empty string if flag is false"}
 
-Be conservative — only flag genuinely concerning content, not just brief or informal responses.`
+Be conservative: only flag genuinely concerning content, not just brief or informal responses.`
 
 export async function POST(request) {
   try {

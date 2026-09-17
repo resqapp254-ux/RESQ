@@ -258,7 +258,7 @@ export default function InstitutionAdminPage() {
       </div>
       <p className="resq-fade-in resq-subtle">
         Institution Code: <strong style={{ fontFamily: 'monospace', color: 'var(--resq-text-primary)' }}>{institution?.institution_code}</strong>
-        {' — '}Status: <strong className="resq-green">{institution?.status}</strong>
+        {' · '}Status: <strong className="resq-green">{institution?.status}</strong>
       </p>
 
       {error && <p style={{ color: '#ff8080' }}>{error}</p>}

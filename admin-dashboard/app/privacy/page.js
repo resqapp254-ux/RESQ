@@ -1,7 +1,7 @@
 // app/privacy/page.js
 import GlobeBackground from '../../components/GlobeBackground'
 
-export const metadata = { title: 'Privacy Policy — RESQ' }
+export const metadata = { title: 'Privacy Policy | RESQ' }
 
 export default function PrivacyPage() {
   return (
@@ -29,7 +29,7 @@ export default function PrivacyPage() {
           <h2 style={{ marginTop: 20 }}>Who can see it</h2>
           <p className="resq-subtle">
             An emergency you trigger, along with your name, phone number, and location, is visible to the
-            responders and institution admin at the institution you're connected to — that is the entire purpose of
+            responders and institution admin at the institution you're connected to; that is the entire purpose of
             the report. Your account details are never visible to another institution.
           </p>
 
@@ -44,7 +44,7 @@ export default function PrivacyPage() {
           <p className="resq-subtle">
             You can review or delete your trusted contacts at any time from your dashboard, and you can ask your
             institution admin to deactivate your account. Location is only requested at the moment of an emergency
-            trigger — RESQ does not track your location in the background otherwise.
+            trigger. RESQ does not track your location in the background otherwise.
           </p>
 
           <h2 style={{ marginTop: 20 }}>Contact</h2>
