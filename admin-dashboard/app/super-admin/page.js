@@ -197,6 +197,9 @@ export default function SuperAdminPage() {
           <Link href="/super-admin/create" className="resq-btn-primary" style={{ textDecoration: 'none' }}>
             + New Institution
           </Link>
+          <Link href="/super-admin/animation-lab" className="resq-btn-secondary" style={{ textDecoration: 'none' }}>
+            🎛 Animation Lab
+          </Link>
           <button className="resq-btn-secondary" onClick={downloadBackup} title="Download a full JSON snapshot of all data — a self-serve recovery point in addition to Supabase's own backups">
             ⬇ Download Backup
           </button>
