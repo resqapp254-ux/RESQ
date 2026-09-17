@@ -208,7 +208,7 @@ export default function SuperAdminPage() {
       </div>
 
       {!loading && institutions.length > 0 && (
-        <div className="resq-fade-in resq-fade-in-2" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 28, margin: '4px 0 24px' }}>
+        <div className="glass-card resq-tilt-card resq-fade-in resq-fade-in-2" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 28, margin: '4px 0 24px' }}>
           <GuardianShield
             buildingCount={institutions.length}
             alert={hasActiveAlert}

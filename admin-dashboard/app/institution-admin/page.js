@@ -250,7 +250,7 @@ export default function InstitutionAdminPage() {
 
       {error && <p style={{ color: '#ff8080' }}>{error}</p>}
 
-      <div className="resq-fade-in resq-fade-in-2" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 28, margin: '20px 0' }}>
+      <div className="glass-card resq-tilt-card resq-fade-in resq-fade-in-2" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 28, margin: '20px 0' }}>
         <GuardianShield buildingCount={1} alert={hasActiveAlert} size={140} label={hasActiveAlert ? 'Responding' : 'Protecting your institution'} />
         <div style={{ flex: '1 1 260px', minWidth: 260 }}>
           <HeartMonitorLine alert={hasActiveAlert} label={hasActiveAlert ? 'Active emergency' : 'All clear'} />

@@ -6,6 +6,7 @@
 'use client'
 
 import GlobeBackground from '../../components/GlobeBackground'
+import RadarSweepBackground from '../../components/RadarSweepBackground'
 import LanguageSwitcher from '../../components/LanguageSwitcher'
 import { useTranslation } from '../../lib/i18n/LanguageContext'
 
@@ -14,9 +15,10 @@ export default function DownloadPage() {
   return (
     <main className="resq-shell">
       <GlobeBackground />
+      <RadarSweepBackground />
       <LanguageSwitcher />
       <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <section className="glass-card resq-fade-in" style={{ width: '100%', maxWidth: 440, textAlign: 'center' }}>
+        <section className="glass-card resq-tilt-card resq-fade-in" style={{ width: '100%', maxWidth: 440, textAlign: 'center' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
             <div style={{ width: 96, height: 96 }}>
               <img src="/icon.svg" alt="RESQ" width="96" height="96" />
