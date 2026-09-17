@@ -126,9 +126,21 @@
 }
 
 .resq-badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font: 600 11px var(--resq-font-body); text-transform: uppercase; letter-spacing: 0.03em; }
-.resq-badge-open { background: rgba(255, 43, 43, 0.18); color: #ff8080; }
+.resq-badge-open { background: rgba(255, 43, 43, 0.18); color: #ff8080; animation: resq-badge-glow 1.8s ease-in-out infinite; }
 .resq-badge-claimed { background: rgba(53, 208, 232, 0.18); color: #7fe3f2; }
 .resq-badge-resolved { background: rgba(63, 224, 138, 0.18); color: #3fe08a; }
+@keyframes resq-badge-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 43, 43, 0.4); }
+  50% { box-shadow: 0 0 8px 1px rgba(255, 43, 43, 0.55); }
+}
+
+/* Staggered entrance for table/list rows — opt-in via inline
+   --resq-row-index on each row, so a long list doesn't all snap in at
+   once but doesn't need per-row keyframes either. */
+.resq-row-stagger {
+  animation: resq-fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--resq-row-index, 0) * 0.05s);
+}
 
 .resq-advice-box { margin-top: 16px; padding: 14px 16px; border-radius: 12px; background: rgba(53, 208, 232, 0.08); border: 1px solid rgba(53, 208, 232, 0.25); }
 .resq-flag-box { margin-top: 16px; padding: 14px 16px; border-radius: 12px; background: rgba(255, 43, 43, 0.12); border: 1px solid rgba(255, 43, 43, 0.35); }
@@ -319,9 +331,11 @@
   .resq-alert-shell, .resq-siren-banner,
   .resq-loading-mark,
   .resq-radar-sweep, .resq-radar-blip,
-  .resq-shell {
+  .resq-shell,
+  .resq-badge-open,
+  .resq-row-stagger {
     animation: none !important;
     transition: none !important;
   }
-  .resq-fade-in { opacity: 1 !important; transform: none !important; }
+  .resq-fade-in, .resq-row-stagger { opacity: 1 !important; transform: none !important; }
 }

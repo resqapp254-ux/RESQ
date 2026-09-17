@@ -264,8 +264,8 @@ export default function InstitutionAdminPage() {
             Active Emergencies
           </h2>
           {activeEmergencies.length === 0 && <p className="resq-subtle">No active emergencies.</p>}
-          {activeEmergencies.map((emergency) => (
-            <div key={emergency.id} className="resq-row-interactive" style={{ padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          {activeEmergencies.map((emergency, i) => (
+            <div key={emergency.id} className="resq-row-interactive resq-row-stagger" style={{ padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.08)', '--resq-row-index': i }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                 <div>
                   <strong>{emergency.emergency_type || 'Emergency'}</strong>
@@ -282,8 +282,8 @@ export default function InstitutionAdminPage() {
           <h2 style={{ marginTop: 0 }}>Recently Resolved</h2>
         <p className="resq-subtle" style={{ marginTop: 0 }}>Weekly report emails go to this institution admin with resolution details.</p>
           {recentResolved.length === 0 && <p className="resq-subtle">No resolved emergencies yet.</p>}
-          {recentResolved.map((emergency) => (
-            <div key={emergency.id} className="resq-row-interactive" style={{ padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          {recentResolved.map((emergency, i) => (
+            <div key={emergency.id} className="resq-row-interactive resq-row-stagger" style={{ padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.08)', '--resq-row-index': i }}>
               <strong>{emergency.emergency_type || 'Emergency'}</strong>
               <p className="resq-subtle" style={{ margin: '4px 0' }}>
                 Resolved {emergency.resolved_at ? new Date(emergency.resolved_at).toLocaleString() : 'recently'}

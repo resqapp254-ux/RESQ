@@ -224,7 +224,7 @@ export default function EmergencyDetailScreen({ route, navigation }) {
       Alert.alert('Photo access needed', 'Enable photo library access in settings to attach a photo.')
       return
     }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 })
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 })
     if (result.canceled || !result.assets?.[0]) return
 
     setUploadingPhoto(true)

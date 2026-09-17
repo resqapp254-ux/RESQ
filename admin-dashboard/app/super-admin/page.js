@@ -244,8 +244,8 @@ export default function SuperAdminPage() {
             </tr>
           </thead>
           <tbody>
-            {institutions.map((inst) => (
-              <tr key={inst.id} className="resq-row-interactive">
+            {institutions.map((inst, i) => (
+              <tr key={inst.id} className="resq-row-interactive resq-row-stagger" style={{ '--resq-row-index': i }}>
                 <td style={{ padding: 10 }}>
                   <strong>{inst.name}</strong><br />
                   <small className="resq-subtle">{inst.contact_email}</small>
