@@ -51,7 +51,7 @@ export default function UserHomeScreen({ navigation }) {
   const visibleTypes = EMERGENCY_TYPES.filter((t) => !enabledTypes || enabledTypes.includes(t.key))
 
   async function handleAttachPhoto() {
-    Alert.alert('Attach a photo', 'Optional — a photo of the situation can help responders.', [
+    Alert.alert('Attach a photo', 'Optional. A photo of the situation can help responders.', [
       { text: 'Take Photo', onPress: takePhoto },
       { text: 'Choose from Gallery', onPress: pickFromGallery },
       { text: 'Cancel', style: 'cancel' }

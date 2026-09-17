@@ -18,7 +18,7 @@ import { registerForPushNotifications } from '../lib/notifications'
 import { pickMatchingServices } from '../lib/serviceDispatch'
 
 const STATUS_LABELS = {
-  triggered: 'NEW — Unclaimed',
+  triggered: 'NEW: Unclaimed',
   claimed: 'Claimed',
   in_progress: 'In Progress',
   resolved: 'Resolved',
@@ -81,7 +81,7 @@ export default function ResponderHomeScreen({ navigation }) {
         if (!token && Platform.OS === 'android') {
           Alert.alert(
             'Enable Emergency Alerts',
-            'To make sure you never miss an emergency — even on silent — RESQ needs Do Not Disturb access. Please enable it in the settings screen that opens.',
+            'To make sure you never miss an emergency, even on silent, RESQ needs Do Not Disturb access. Please enable it in the settings screen that opens.',
             [
               { text: 'Not now', style: 'cancel' },
               { text: 'Open Settings', onPress: () => Linking.openSettings() }
@@ -199,7 +199,7 @@ export default function ResponderHomeScreen({ navigation }) {
     <SafeAreaView style={styles.container} edges={['bottom']}>
       {hasUnclaimed && (
         <View style={styles.sirenBanner}>
-          <Text style={styles.sirenText}>🚨 Unclaimed emergency — respond now</Text>
+          <Text style={styles.sirenText}>🚨 Unclaimed emergency, respond now</Text>
           <TouchableOpacity onPress={() => setSirenMuted((m) => !m)}>
             <Text style={styles.sirenMuteButton}>{sirenMuted ? '🔇 Unmute' : '🔊 Mute'}</Text>
           </TouchableOpacity>
@@ -220,7 +220,7 @@ export default function ResponderHomeScreen({ navigation }) {
             <Text style={styles.roleBadge} numberOfLines={1}>🚑 Secondary responder · {myServiceName}</Text>
           )}
           {myPermission === 'view_only' && (
-            <Text style={styles.viewOnlyBadge}>👁️ View only — cannot claim</Text>
+            <Text style={styles.viewOnlyBadge}>👁️ View only: cannot claim</Text>
           )}
         </View>
         <TouchableOpacity style={styles.teamChatButton} onPress={() => navigation.navigate('InstitutionChat')}>
@@ -251,7 +251,7 @@ export default function ResponderHomeScreen({ navigation }) {
               <Text style={styles.time}>{new Date(item.created_at).toLocaleTimeString()}</Text>
             </View>
             <Text style={styles.location}>
-              {item.lat != null ? `Lat: ${item.lat.toFixed(5)}, Lng: ${item.lng.toFixed(5)}` : `No GPS — phone: ${item.triggered_by_phone || 'unknown'}`}
+              {item.lat != null ? `Lat: ${item.lat.toFixed(5)}, Lng: ${item.lng.toFixed(5)}` : `No GPS. Phone: ${item.triggered_by_phone || 'unknown'}`}
             </Text>
             {item.triggered_via !== 'app' && (
               <Text style={styles.badge}>via {item.triggered_via.toUpperCase()}</Text>

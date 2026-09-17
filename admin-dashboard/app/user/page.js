@@ -58,6 +58,8 @@ export default function UserPage() {
   const [resolvedEmergencies, setResolvedEmergencies] = useState([])
   const [claimingId, setClaimingId] = useState('')
   const [resolvingId, setResolvingId] = useState('')
+  const [ratingDraft, setRatingDraft] = useState({})
+  const [ratingSubmittingId, setRatingSubmittingId] = useState('')
   const [currentEmergency, setCurrentEmergency] = useState(null)
   const [currentAdvice, setCurrentAdvice] = useState('')
   const [chatMessage, setChatMessage] = useState('')
@@ -283,7 +285,7 @@ export default function UserPage() {
 
       let resolvedQuery = supabase
         .from('emergencies')
-        .select('id, emergency_type, status, resolved_at, institution_id')
+        .select('id, emergency_type, status, resolved_at, institution_id, claimed_by, rating')
         .eq('status', 'resolved')
         .order('resolved_at', { ascending: false })
         .limit(10)
@@ -446,6 +448,40 @@ export default function UserPage() {
     }
 
     setMessage('Emergency marked resolved.')
+    await refreshEmergencies((await supabase.auth.getUser()).data.user.id, role)
+  }
+
+  async function handleRate(emergencyId) {
+    const stars = ratingDraft[emergencyId]
+    if (!stars) return
+
+    setRatingSubmittingId(emergencyId)
+    setError('')
+
+    const accessToken = await getAccessToken()
+    if (!accessToken) {
+      setError('Missing session token. Please log in again.')
+      setRatingSubmittingId('')
+      return
+    }
+
+    const response = await fetch('/api/emergency/rate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + accessToken
+      },
+      body: JSON.stringify({ emergencyId, rating: stars })
+    })
+
+    const result = await response.json()
+    setRatingSubmittingId('')
+
+    if (!response.ok) {
+      setError(result.error || 'Could not save rating')
+      return
+    }
+
     await refreshEmergencies((await supabase.auth.getUser()).data.user.id, role)
   }
 
@@ -1044,6 +1080,37 @@ export default function UserPage() {
                   <p className="resq-subtle" style={{ margin: '4px 0' }}>
                     Resolved {emergency.resolved_at ? new Date(emergency.resolved_at).toLocaleString() : 'recently'}
                   </p>
+                  {isResponderView && emergency.claimed_by === myUserId && (
+                    emergency.rating ? (
+                      <p style={{ margin: '4px 0 0', color: '#ffd76a' }}>
+                        {'★'.repeat(emergency.rating)}{'☆'.repeat(5 - emergency.rating)}
+                      </p>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6 }}>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setRatingDraft((prev) => ({ ...prev, [emergency.id]: star }))}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, padding: 0, color: (ratingDraft[emergency.id] || 0) >= star ? '#ffd76a' : 'var(--resq-text-secondary)' }}
+                            aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                          >
+                            {(ratingDraft[emergency.id] || 0) >= star ? '★' : '☆'}
+                          </button>
+                        ))}
+                        {ratingDraft[emergency.id] && (
+                          <button
+                            className="resq-btn-secondary"
+                            style={{ marginLeft: 8, padding: '2px 10px', fontSize: 12 }}
+                            onClick={() => handleRate(emergency.id)}
+                            disabled={ratingSubmittingId === emergency.id}
+                          >
+                            {ratingSubmittingId === emergency.id ? '...' : 'Rate this response'}
+                          </button>
+                        )}
+                      </div>
+                    )
+                  )}
                 </div>
               ))}
             </div>

@@ -194,41 +194,6 @@ export default function InstitutionAdminPage() {
     setResponders((prev) => prev.map((r) => (r.id === responderId ? { ...r, responder_permission: permission } : r)))
   }
 
-  async function downloadReport() {
-    const { data: allResolved, error: fetchError } = await supabase
-      .from('emergencies')
-      .select('id, emergency_type, status, created_at, resolved_at')
-      .eq('institution_id', institution.id)
-      .eq('status', 'resolved')
-      .order('resolved_at', { ascending: false })
-
-    if (fetchError) {
-      alert('Failed to build report: ' + fetchError.message)
-      return
-    }
-
-    const rows = [
-      ['Type', 'Status', 'Created', 'Resolved', 'Emergency ID'],
-      ...(allResolved || []).map((e) => [
-        e.emergency_type || '',
-        e.status,
-        e.created_at ? new Date(e.created_at).toISOString() : '',
-        e.resolved_at ? new Date(e.resolved_at).toISOString() : '',
-        e.id
-      ])
-    ]
-    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', `${institution?.name || 'resq'}-resolved-emergencies.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-  }
-
   if (!authorized || loading) {
     return (
       <div className="resq-shell">
@@ -309,7 +274,9 @@ export default function InstitutionAdminPage() {
       <div className="resq-fade-in resq-fade-in-3" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '30px 0 12px', flexWrap: 'wrap', gap: 12 }}>
         <h2 style={{ margin: 0 }}>Responders</h2>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <button className="resq-btn-secondary" onClick={downloadReport}>⬇ Download Report</button>
+          <Link href="/institution-admin/case-reports" className="resq-btn-secondary" style={{ textDecoration: 'none' }}>
+            ⬇ Case Reports
+          </Link>
           <Link href="/institution-admin/settings" className="resq-btn-secondary" style={{ textDecoration: 'none' }}>
             ⚙ Settings
           </Link>

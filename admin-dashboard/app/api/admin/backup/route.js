@@ -32,6 +32,7 @@ const TABLES = [
   'institutions',
   'profiles',
   'emergencies',
+  'emergency_messages',
   'institution_services',
   'guardians',
   'responder_reports',

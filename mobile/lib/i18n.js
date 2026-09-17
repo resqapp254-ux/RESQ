@@ -28,7 +28,7 @@ const translations = {
     chooseLanguage: 'Choose your language',
     dataConsentTitle: 'Before you continue',
     dataConsentBody:
-      'RESQ collects your location, contact details, and emergency reports to route help to you and to your institution’s responders. We only use this data to operate the emergency service — never sold, never used for advertising. You can review what’s stored by contacting your institution admin.',
+      'RESQ collects your location, contact details, and emergency reports to route help to you and to your institution’s responders. We only use this data to operate the emergency service: never sold, never used for advertising. You can review what’s stored by contacting your institution admin.',
     dataConsentAccept: 'I understand, continue',
     signIn: 'Sign In',
     signUp: 'Create Account',
@@ -53,7 +53,7 @@ const translations = {
     chooseLanguage: 'Chagua lugha yako',
     dataConsentTitle: 'Kabla ya kuendelea',
     dataConsentBody:
-      'RESQ hukusanya eneo lako, maelezo ya mawasiliano, na taarifa za dharura ili kuelekeza msaada kwako na kwa waitikiaji wa taasisi yako. Tunatumia data hii tu kuendesha huduma ya dharura — haiuzwi kamwe, wala kutumika kwa matangazo.',
+      'RESQ hukusanya eneo lako, maelezo ya mawasiliano, na taarifa za dharura ili kuelekeza msaada kwako na kwa waitikiaji wa taasisi yako. Tunatumia data hii tu kuendesha huduma ya dharura, haiuzwi kamwe, wala kutumika kwa matangazo.',
     dataConsentAccept: 'Nimeelewa, endelea',
     signIn: 'Ingia',
     signUp: 'Fungua Akaunti',
@@ -78,7 +78,7 @@ const translations = {
     chooseLanguage: 'Choisissez votre langue',
     dataConsentTitle: 'Avant de continuer',
     dataConsentBody:
-      "RESQ collecte votre position, vos coordonnées et vos signalements d'urgence pour orienter l'aide vers vous et vers les intervenants de votre institution. Ces données ne servent qu'à faire fonctionner le service d'urgence — jamais vendues, jamais utilisées à des fins publicitaires.",
+      "RESQ collecte votre position, vos coordonnées et vos signalements d'urgence pour orienter l'aide vers vous et vers les intervenants de votre institution. Ces données ne servent qu'à faire fonctionner le service d'urgence, jamais vendues, jamais utilisées à des fins publicitaires.",
     dataConsentAccept: "J'ai compris, continuer",
     signIn: 'Connexion',
     signUp: 'Créer un compte',
@@ -103,7 +103,7 @@ const translations = {
     chooseLanguage: '选择您的语言',
     dataConsentTitle: '开始之前',
     dataConsentBody:
-      'RESQ 会收集您的位置、联系方式和紧急报告，以便将帮助发送给您和您所在机构的响应人员。这些数据仅用于运营紧急服务——绝不出售，也绝不用于广告。',
+      'RESQ 会收集您的位置、联系方式和紧急报告，以便将帮助发送给您和您所在机构的响应人员。这些数据仅用于运营紧急服务，绝不出售，也绝不用于广告。',
     dataConsentAccept: '我已了解，继续',
     signIn: '登录',
     signUp: '创建账户',

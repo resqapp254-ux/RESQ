@@ -56,6 +56,8 @@ export default function EmergencyDetailScreen({ route, navigation }) {
   const [myId, setMyId] = useState(null)
   const [myPermission, setMyPermission] = useState('full')
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [ratingDraft, setRatingDraft] = useState(0)
+  const [ratingSubmitting, setRatingSubmitting] = useState(false)
   const listRef = useRef(null)
 
   useEffect(() => {
@@ -193,6 +195,29 @@ export default function EmergencyDetailScreen({ route, navigation }) {
       return
     }
     await loadEmergency()
+  }
+
+  async function submitRating() {
+    if (!ratingDraft) return
+    setRatingSubmitting(true)
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const res = await fetch(`${API_BASE_URL}/api/emergency/rate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData.session?.access_token || ''}` },
+        body: JSON.stringify({ emergencyId, rating: ratingDraft })
+      })
+      const data = await res.json()
+      if (!data.success) {
+        Alert.alert('Could not save rating', data.error || 'Unknown error')
+        return
+      }
+      await loadEmergency()
+    } catch (err) {
+      Alert.alert('Could not save rating', err.message)
+    } finally {
+      setRatingSubmitting(false)
+    }
   }
 
   function openInMaps() {
@@ -355,7 +380,7 @@ export default function EmergencyDetailScreen({ route, navigation }) {
       )}
 
       {isUnclaimed && myPermission === 'view_only' && (
-        <Text style={styles.viewOnlyNotice}>👁️ View only — you can see this emergency but cannot claim it.</Text>
+        <Text style={styles.viewOnlyNotice}>👁️ View only. You can see this emergency but cannot claim it.</Text>
       )}
 
       {isMine && emergency.status === 'claimed' && (
@@ -368,6 +393,28 @@ export default function EmergencyDetailScreen({ route, navigation }) {
         <TouchableOpacity style={styles.resolveButton} onPress={() => updateStatus('resolved')}>
           <Text style={styles.claimButtonText}>Mark Resolved</Text>
         </TouchableOpacity>
+      )}
+
+      {isMine && emergency.status === 'resolved' && (
+        emergency.rating ? (
+          <Text style={styles.ratingDisplay}>{'★'.repeat(emergency.rating)}{'☆'.repeat(5 - emergency.rating)}</Text>
+        ) : (
+          <View style={styles.ratingRow}>
+            <Text style={styles.ratingPrompt}>Rate this response:</Text>
+            <View style={{ flexDirection: 'row' }}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity key={star} onPress={() => setRatingDraft(star)} hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}>
+                  <Text style={styles.ratingStar}>{ratingDraft >= star ? '★' : '☆'}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {ratingDraft > 0 && (
+              <TouchableOpacity style={styles.ratingSubmit} onPress={submitRating} disabled={ratingSubmitting}>
+                <Text style={styles.ratingSubmitText}>{ratingSubmitting ? '...' : 'Submit'}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )
       )}
 
       <Text style={styles.chatHeader}>Chat</Text>
@@ -447,6 +494,12 @@ const styles = StyleSheet.create({
   resolveButton: { backgroundColor: '#3fe08a', padding: 14, borderRadius: 8, alignItems: 'center', marginBottom: 10 },
   claimButtonText: { color: 'white', fontWeight: 'bold' },
   viewOnlyNotice: { color: '#e0b34d', fontSize: 13, textAlign: 'center', marginBottom: 10, fontWeight: '600' },
+  ratingDisplay: { color: '#ffd76a', fontSize: 20, textAlign: 'center', marginBottom: 10 },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 },
+  ratingPrompt: { color: '#9aa4bf', fontSize: 13 },
+  ratingStar: { fontSize: 22, color: '#ffd76a', marginHorizontal: 2 },
+  ratingSubmit: { backgroundColor: '#cc0000', borderRadius: 6, paddingVertical: 4, paddingHorizontal: 10, marginLeft: 6 },
+  ratingSubmitText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
   chatHeader: { fontWeight: 'bold', marginTop: 8, marginBottom: 4, color: '#f4f6fb' },
   chatList: { flex: 1 },
   bubble: { padding: 10, borderRadius: 10, marginVertical: 4, maxWidth: '80%' },
