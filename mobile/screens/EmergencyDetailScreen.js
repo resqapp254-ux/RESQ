@@ -54,6 +54,7 @@ export default function EmergencyDetailScreen({ route, navigation }) {
   const [messages, setMessages] = useState([])
   const [messageText, setMessageText] = useState('')
   const [myId, setMyId] = useState(null)
+  const [myPermission, setMyPermission] = useState('full')
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const listRef = useRef(null)
 
@@ -63,6 +64,13 @@ export default function EmergencyDetailScreen({ route, navigation }) {
     async function init() {
       const { data: userData } = await supabase.auth.getUser()
       setMyId(userData.user.id)
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('responder_permission')
+        .eq('id', userData.user.id)
+        .single()
+      if (profile?.responder_permission) setMyPermission(profile.responder_permission)
 
       emergencyChannel = supabase
         .channel(`emergency-${emergencyId}`)
@@ -325,10 +333,14 @@ export default function EmergencyDetailScreen({ route, navigation }) {
         </TouchableOpacity>
       </View>
 
-      {isUnclaimed && (
+      {isUnclaimed && myPermission !== 'view_only' && (
         <TouchableOpacity style={styles.claimButton} onPress={handleClaim}>
           <Text style={styles.claimButtonText}>Claim This Emergency</Text>
         </TouchableOpacity>
+      )}
+
+      {isUnclaimed && myPermission === 'view_only' && (
+        <Text style={styles.viewOnlyNotice}>👁️ View only — you can see this emergency but cannot claim it.</Text>
       )}
 
       {isMine && emergency.status === 'claimed' && (
@@ -419,6 +431,7 @@ const styles = StyleSheet.create({
   progressButton: { backgroundColor: '#35d0e8', padding: 14, borderRadius: 8, alignItems: 'center', marginBottom: 10 },
   resolveButton: { backgroundColor: '#3fe08a', padding: 14, borderRadius: 8, alignItems: 'center', marginBottom: 10 },
   claimButtonText: { color: 'white', fontWeight: 'bold' },
+  viewOnlyNotice: { color: '#e0b34d', fontSize: 13, textAlign: 'center', marginBottom: 10, fontWeight: '600' },
   chatHeader: { fontWeight: 'bold', marginTop: 8, marginBottom: 4, color: '#f4f6fb' },
   chatList: { flex: 1 },
   bubble: { padding: 10, borderRadius: 10, marginVertical: 4, maxWidth: '80%' },

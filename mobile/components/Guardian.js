@@ -1,8 +1,10 @@
 // components/Guardian.js
-// The RESQ guardian — shield-headed, caped figure — shared between the
-// Welcome screen's push-carry sequence and the sign-out wave overlay.
-// Simple View shapes, matching the flat-vector style used everywhere
-// else in the app.
+// The RESQ guardian — the shield itself is the whole body, smiling,
+// with simple arms and legs attached directly to it. Earlier versions
+// gave it a separate humanoid head+torso+cape, which read as a red,
+// horned, devil-like figure — there's no head/cape left to cause that
+// now, just the shield with a face on it. Shared between the Welcome
+// screen's push-carry sequence and the sign-out wave overlay.
 
 import React from 'react'
 import { View, StyleSheet } from 'react-native'
@@ -19,61 +21,54 @@ export default function Guardian({ pose = 'fly' }) {
 
   return (
     <View style={styles.wrap}>
-      <View style={[styles.cape, styles.capeLeft]} />
-      <View style={[styles.cape, styles.capeRight]} />
-      <View style={[styles.arm, { transform: [{ rotate: arms.left }] }]} />
-      <View style={[styles.arm, { transform: [{ rotate: arms.right }] }]} />
-      <View style={styles.body}>
-        <View style={styles.emblem} />
-      </View>
-      <View style={styles.head}>
+      <View style={[styles.leg, styles.legLeft]} />
+      <View style={[styles.leg, styles.legRight]} />
+      <View style={[styles.arm, styles.armLeft, { transform: [{ rotate: arms.left }] }]} />
+      <View style={[styles.arm, styles.armRight, { transform: [{ rotate: arms.right }] }]} />
+      <View style={styles.shield}>
         <View style={styles.eyeRow}>
           <View style={styles.eye} />
           <View style={styles.eye} />
         </View>
+        <View style={styles.smile} />
       </View>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  wrap: { width: 60, height: 76, alignItems: 'center' },
-  cape: { position: 'absolute', top: 6, width: 22, height: 44, backgroundColor: '#8a0000', borderRadius: 10 },
-  capeLeft: { left: 2, transform: [{ rotate: '-12deg' }] },
-  capeRight: { right: 2, transform: [{ rotate: '12deg' }] },
-  body: {
-    width: 26,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: '#1e2a56',
-    borderWidth: 1,
-    borderColor: 'rgba(53,208,232,0.4)',
-    marginTop: 24,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  emblem: { width: 9, height: 11, borderRadius: 3, backgroundColor: '#cc0000' },
-  arm: {
-    position: 'absolute',
-    top: 28,
-    left: 26,
-    width: 22,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#1e2a56'
-  },
-  head: {
+  wrap: { width: 60, height: 84, alignItems: 'center' },
+  shield: {
     position: 'absolute',
     top: 0,
-    width: 26,
-    height: 30,
-    borderRadius: 8,
+    left: 8,
+    width: 44,
+    height: 56,
     backgroundColor: '#cc0000',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.6)',
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
     alignItems: 'center',
-    justifyContent: 'center'
+    paddingTop: 15
   },
-  eyeRow: { flexDirection: 'row', gap: 5, marginTop: 2 },
-  eye: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#fff' }
+  eyeRow: { flexDirection: 'row', gap: 8 },
+  eye: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#fff' },
+  smile: {
+    width: 16,
+    height: 8,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    borderBottomWidth: 2,
+    borderColor: '#fff',
+    marginTop: 6
+  },
+  arm: { position: 'absolute', top: 22, width: 20, height: 7, borderRadius: 4, backgroundColor: '#cc0000' },
+  armLeft: { left: 2 },
+  armRight: { right: 2 },
+  leg: { position: 'absolute', bottom: 0, width: 7, height: 20, borderRadius: 4, backgroundColor: '#0d142d' },
+  legLeft: { left: 18 },
+  legRight: { right: 18 }
 })

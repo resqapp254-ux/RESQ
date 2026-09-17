@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAudioPlayer } from 'expo-audio'
 import { supabase } from '../lib/supabase'
 import { registerForPushNotifications } from '../lib/notifications'
+import { pickMatchingServices } from '../lib/serviceDispatch'
 
 const STATUS_LABELS = {
   triggered: 'NEW — Unclaimed',
@@ -37,6 +38,10 @@ export default function ResponderHomeScreen({ navigation }) {
   const [institutionId, setInstitutionId] = useState(null)
   const [institutionName, setInstitutionName] = useState('')
   const [institutionLogo, setInstitutionLogo] = useState('')
+  const [myServiceId, setMyServiceId] = useState(null)
+  const [myServiceName, setMyServiceName] = useState('')
+  const [myPermission, setMyPermission] = useState('full')
+  const [myEmergencyTypes, setMyEmergencyTypes] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
   const [sirenMuted, setSirenMuted] = useState(false)
 
@@ -91,14 +96,17 @@ export default function ResponderHomeScreen({ navigation }) {
 
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('institution_id')
+        .select('institution_id, service_id, responder_permission, responder_emergency_types')
         .eq('id', userData.user.id)
         .single()
 
       if (profileError) return
 
       setInstitutionId(profile.institution_id)
-      await loadEmergencies(profile.institution_id)
+      setMyServiceId(profile.service_id || null)
+      setMyPermission(profile.responder_permission || 'full')
+      setMyEmergencyTypes(profile.responder_emergency_types || null)
+      await loadEmergencies(profile.institution_id, profile.service_id, profile.responder_emergency_types)
 
       const { data: institution } = await supabase
         .from('institutions')
@@ -110,13 +118,25 @@ export default function ResponderHomeScreen({ navigation }) {
         setInstitutionLogo(institution.logo_url || '')
       }
 
+      // Secondary responders — look up their own service's name so the
+      // header can tell them plainly which unit they're logged in as,
+      // instead of leaving them to guess from the shared queue.
+      if (profile.service_id) {
+        const { data: service } = await supabase
+          .from('institution_services')
+          .select('name')
+          .eq('id', profile.service_id)
+          .single()
+        setMyServiceName(service?.name || '')
+      }
+
       // Live updates: any insert/update on emergencies for this institution
       channel = supabase
         .channel('emergencies-feed')
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'emergencies', filter: `institution_id=eq.${profile.institution_id}` },
-          () => loadEmergencies(profile.institution_id)
+          () => loadEmergencies(profile.institution_id, profile.service_id, profile.responder_emergency_types)
         )
         .subscribe()
     }
@@ -127,7 +147,12 @@ export default function ResponderHomeScreen({ navigation }) {
     }
   }, [])
 
-  async function loadEmergencies(instId) {
+  // Mirrors admin-dashboard/app/user/page.js's refreshEmergencies: a
+  // secondary responder (service_id set) only sees emergencies routed
+  // to their own service; a primary responder whose admin narrowed
+  // which types they handle only sees those types. Everyone else sees
+  // every open emergency for the institution, unchanged.
+  async function loadEmergencies(instId, serviceIdArg, emergencyTypesArg) {
     const { data, error } = await supabase
       .from('emergencies')
       .select('*, claimant:profiles!emergencies_claimed_by_fkey(full_name, service_id)')
@@ -135,14 +160,40 @@ export default function ResponderHomeScreen({ navigation }) {
       .in('status', ['triggered', 'claimed', 'in_progress'])
       .order('created_at', { ascending: false })
 
-    if (!error) setEmergencies(data)
+    if (error) {
+      setRefreshing(false)
+      return
+    }
+
+    let list = data || []
+
+    if (serviceIdArg) {
+      const { data: services } = await supabase
+        .from('institution_services')
+        .select('id, service_type, lat, lng, handles_emergency_types, is_active')
+        .eq('institution_id', instId)
+        .eq('is_active', true)
+
+      list = list.filter((emergency) => {
+        const matching = pickMatchingServices(services, {
+          emergencyType: emergency.emergency_type,
+          lat: emergency.lat,
+          lng: emergency.lng
+        })
+        return matching.some((s) => s.id === serviceIdArg)
+      })
+    } else if (emergencyTypesArg && emergencyTypesArg.length > 0) {
+      list = list.filter((emergency) => emergencyTypesArg.includes(emergency.emergency_type))
+    }
+
+    setEmergencies(list)
     setRefreshing(false)
   }
 
   const onRefresh = useCallback(() => {
     setRefreshing(true)
-    if (institutionId) loadEmergencies(institutionId)
-  }, [institutionId])
+    if (institutionId) loadEmergencies(institutionId, myServiceId, myEmergencyTypes)
+  }, [institutionId, myServiceId, myEmergencyTypes])
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -164,6 +215,12 @@ export default function ResponderHomeScreen({ navigation }) {
               {!!institutionLogo && <Image source={{ uri: institutionLogo }} style={styles.institutionLogo} />}
               <Text style={styles.institutionName} numberOfLines={1}>{institutionName}</Text>
             </View>
+          )}
+          {!!myServiceName && (
+            <Text style={styles.roleBadge} numberOfLines={1}>🚑 Secondary responder · {myServiceName}</Text>
+          )}
+          {myPermission === 'view_only' && (
+            <Text style={styles.viewOnlyBadge}>👁️ View only — cannot claim</Text>
           )}
         </View>
         <TouchableOpacity style={styles.teamChatButton} onPress={() => navigation.navigate('InstitutionChat')}>
@@ -233,6 +290,8 @@ const styles = StyleSheet.create({
   institutionRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
   institutionLogo: { width: 16, height: 16, borderRadius: 4 },
   institutionName: { fontSize: 13, color: '#9aa5c2', flexShrink: 1 },
+  roleBadge: { fontSize: 12, color: '#35d0e8', marginTop: 3, fontWeight: '600' },
+  viewOnlyBadge: { fontSize: 12, color: '#e0b34d', marginTop: 3, fontWeight: '600' },
   empty: { padding: 40, alignItems: 'center' },
   emptyText: { color: '#5c6480' },
   card: {
