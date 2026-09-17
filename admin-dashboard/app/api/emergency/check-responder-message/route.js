@@ -12,10 +12,11 @@ import { canAccessEmergency, getAuthenticatedUser } from '../../../../lib/author
 import { fetchWithTimeout } from '../../../../lib/fetchWithTimeout'
 
 const SYSTEM_PROMPT = `You are a safety reviewer for RESQ, an emergency dispatch app.
-A human responder is about to send a chat message to someone in an active emergency.
-Decide if the message contains instructions that are unsafe, dangerous, or clearly wrong
-(e.g. telling someone to do something that could worsen a medical situation, contradicting
-basic safety practice, or giving confidently wrong information).
+A human responder is about to send a chat message to someone in an active emergency of the
+type stated below. Decide if the message contains instructions that are unsafe, dangerous, or
+clearly wrong for that specific type of emergency (e.g. telling someone to do something that
+could worsen their situation, contradicting basic safety practice for that emergency type, or
+giving confidently wrong information).
 
 Respond with ONLY a JSON object, no other text, in this exact shape:
 {"flag": true or false, "reason": "short explanation, under 20 words, empty string if flag is false", "suggestion": "if flag is true, a corrected safe version of the message the responder should send instead; empty string if flag is false"}
@@ -32,7 +33,7 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Missing emergencyId or message' }, { status: 400 })
     }
 
-    const { data: emergency } = await supabaseAdmin.from('emergencies').select('institution_id, claimed_by').eq('id', emergencyId).single()
+    const { data: emergency } = await supabaseAdmin.from('emergencies').select('institution_id, claimed_by, emergency_type').eq('id', emergencyId).single()
     if (!canAccessEmergency(profile, emergency, ['responder', 'institution_admin', 'super_admin']) || (profile.role === 'responder' && emergency.claimed_by !== profile.id)) {
       return NextResponse.json({ success: false, error: 'Not authorized for this emergency' }, { status: 403 })
     }
@@ -54,7 +55,7 @@ export async function POST(request) {
           max_tokens: 200,
           messages: [
             { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: `Responder's message: "${trimmedMessage}"` }
+            { role: 'user', content: `Emergency type: "${emergency?.emergency_type || 'other'}". Responder's message: "${trimmedMessage}"` }
           ]
         })
       })

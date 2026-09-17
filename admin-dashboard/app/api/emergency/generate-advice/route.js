@@ -10,14 +10,25 @@ import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { canAccessEmergency, getAuthenticatedUser } from '../../../../lib/authorizeRequest'
 import { fetchWithTimeout } from '../../../../lib/fetchWithTimeout'
 
-const SYSTEM_PROMPT = `You are an emergency first-response assistant embedded in RESQ, an emergency dispatch app.
+const TYPE_GUIDANCE = {
+  medical: 'This is a medical emergency. Favor guidance like: do not move an injured person unless they are in immediate danger, check breathing and responsiveness, apply pressure to any bleeding, keep the person warm and still.',
+  fire: 'This is a fire emergency. Favor guidance like: get low under smoke, get out and stay out, do not use elevators, do not go back inside for belongings, move to a safe distance and stay there.',
+  accident: 'This is an accident (e.g. road accident). Favor guidance like: do not move anyone with a suspected neck/back injury, turn on hazard lights, warn oncoming traffic, keep the area clear.',
+  security: 'This is a security threat. Favor guidance like: move to a safe, lockable location if possible, stay quiet, do not confront anyone, keep phone on silent.',
+  gbv: 'This is a gender-based violence situation. Favor a gentle, non-judgmental tone: prioritize getting to a safe location, avoid confrontation, mention that responders and support are on the way.',
+  mental_health: 'This is a mental health crisis. Favor a calm, non-judgmental, reassuring tone: encourage staying somewhere safe, remind them they are not alone and help is coming, avoid clinical or diagnostic language.',
+  property_damage: 'This is property damage (no immediate danger to life implied). Favor guidance like: stay at a safe distance from unstable structures, do not touch damaged electrical or gas lines.',
+  other: ''
+}
+
+const SYSTEM_PROMPT_BASE = `You are an emergency first-response assistant embedded in RESQ, an emergency dispatch app.
 A user has just triggered an emergency alert. Human responders are already being notified and are on their way.
 
 Give brief, calm, practical safety guidance for the next few minutes while they wait for help.
 Rules:
 - Under 70 words.
 - Calm, plain, reassuring tone. No medical diagnosis. No legal advice.
-- Give generic safety steps (e.g. move somewhere visible/safe, stay on the line, keep phone charged/visible) rather than assuming a specific emergency type unless one is stated.
+- Tailor the guidance to the stated emergency type below, but stay generic and safe if it doesn't fit the exact situation.
 - Always mention that help is on the way.
 - Do not ask questions. This is a one-way message the person will read in a stressful moment.`
 const FALLBACK_ADVICE = 'Stay calm. Help is on the way. Move somewhere safe and visible if you can, keep your phone nearby, and follow instructions from responders.'
@@ -34,7 +45,7 @@ export async function POST(request) {
 
     const { data: emergency, error: fetchError } = await supabaseAdmin
       .from('emergencies')
-      .select('id, lat, lng, triggered_via, institution_id, triggered_by')
+      .select('id, lat, lng, triggered_via, institution_id, triggered_by, emergency_type')
       .eq('id', emergencyId)
       .single()
 
@@ -45,7 +56,9 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Not authorized for this emergency' }, { status: 403 })
     }
 
-    const userMessage = `A user just triggered an emergency alert via the ${emergency.triggered_via} channel. Give them immediate safety guidance.`
+    const typeNote = TYPE_GUIDANCE[emergency.emergency_type] || ''
+    const systemPrompt = typeNote ? `${SYSTEM_PROMPT_BASE}\n\n${typeNote}` : SYSTEM_PROMPT_BASE
+    const userMessage = `A user just triggered a "${emergency.emergency_type || 'other'}" emergency alert via the ${emergency.triggered_via} channel. Give them immediate safety guidance.`
 
     let adviceText = FALLBACK_ADVICE
     let usedFallback = true
@@ -61,7 +74,7 @@ export async function POST(request) {
           model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
           max_tokens: 200,
           messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'system', content: systemPrompt },
             { role: 'user', content: userMessage }
           ]
         })
