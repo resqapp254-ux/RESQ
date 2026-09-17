@@ -5,10 +5,12 @@
 // BootstrapScreen sends here only when there's no existing session.
 
 import React, { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image, ActivityIndicator, ScrollView } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, ScrollView } from 'react-native'
 import { supabase } from '../lib/supabase'
 import { useTranslation } from '../lib/i18n'
 import { API_BASE_URL } from '../lib/config'
+import MiniGlobe from '../components/MiniGlobe'
+import RadarPulseBackground from '../components/RadarPulseBackground'
 
 export default function AuthScreen({ navigation }) {
   const { t } = useTranslation()
@@ -102,10 +104,16 @@ export default function AuthScreen({ navigation }) {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <Image source={require('../assets/icon.png')} style={styles.logo} />
+    <View style={styles.screen}>
+      <RadarPulseBackground />
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <View style={styles.globeWrap}>
+          <MiniGlobe size={92} />
+        </View>
+        <Text style={styles.brandTitle}>RESQ</Text>
 
-      <View style={styles.tabs}>
+        <View style={styles.card}>
+        <View style={styles.tabs}>
         {[
           { key: 'signin', label: t('signIn') },
           { key: 'signup', label: t('signUp') },
@@ -208,13 +216,36 @@ export default function AuthScreen({ navigation }) {
           )}
         </View>
       )}
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 24, justifyContent: 'center', backgroundColor: '#05070d' },
-  logo: { width: 88, height: 88, alignSelf: 'center', marginBottom: 20, borderRadius: 20 },
+  screen: { flex: 1, backgroundColor: '#05070d' },
+  container: { flexGrow: 1, padding: 24, justifyContent: 'center' },
+  globeWrap: { alignItems: 'center', marginBottom: 4 },
+  brandTitle: {
+    textAlign: 'center',
+    color: '#f4f6fb',
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: 2,
+    marginBottom: 20
+  },
+  card: {
+    backgroundColor: 'rgba(18,24,42,0.7)',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    padding: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6
+  },
   tabs: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 4, marginBottom: 20, gap: 4 },
   tab: { flex: 1, paddingVertical: 9, borderRadius: 7, alignItems: 'center' },
   tabActive: { backgroundColor: '#cc0000' },
