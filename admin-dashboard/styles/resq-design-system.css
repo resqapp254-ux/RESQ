@@ -42,9 +42,14 @@
    panel — used sparingly (auth card, dashboard highlight cards), not
    applied to every .glass-card so dense tables/forms stay put. */
 .resq-tilt-card { transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s ease; will-change: transform; }
-.resq-tilt-card:hover {
-  transform: perspective(900px) rotateX(3deg) rotateY(-3deg) translateY(-4px);
-  box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(53,208,232,0.28);
+/* (hover: hover) excludes touchscreens, which have no real hover state
+   and would otherwise leave the card visibly "stuck" tilted after a tap
+   until the user taps elsewhere. */
+@media (hover: hover) {
+  .resq-tilt-card:hover {
+    transform: perspective(900px) rotateX(3deg) rotateY(-3deg) translateY(-4px);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(53,208,232,0.28);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .resq-tilt-card { transition: none; }

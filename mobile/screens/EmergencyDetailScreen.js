@@ -227,9 +227,16 @@ export default function EmergencyDetailScreen({ route, navigation }) {
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 })
     if (result.canceled || !result.assets?.[0]) return
 
+    const asset = result.assets[0]
+    const maxBytes = 10 * 1024 * 1024
+    const knownSize = asset.fileSize ?? (await FileSystem.getInfoAsync(asset.uri)).size
+    if (knownSize > maxBytes) {
+      Alert.alert('Photo too large', 'Please choose a photo under 10MB.')
+      return
+    }
+
     setUploadingPhoto(true)
     try {
-      const asset = result.assets[0]
       const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 })
       const arrayBuffer = decode(base64)
       const ext = asset.uri.split('.').pop() || 'jpg'

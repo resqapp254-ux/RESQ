@@ -213,6 +213,13 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 })
     if (result.canceled || !result.assets?.[0]) return
 
+    const maxBytes = 10 * 1024 * 1024
+    const knownSize = result.assets[0].fileSize ?? (await FileSystem.getInfoAsync(result.assets[0].uri)).size
+    if (knownSize > maxBytes) {
+      Alert.alert('Photo too large', 'Please choose a photo under 10MB.')
+      return
+    }
+
     setUploadingPhoto(true)
     try {
       const asset = result.assets[0]
