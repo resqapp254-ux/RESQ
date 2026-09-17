@@ -100,7 +100,18 @@ export default function AuthPage({ defaultMode = 'signin' }) {
       return
     }
 
-    setMessage('Account created. Sign in with the password you just set.')
+    // Supabase silently no-ops signUp() for an email that already has a
+    // confirmed account — no error, no new confirmation email, to avoid
+    // leaking which emails are registered. It returns a user object
+    // with an empty identities array in that case, which is otherwise
+    // indistinguishable from a genuine new signup, and "Account
+    // created" would be actively misleading (no email is coming).
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      setError('An account with this email may already exist. Try signing in, or use "Forgot password" below.')
+      return
+    }
+
+    setMessage('Account created. Check your email for a confirmation link, then sign in with the password you just set.')
   }
 
   async function handleForgot(e) {
