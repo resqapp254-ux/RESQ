@@ -44,7 +44,24 @@ export default function BootstrapScreen({ navigation }) {
       } else if (data.role === 'responder') {
         navigation.replace('ResponderHome')
       } else if (data.role === 'user') {
-        navigation.replace('Home')
+        // Reopening the app mid-emergency should resume it, not offer
+        // a fresh trigger screen that could file a duplicate report.
+        const { data: userData } = await supabase.auth.getUser()
+        const { data: openEmergency } = await supabase
+          .from('emergencies')
+          .select('id')
+          .eq('triggered_by', userData.user.id)
+          .in('status', ['triggered', 'claimed', 'in_progress'])
+          .limit(1)
+          .maybeSingle()
+
+        if (cancelled) return
+
+        if (openEmergency) {
+          navigation.replace('UserEmergencyActive', { emergencyId: openEmergency.id })
+        } else {
+          navigation.replace('Home')
+        }
       } else if (data.role === 'institution_admin' || data.role === 'super_admin') {
         navigation.replace('AdminWebView')
       } else {

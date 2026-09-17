@@ -31,6 +31,25 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Enter your institution code first' }, { status: 400 })
     }
 
+    // One open emergency per account at a time — a second SOS while
+    // the first is still triggered/claimed/in_progress would just
+    // fragment the same situation across two records instead of
+    // helping. Resolve or cancel the current one first.
+    const { data: existingOpen } = await supabaseAdmin
+      .from('emergencies')
+      .select('id')
+      .eq('triggered_by', user.id)
+      .in('status', ['triggered', 'claimed', 'in_progress'])
+      .limit(1)
+      .maybeSingle()
+
+    if (existingOpen) {
+      return NextResponse.json(
+        { success: false, error: 'You already have an active emergency. It must be resolved before you can send a new one.', existingEmergencyId: existingOpen.id },
+        { status: 409 }
+      )
+    }
+
     const { data: emergency, error: insertError } = await supabaseAdmin
       .from('emergencies')
       .insert({

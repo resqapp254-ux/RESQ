@@ -72,6 +72,17 @@ export async function POST(request) {
           response = 'END Invalid or inactive institution code.'
         } else if (!rateLimit('ussd-phone:' + phoneNumber, 3, 10 * 60 * 1000).allowed) {
           response = 'END Too many requests from this number. Please wait before trying again.'
+        } else if (
+          await supabaseAdmin
+            .from('emergencies')
+            .select('id')
+            .eq('triggered_by_phone', phoneNumber)
+            .in('status', ['triggered', 'claimed', 'in_progress'])
+            .limit(1)
+            .maybeSingle()
+            .then(({ data }) => Boolean(data))
+        ) {
+          response = 'END This number already has an active emergency. It must be resolved first.'
         } else {
           const { data: emergency, error: insertError } = await supabaseAdmin
             .from('emergencies')

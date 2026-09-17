@@ -130,6 +130,22 @@ export default function UserHomeScreen({ navigation }) {
         return
       }
 
+      // One open emergency per account at a time, also enforced at the
+      // DB level (day21 migration) so this holds even if this check is
+      // ever bypassed.
+      const { data: existingOpen } = await supabase
+        .from('emergencies')
+        .select('id')
+        .eq('triggered_by', userData.user.id)
+        .in('status', ['triggered', 'claimed', 'in_progress'])
+        .limit(1)
+        .maybeSingle()
+
+      if (existingOpen) {
+        navigation.replace('UserEmergencyActive', { emergencyId: existingOpen.id })
+        return
+      }
+
       // 3. Create the emergency
       const { data: emergency, error: insertError } = await supabase
         .from('emergencies')

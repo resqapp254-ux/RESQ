@@ -1006,14 +1006,23 @@ export default function UserPage() {
                         </div>
                       )}
                     </div>
+                    {/* Once a plain responder's case is claimed, the claim button
+                        disappears; only the step that's actually theirs to take
+                        remains (resolve their own claim, or nothing if someone
+                        else claimed it). Admins keep both, since they can
+                        reassign or resolve any case in their institution. */}
                     {isResponderView && myPermission !== 'view_only' && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <button className="resq-btn-secondary" onClick={() => handleClaim(emergency.id)} disabled={claimingId === emergency.id}>
-                          {claimingId === emergency.id ? t('claiming') : t('claim')}
-                        </button>
-                        <button className="resq-btn-secondary" onClick={() => handleResolve(emergency.id)} disabled={resolvingId === emergency.id}>
-                          {resolvingId === emergency.id ? t('resolving') : t('resolve')}
-                        </button>
+                        {(role !== 'responder' || !emergency.claimed_by) && (
+                          <button className="resq-btn-secondary" onClick={() => handleClaim(emergency.id)} disabled={claimingId === emergency.id}>
+                            {claimingId === emergency.id ? t('claiming') : t('claim')}
+                          </button>
+                        )}
+                        {(role !== 'responder' || emergency.claimed_by === myUserId) && (
+                          <button className="resq-btn-secondary" onClick={() => handleResolve(emergency.id)} disabled={resolvingId === emergency.id}>
+                            {resolvingId === emergency.id ? t('resolving') : t('resolve')}
+                          </button>
+                        )}
                       </div>
                     )}
                     {isResponderView && myPermission === 'view_only' && (

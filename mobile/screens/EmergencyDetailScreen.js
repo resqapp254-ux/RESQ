@@ -128,6 +128,21 @@ export default function EmergencyDetailScreen({ route, navigation }) {
   }
 
   async function handleClaim() {
+    // One in-progress case per responder at a time, same rule as web
+    // (also enforced at the DB level, see day21 migration).
+    const { data: myOtherClaim } = await supabase
+      .from('emergencies')
+      .select('id')
+      .eq('claimed_by', myId)
+      .in('status', ['claimed', 'in_progress'])
+      .limit(1)
+      .maybeSingle()
+
+    if (myOtherClaim) {
+      Alert.alert('Already handling a case', 'Resolve your current emergency before claiming another.')
+      return
+    }
+
     const { data, error } = await supabase
       .from('emergencies')
       .update({ status: 'claimed', claimed_by: myId, claimed_at: new Date().toISOString() })

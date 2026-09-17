@@ -36,6 +36,24 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Already claimed by another responder' }, { status: 409 })
     }
 
+    // One in-progress case per responder at a time — they can still see
+    // every other open case coming in, just not take on a second one
+    // until this one is resolved. Enforced again at the DB level (see
+    // day21 migration) so this holds for mobile's direct table update too.
+    if (profile.role === 'responder' && emergency.claimed_by !== profile.id) {
+      const { data: myOtherClaim } = await supabaseAdmin
+        .from('emergencies')
+        .select('id')
+        .eq('claimed_by', profile.id)
+        .in('status', ['claimed', 'in_progress'])
+        .limit(1)
+        .maybeSingle()
+
+      if (myOtherClaim) {
+        return NextResponse.json({ success: false, error: 'You already have an active case. Resolve it before claiming another.', existingEmergencyId: myOtherClaim.id }, { status: 409 })
+      }
+    }
+
     const { error: updateError } = await supabaseAdmin
       .from('emergencies')
       .update({ claimed_by: profile.id, claimed_at: new Date().toISOString(), status: 'in_progress' })

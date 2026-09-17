@@ -53,9 +53,22 @@ export async function POST(request) {
 
     if (!institution || institution.status !== 'active') {
       // We can't reply via this webhook alone without Africa's Talking's send-SMS API,
-      // which is a separate paid step — for now we just log it server-side.
+      // which is a separate paid step, for now we just log it server-side.
       console.log(`SMS emergency attempt with invalid/inactive code: ${code} from ${from}`)
       return NextResponse.json({ success: false, error: 'Invalid or inactive institution code' })
+    }
+
+    // One open emergency per phone number at a time, same rule as the app.
+    const { data: existingOpen } = await supabaseAdmin
+      .from('emergencies')
+      .select('id')
+      .eq('triggered_by_phone', from)
+      .in('status', ['triggered', 'claimed', 'in_progress'])
+      .limit(1)
+      .maybeSingle()
+
+    if (existingOpen) {
+      return NextResponse.json({ success: false, error: 'This number already has an active emergency; it must be resolved first.' })
     }
 
     const { data: emergency, error: insertError } = await supabaseAdmin
