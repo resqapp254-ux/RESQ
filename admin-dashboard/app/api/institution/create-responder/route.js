@@ -7,6 +7,7 @@
 
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
+import { rateLimit } from '../../../../lib/rateLimit'
 
 async function getCallerProfile(request) {
   const authHeader = request.headers.get('authorization') || ''
@@ -31,6 +32,10 @@ export async function POST(request) {
     const caller = await getCallerProfile(request)
     if (!caller || caller.role !== 'institution_admin' || !caller.institution_id) {
       return NextResponse.json({ success: false, error: 'Not authorized. Institution admin login required.' }, { status: 403 })
+    }
+
+    if (!rateLimit('create-responder:' + caller.id, 30, 60 * 60 * 1000).allowed) {
+      return NextResponse.json({ success: false, error: 'Too many accounts created recently. Please wait before adding more.' }, { status: 429 })
     }
 
     // Confirm the institution is actually active before letting them add staff

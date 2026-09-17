@@ -9,6 +9,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { getAuthenticatedUser } from '../../../../lib/authorizeRequest'
+import { rateLimit } from '../../../../lib/rateLimit'
 
 export async function POST(request) {
   try {
@@ -17,6 +18,12 @@ export async function POST(request) {
 
     if (!['responder', 'institution_admin'].includes(profile.role) || !profile.institution_id) {
       return NextResponse.json({ success: false, error: 'Not authorized' }, { status: 403 })
+    }
+
+    // An urgent, attention-grabbing push to the whole team — meant to
+    // be rare, so a tight limit here only blocks abuse/alert fatigue.
+    if (!rateLimit('alert-team:' + user.id, 5, 10 * 60 * 1000).allowed) {
+      return NextResponse.json({ success: false, error: 'Too many alerts sent recently. Please wait before sending another.' }, { status: 429 })
     }
 
     const { message } = await request.json()

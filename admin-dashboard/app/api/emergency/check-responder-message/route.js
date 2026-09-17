@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { canAccessEmergency, getAuthenticatedUser } from '../../../../lib/authorizeRequest'
 import { fetchWithTimeout } from '../../../../lib/fetchWithTimeout'
+import { rateLimit } from '../../../../lib/rateLimit'
 
 const SYSTEM_PROMPT = `You are a safety reviewer for RESQ, an emergency dispatch app.
 A human responder is about to send a chat message to someone in an active emergency of the
@@ -27,6 +28,14 @@ export async function POST(request) {
   try {
     const { user, profile, error: authError } = await getAuthenticatedUser(request)
     if (authError) return NextResponse.json({ success: false, error: authError }, { status: 401 })
+
+    // Each message triggers a paid/quota-limited AI call — chat is
+    // meant to be conversational, so this is generous, just enough to
+    // stop a scripted flood.
+    if (!rateLimit('checkmsg:' + profile.id, 40, 5 * 60 * 1000).allowed) {
+      return NextResponse.json({ success: false, error: 'Too many messages sent too quickly. Please slow down.' }, { status: 429 })
+    }
+
     const { emergencyId, message } = await request.json()
 
     if (!emergencyId || !message?.trim()) {

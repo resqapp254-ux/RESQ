@@ -10,6 +10,7 @@
 import { NextResponse } from 'next/server'
 import { randomInt } from 'crypto'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
+import { getClientIp, rateLimit } from '../../../../lib/rateLimit'
 
 async function verifySuperAdmin(request) {
   const authHeader = request.headers.get('authorization') || ''
@@ -47,6 +48,10 @@ export async function POST(request) {
     const isSuperAdmin = await verifySuperAdmin(request)
     if (!isSuperAdmin) {
       return NextResponse.json({ success: false, error: 'Not authorized. Super admin login required.' }, { status: 403 })
+    }
+
+    if (!rateLimit('create-institution:' + getClientIp(request), 20, 60 * 60 * 1000).allowed) {
+      return NextResponse.json({ success: false, error: 'Too many institutions created recently. Please wait before adding more.' }, { status: 429 })
     }
 
     const body = await request.json()

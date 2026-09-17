@@ -32,15 +32,19 @@ export function pickMatchingServices(services, { emergencyType, lat, lng }) {
   const typeMatches = active.filter((s) => serviceHandlesType(s, emergencyType))
   if (typeMatches.length === 0) return []
 
+  const individuals = typeMatches.filter((s) => s.service_type === 'individual')
+  const locatable = typeMatches.filter((s) => s.service_type !== 'individual')
+
+  if (locatable.length === 0) return individuals
   if (lat == null || lng == null) return typeMatches
 
-  const withDistance = typeMatches.map((s) => ({ service: s, distance: distanceKm(lat, lng, s.lat, s.lng) }))
+  const withDistance = locatable.map((s) => ({ service: s, distance: distanceKm(lat, lng, s.lat, s.lng) }))
   const nearby = withDistance.filter((s) => s.distance !== null && s.distance <= NEARBY_RADIUS_KM)
 
-  if (nearby.length > 0) return nearby.map((s) => s.service)
+  if (nearby.length > 0) return [...individuals, ...nearby.map((s) => s.service)]
 
   const sorted = withDistance
     .filter((s) => s.distance !== null)
     .sort((a, b) => a.distance - b.distance)
-  return sorted.length > 0 ? [sorted[0].service] : typeMatches
+  return [...individuals, ...(sorted.length > 0 ? [sorted[0].service] : [])]
 }

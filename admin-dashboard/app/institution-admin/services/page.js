@@ -3,7 +3,7 @@
 // hospital, police post, fire unit, or any custom service. A
 // responder can optionally be linked to one of these (see
 // add-responder) so their queue only shows emergencies routed to
-// that unit — independent of whether they're a primary responder
+// that unit, independent of whether they're a primary responder
 // (can claim) or secondary responder (sees the feed, cannot claim).
 
 'use client'
@@ -23,6 +23,7 @@ const SERVICE_TYPES = [
   { key: 'police', label: 'Police station', emoji: '🚓' },
   { key: 'fire', label: 'Fire unit', emoji: '🚒' },
   { key: 'ambulance', label: 'Ambulance', emoji: '🚑' },
+  { key: 'individual', label: 'Individual responder (no fixed location)', emoji: '🧍' },
   { key: 'other', label: 'Other service', emoji: '🧩' }
 ]
 
@@ -122,10 +123,16 @@ export default function ManageServicesPage() {
     e.preventDefault()
     setError('')
 
+    const isIndividual = form.serviceType === 'individual'
     const lat = parseFloat(form.lat)
     const lng = parseFloat(form.lng)
-    if (!form.name.trim() || Number.isNaN(lat) || Number.isNaN(lng)) {
-      setError('Name and a valid location (latitude/longitude) are required.')
+
+    if (!form.name.trim()) {
+      setError('Name is required.')
+      return
+    }
+    if (!isIndividual && (Number.isNaN(lat) || Number.isNaN(lng))) {
+      setError('A valid location (latitude/longitude) is required for this unit type.')
       return
     }
 
@@ -134,8 +141,8 @@ export default function ManageServicesPage() {
       institution_id: institutionId,
       service_type: form.serviceType,
       name: form.name.trim(),
-      lat,
-      lng,
+      lat: isIndividual ? null : lat,
+      lng: isIndividual ? null : lng,
       contact_phone: form.contactPhone.trim() || null,
       handles_emergency_types: form.handlesTypes
     })
@@ -252,14 +259,22 @@ export default function ManageServicesPage() {
               ))}
             </div>
 
-            <label>Location</label>
-            <div style={{ display: 'flex', gap: 8, marginTop: 4, marginBottom: 6 }}>
-              <input className="resq-input" placeholder="Latitude" value={form.lat} onChange={(e) => setForm({ ...form, lat: e.target.value })} required />
-              <input className="resq-input" placeholder="Longitude" value={form.lng} onChange={(e) => setForm({ ...form, lng: e.target.value })} required />
-            </div>
-            <button type="button" className="resq-btn-secondary" onClick={useMyLocation} disabled={locationBusy} style={{ marginBottom: 14 }}>
-              {locationBusy ? 'Locating...' : '📍 Use my current location'}
-            </button>
+            {form.serviceType === 'individual' ? (
+              <p className="resq-subtle" style={{ marginBottom: 14 }}>
+                Individual responders have no fixed location, they receive matching emergencies regardless of distance.
+              </p>
+            ) : (
+              <>
+                <label>Location</label>
+                <div style={{ display: 'flex', gap: 8, marginTop: 4, marginBottom: 6 }}>
+                  <input className="resq-input" placeholder="Latitude" value={form.lat} onChange={(e) => setForm({ ...form, lat: e.target.value })} required />
+                  <input className="resq-input" placeholder="Longitude" value={form.lng} onChange={(e) => setForm({ ...form, lng: e.target.value })} required />
+                </div>
+                <button type="button" className="resq-btn-secondary" onClick={useMyLocation} disabled={locationBusy} style={{ marginBottom: 14 }}>
+                  {locationBusy ? 'Locating...' : '📍 Use my current location'}
+                </button>
+              </>
+            )}
 
             <label>Contact phone (optional)</label>
             <input
@@ -285,7 +300,9 @@ export default function ManageServicesPage() {
                 <p className="resq-subtle" style={{ margin: '4px 0' }}>
                   {s.service_type} · {(s.handles_emergency_types || []).length === 0 ? 'handles all types' : s.handles_emergency_types.join(', ')}
                 </p>
-                <p className="resq-subtle" style={{ margin: 0, fontFamily: 'monospace', fontSize: 12 }}>{s.lat.toFixed(4)}, {s.lng.toFixed(4)}</p>
+                <p className="resq-subtle" style={{ margin: 0, fontFamily: 'monospace', fontSize: 12 }}>
+                  {s.lat != null && s.lng != null ? `${s.lat.toFixed(4)}, ${s.lng.toFixed(4)}` : 'No fixed location'}
+                </p>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <span className={s.is_active ? 'resq-badge resq-badge-resolved' : 'resq-badge resq-badge-open'}>

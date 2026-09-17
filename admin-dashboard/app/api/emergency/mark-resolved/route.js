@@ -9,11 +9,17 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { sendResolutionEmailToAdmin } from '../../../../lib/notifyInstitutionAdmin'
 import { canAccessEmergency, getAuthenticatedUser } from '../../../../lib/authorizeRequest'
+import { rateLimit } from '../../../../lib/rateLimit'
 
 export async function POST(request) {
   try {
     const { profile, error: authError } = await getAuthenticatedUser(request)
     if (authError) return NextResponse.json({ success: false, error: authError }, { status: 401 })
+
+    if (!rateLimit('resolve:' + profile.id, 30, 5 * 60 * 1000).allowed) {
+      return NextResponse.json({ success: false, error: 'Too many requests. Please wait a moment.' }, { status: 429 })
+    }
+
     const { emergencyId } = await request.json()
 
     if (!emergencyId) {

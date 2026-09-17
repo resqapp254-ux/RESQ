@@ -43,6 +43,10 @@ export function serviceHandlesType(service, emergencyType) {
 
 // Given all active services for an institution and one emergency,
 // return the subset of services that should see/be notified of it.
+// Individual responders (service_type 'individual') have no fixed
+// physical location, so they always receive every emergency matching
+// their handled types, never filtered by distance the way a
+// hospital/police-post/etc unit is.
 export function pickMatchingServices(services, { emergencyType, lat, lng }) {
   const active = (services || []).filter((s) => s.is_active !== false)
   if (active.length === 0) return []
@@ -51,19 +55,23 @@ export function pickMatchingServices(services, { emergencyType, lat, lng }) {
   const typeMatches = active.filter((s) => serviceHandlesType(s, emergencyType))
   if (typeMatches.length === 0) return []
 
+  const individuals = typeMatches.filter((s) => s.service_type === 'individual')
+  const locatable = typeMatches.filter((s) => s.service_type !== 'individual')
+
+  if (locatable.length === 0) return individuals
   if (lat == null || lng == null) return typeMatches
 
-  const withDistance = typeMatches.map((s) => ({ service: s, distance: distanceKm(lat, lng, s.lat, s.lng) }))
+  const withDistance = locatable.map((s) => ({ service: s, distance: distanceKm(lat, lng, s.lat, s.lng) }))
   const nearby = withDistance.filter((s) => s.distance !== null && s.distance <= NEARBY_RADIUS_KM)
 
-  if (nearby.length > 0) return nearby.map((s) => s.service)
+  if (nearby.length > 0) return [...individuals, ...nearby.map((s) => s.service)]
 
   // Nothing within radius — fall back to the single nearest match so
   // the emergency is never silently dropped.
   const sorted = withDistance
     .filter((s) => s.distance !== null)
     .sort((a, b) => a.distance - b.distance)
-  return sorted.length > 0 ? [sorted[0].service] : typeMatches
+  return [...individuals, ...(sorted.length > 0 ? [sorted[0].service] : [])]
 }
 
 export const DEFAULT_HANDLES_BY_SERVICE_TYPE = {
@@ -71,5 +79,6 @@ export const DEFAULT_HANDLES_BY_SERVICE_TYPE = {
   police: ['security', 'gbv', 'property_damage'],
   fire: ['fire', 'accident', 'property_damage'],
   ambulance: ['medical', 'accident'],
+  individual: [],
   other: []
 }

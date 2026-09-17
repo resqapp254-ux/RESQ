@@ -8,11 +8,16 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { getAuthenticatedUser } from '../../../../lib/authorizeRequest'
+import { rateLimit } from '../../../../lib/rateLimit'
 
 export async function POST(request) {
   try {
     const { profile, error: authError } = await getAuthenticatedUser(request)
     if (authError) return NextResponse.json({ success: false, error: authError }, { status: 401 })
+
+    if (!rateLimit('rate-emergency:' + profile.id, 20, 60 * 60 * 1000).allowed) {
+      return NextResponse.json({ success: false, error: 'Too many requests. Please wait a moment.' }, { status: 429 })
+    }
 
     const { emergencyId, rating, comment } = await request.json()
     const ratingValue = Number(rating)

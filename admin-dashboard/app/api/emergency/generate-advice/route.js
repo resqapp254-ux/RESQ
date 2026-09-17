@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { canAccessEmergency, getAuthenticatedUser } from '../../../../lib/authorizeRequest'
 import { fetchWithTimeout } from '../../../../lib/fetchWithTimeout'
+import { rateLimit } from '../../../../lib/rateLimit'
 
 const TYPE_GUIDANCE = {
   medical: 'This is a medical emergency. Favor guidance like: do not move an injured person unless they are in immediate danger, check breathing and responsiveness, apply pressure to any bleeding, keep the person warm and still.',
@@ -37,6 +38,13 @@ export async function POST(request) {
   try {
     const { profile, error: authError } = await getAuthenticatedUser(request)
     if (authError) return NextResponse.json({ success: false, error: authError }, { status: 401 })
+
+    // This calls a paid/quota-limited external AI API — cap retries
+    // per account so a scripted loop can't burn through the quota.
+    if (!rateLimit('advice:' + profile.id, 10, 5 * 60 * 1000).allowed) {
+      return NextResponse.json({ success: false, error: 'Too many requests. Please wait a moment.' }, { status: 429 })
+    }
+
     const { emergencyId } = await request.json()
 
     if (!emergencyId) {
