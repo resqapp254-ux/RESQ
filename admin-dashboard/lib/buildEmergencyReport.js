@@ -42,6 +42,7 @@ function renderCase(emergency, messages) {
   <section class="case">
     <h2>${escapeHtml((emergency.emergency_type || 'other').replace('_', ' ').toUpperCase())} · Case ${escapeHtml(emergency.id)}</h2>
     <table class="facts">
+      ${emergency.institutionName ? `<tr><th>Institution</th><td>${escapeHtml(emergency.institutionName)}</td></tr>` : ''}
       <tr><th>Triggered by</th><td>${escapeHtml(reporterName)}</td></tr>
       <tr><th>Triggered via</th><td>${escapeHtml(emergency.triggered_via || 'app')}</td></tr>
       <tr><th>Handled by</th><td>${escapeHtml(claimantName)}</td></tr>
@@ -68,6 +69,17 @@ export function buildWeeklyReportHtml({ institutionName, cases, rangeLabel }) {
     : '<p class="muted">No emergencies were resolved in this period.</p>'
   const summary = `<p class="muted">${cases.length} case${cases.length === 1 ? '' : 's'} resolved, ${rangeLabel}.</p>`
   return wrapDocument(institutionName, `RESQ Weekly Report`, summary + body)
+}
+
+// Super-admin only: every resolved emergency across every institution,
+// each one tagged with which institution it belongs to since this
+// isn't scoped to just one.
+export function buildAllInstitutionsReportHtml({ cases, rangeLabel }) {
+  const body = cases.length
+    ? cases.map((c) => renderCase({ ...c.emergency, institutionName: c.institutionName }, c.messages)).join('<hr/>')
+    : '<p class="muted">No resolved emergencies found.</p>'
+  const summary = `<p class="muted">${cases.length} case${cases.length === 1 ? '' : 's'} resolved across all institutions${rangeLabel ? ', ' + rangeLabel : ''}.</p>`
+  return wrapDocument('All Institutions', 'RESQ Full Solved Emergencies Report', summary + body)
 }
 
 function wrapDocument(institutionName, title, bodyHtml) {

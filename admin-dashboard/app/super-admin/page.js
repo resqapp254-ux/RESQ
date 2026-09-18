@@ -12,6 +12,7 @@ import LoadingScreen from '../../components/LoadingScreen'
 import LanguageSwitcher from '../../components/LanguageSwitcher'
 import SignOutOverlay from '../../components/SignOutOverlay'
 import { ManagementFlowDiagram, EmergencyFlowDiagram } from '../../components/FlowDiagrams'
+import { buildAllInstitutionsReportHtml, downloadHtmlFile } from '../../lib/buildEmergencyReport'
 
 const STATUS_COLORS = {
   pending_verification: '#e0b34d',
@@ -30,6 +31,7 @@ export default function SuperAdminPage() {
   const [editName, setEditName] = useState('')
   const [uploadingLogoFor, setUploadingLogoFor] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
+  const [downloadingSolvedReport, setDownloadingSolvedReport] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const [expandedInstId, setExpandedInstId] = useState(null)
   const [instResponders, setInstResponders] = useState({})
@@ -384,6 +386,51 @@ th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:
     }
   }
 
+  const SOLVED_CASE_SELECT = `
+    id, emergency_type, status, created_at, claimed_at, resolved_at, lat, lng, institution_id,
+    triggered_by_phone, triggered_via, photo_url, video_url, rating, rating_comment,
+    reporter:profiles!emergencies_triggered_by_fkey(full_name, phone, email),
+    claimant:profiles!emergencies_claimed_by_fkey(full_name, email)
+  `
+
+  // Every resolved emergency across every institution, with full
+  // details (location, timestamps, chat, media, rating) in one file —
+  // the cross-institution equivalent of an institution admin's own
+  // case reports, for RESQ's own record-keeping/oversight.
+  async function downloadAllSolvedReport() {
+    setError('')
+    setDownloadingSolvedReport(true)
+    try {
+      const { data: cases, error: fetchError } = await supabase
+        .from('emergencies')
+        .select(SOLVED_CASE_SELECT)
+        .eq('status', 'resolved')
+        .order('resolved_at', { ascending: false })
+
+      if (fetchError) throw fetchError
+
+      const institutionNameById = {}
+      for (const inst of institutions) institutionNameById[inst.id] = inst.name
+
+      const withMessages = []
+      for (const emergency of cases || []) {
+        const { data: messages } = await supabase
+          .from('emergency_messages')
+          .select('sender_role, message, media_url, media_type, is_ai_generated, created_at')
+          .eq('emergency_id', emergency.id)
+          .order('created_at', { ascending: true })
+        withMessages.push({ emergency, messages: messages || [], institutionName: institutionNameById[emergency.institution_id] || 'Unknown institution' })
+      }
+
+      const html = buildAllInstitutionsReportHtml({ cases: withMessages })
+      downloadHtmlFile(`resq-all-solved-emergencies-${new Date().toISOString().slice(0, 10)}.html`, html)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setDownloadingSolvedReport(false)
+    }
+  }
+
   const hasActiveAlert = activeEmergencyCount > 0
 
   if (!authorized) {
@@ -423,6 +470,14 @@ th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:
           </Link>
           <button className="resq-btn-secondary" onClick={downloadBackup} title="Download a full JSON snapshot of all data: a self-serve recovery point in addition to Supabase's own backups">
             ⬇ Download Backup
+          </button>
+          <button
+            className="resq-btn-secondary"
+            onClick={downloadAllSolvedReport}
+            disabled={downloadingSolvedReport}
+            title="Every resolved emergency across every institution, with location coordinates, timestamps, chat history, media, and ratings, in one readable file"
+          >
+            {downloadingSolvedReport ? 'Preparing…' : '⬇ All Solved Emergencies'}
           </button>
           <button className="resq-btn-secondary" onClick={() => setShowFlow((v) => !v)}>
             {showFlow ? '📊 Hide System Flow' : '📊 System Flow'}

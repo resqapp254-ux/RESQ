@@ -17,14 +17,14 @@ import MyInstitutionsPanel from '../../components/MyInstitutionsPanel'
 import IdentityPrompt from '../../components/IdentityPrompt'
 
 const EMERGENCY_TYPES = [
-  { key: 'medical', translationKey: 'medical', emoji: '\uD83C\uDFE5', color: '#ff5252' },
-  { key: 'fire', translationKey: 'fire', emoji: '\uD83D\uDD25', color: '#ff8a3d' },
-  { key: 'accident', translationKey: 'accident', emoji: '\uD83D\uDE91', color: '#ffca3d' },
-  { key: 'security', translationKey: 'security', emoji: '\uD83D\uDEE1\uFE0F', color: '#35d0e8' },
-  { key: 'gbv', translationKey: 'gbv', emoji: '\uD83E\uDD1D', color: '#c084fc' },
-  { key: 'mental_health', translationKey: 'mentalHealth', emoji: '\uD83E\uDDE0', color: '#7f9cf5' },
-  { key: 'property_damage', translationKey: 'propertyDamage', emoji: '\uD83C\uDFDA\uFE0F', color: '#8d99ae' },
-  { key: 'other', translationKey: 'other', emoji: '\u26A0\uFE0F', color: '#e0b34d' }
+  { key: 'medical', translationKey: 'medical', emoji: '🏥', color: '#ff5252' },
+  { key: 'fire', translationKey: 'fire', emoji: '🔥', color: '#ff8a3d' },
+  { key: 'accident', translationKey: 'accident', emoji: '🚑', color: '#ffca3d' },
+  { key: 'security', translationKey: 'security', emoji: '🛡️', color: '#35d0e8' },
+  { key: 'gbv', translationKey: 'gbv', emoji: '🤝', color: '#c084fc' },
+  { key: 'mental_health', translationKey: 'mentalHealth', emoji: '🧠', color: '#7f9cf5' },
+  { key: 'property_damage', translationKey: 'propertyDamage', emoji: '🏚️', color: '#8d99ae' },
+  { key: 'other', translationKey: 'other', emoji: '⚠️', color: '#e0b34d' }
 ]
 
 function typeLabel(key, t) {
@@ -67,6 +67,7 @@ export default function UserPage() {
   const [claimableResponders, setClaimableResponders] = useState([])
   const [currentEmergency, setCurrentEmergency] = useState(null)
   const [routedInstitution, setRoutedInstitution] = useState(null)
+  const [cancellingEmergency, setCancellingEmergency] = useState(false)
   const [currentAdvice, setCurrentAdvice] = useState('')
   const [chatMessage, setChatMessage] = useState('')
   const [chatError, setChatError] = useState('')
@@ -74,6 +75,10 @@ export default function UserPage() {
   const [chatBusy, setChatBusy] = useState(false)
   const [chatPhotoBusy, setChatPhotoBusy] = useState(false)
   const chatPhotoInputRef = useRef(null)
+  const [chatRecording, setChatRecording] = useState(false)
+  const [chatVoiceBusy, setChatVoiceBusy] = useState(false)
+  const chatRecorderRef = useRef(null)
+  const chatRecordingTimeoutRef = useRef(null)
   const [locationBusy, setLocationBusy] = useState(false)
   const [triggerBusy, setTriggerBusy] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
@@ -276,7 +281,7 @@ export default function UserPage() {
       let openQuery = supabase
         .from('emergencies')
         .select(
-          'id, emergency_type, status, created_at, claimed_by, institution_id, triggered_by, triggered_by_phone, triggered_via, ai_flag_to_responder, lat, lng, reporter:profiles!emergencies_triggered_by_fkey(full_name, phone, admission_number), claimant:profiles!emergencies_claimed_by_fkey(full_name, phone, service_id, admission_number, avatar_url)'
+          'id, emergency_type, status, created_at, claimed_by, institution_id, triggered_by, triggered_by_phone, triggered_via, ai_flag_to_responder, lat, lng, photo_url, video_url, reporter:profiles!emergencies_triggered_by_fkey(full_name, phone, admission_number), claimant:profiles!emergencies_claimed_by_fkey(full_name, phone, service_id, admission_number, avatar_url)'
         )
         .in('status', ['triggered', 'claimed', 'in_progress'])
         .order('created_at', { ascending: false })
@@ -372,6 +377,35 @@ export default function UserPage() {
   async function getAccessToken() {
     const { data: sessionData } = await supabase.auth.getSession()
     return sessionData.session?.access_token || null
+  }
+
+  async function handleCancelEmergency(emergencyId) {
+    if (!emergencyId) return
+    const confirmed = window.confirm(
+      "Cancel this emergency? If you cancel, no responder will come to help with this. If you're not sure, it's " +
+      'safer to wait a little longer instead — a responder may still be on the way.'
+    )
+    if (!confirmed) return
+
+    setCancellingEmergency(true)
+    const accessToken = await getAccessToken()
+    const response = await fetch('/api/emergency/cancel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (accessToken || '') },
+      body: JSON.stringify({ emergencyId })
+    })
+    const result = await response.json()
+    setCancellingEmergency(false)
+
+    if (!response.ok || !result.success) {
+      setError(result.error || 'Could not cancel')
+      return
+    }
+
+    setCurrentEmergency(null)
+    setMessage('Emergency cancelled.')
+    const { data: authData } = await supabase.auth.getUser()
+    if (authData.user) await refreshEmergencies(authData.user.id, role)
   }
 
   async function handleTriggerEmergency() {
@@ -674,6 +708,86 @@ export default function UserPage() {
     }
   }
 
+  const MAX_VOICE_NOTE_MS = 120000 // 2 minutes, matching the mobile app's cap
+
+  async function startVoiceRecording() {
+    setChatError('')
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      setChatError('Voice recording is not supported in this browser.')
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : ''
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
+      const chunks = []
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data) }
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop())
+        const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' })
+        sendChatVoice(blob)
+      }
+      recorder.start()
+      chatRecorderRef.current = recorder
+      setChatRecording(true)
+      chatRecordingTimeoutRef.current = setTimeout(() => stopVoiceRecording(), MAX_VOICE_NOTE_MS)
+    } catch (err) {
+      setChatError('Microphone access needed to record a voice note.')
+    }
+  }
+
+  function stopVoiceRecording() {
+    if (chatRecordingTimeoutRef.current) {
+      clearTimeout(chatRecordingTimeoutRef.current)
+      chatRecordingTimeoutRef.current = null
+    }
+    setChatRecording(false)
+    chatRecorderRef.current?.stop()
+    chatRecorderRef.current = null
+  }
+
+  async function sendChatVoice(blob) {
+    if (!chatTargetId) return
+    const maxBytes = 15 * 1024 * 1024
+    if (blob.size > maxBytes) {
+      setChatError('That voice note is too long. Please keep it under 15MB.')
+      return
+    }
+
+    setChatVoiceBusy(true)
+    try {
+      const { data: authData } = await supabase.auth.getUser()
+      if (!authData.user) {
+        router.replace('/login')
+        return
+      }
+
+      const ext = blob.type.includes('ogg') ? 'ogg' : 'webm'
+      const path = `${chatTargetId}-chat-voice-${Date.now()}.${ext}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('emergency-photos')
+        .upload(path, blob, { contentType: blob.type || 'audio/webm', upsert: true })
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage.from('emergency-photos').getPublicUrl(path)
+
+      const { error: insertError } = await supabase.from('emergency_messages').insert({
+        emergency_id: chatTargetId,
+        sender_id: authData.user.id,
+        sender_role: role || 'user',
+        message: '🎙️ Voice note',
+        media_url: urlData.publicUrl,
+        media_type: 'voice'
+      })
+      if (insertError) throw insertError
+    } catch (err) {
+      setChatError(err.message || 'Upload failed')
+    } finally {
+      setChatVoiceBusy(false)
+    }
+  }
+
   const reportableEmergencies = [...activeEmergencies, ...resolvedEmergencies].filter((e) => e.claimed_by)
 
   async function handleSubmitReport(e) {
@@ -746,6 +860,8 @@ export default function UserPage() {
               <img src={m.media_url} alt="Attached" style={{ maxWidth: '100%', borderRadius: 8, marginTop: 6, display: 'block' }} />
             ) : m.media_type === 'voice' && m.media_url ? (
               <audio controls src={m.media_url} style={{ marginTop: 6, maxWidth: '100%' }} />
+            ) : m.media_type === 'video' && m.media_url ? (
+              <video controls src={m.media_url} style={{ marginTop: 6, maxWidth: '100%', borderRadius: 8, display: 'block' }} />
             ) : (
               <p style={{ margin: '2px 0 0' }}>{m.message}</p>
             )}
@@ -793,11 +909,11 @@ export default function UserPage() {
           <p className="resq-subtle" style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span>
               {t('signedInAs')} {email}
-              {role ? ' \u2022 ' + (isResponderView ? t('responderWorkspace') : t('userWorkspace')) + ' (' + role + ')' : ''}
+              {role ? ' • ' + (isResponderView ? t('responderWorkspace') : t('userWorkspace')) + ' (' + role + ')' : ''}
             </span>
             {institutionName && (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                {' \u2022 '}
+                {' • '}
                 {institutionLogo && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={institutionLogo} alt={`${institutionName} logo`} width={18} height={18} style={{ borderRadius: 4, objectFit: 'cover' }} />
@@ -823,7 +939,7 @@ export default function UserPage() {
               onClick={() => setSirenMuted((m) => !m)}
               aria-pressed={sirenMuted}
             >
-              {sirenMuted ? '\ud83d\udd07 ' + t('unmuteSiren') : '\ud83d\udd0a ' + t('muteSiren')}
+              {sirenMuted ? '🔇 ' + t('unmuteSiren') : '🔊 ' + t('muteSiren')}
             </button>
           </div>
         )}
@@ -868,10 +984,20 @@ export default function UserPage() {
                         >
                           {chatPhotoBusy ? '…' : '📷'}
                         </button>
+                        <button
+                          type="button"
+                          className="resq-btn-secondary"
+                          onClick={chatRecording ? stopVoiceRecording : startVoiceRecording}
+                          disabled={chatVoiceBusy}
+                          title={chatRecording ? 'Stop and send' : 'Record a voice note'}
+                        >
+                          {chatVoiceBusy ? '…' : chatRecording ? '⏹' : '🎙️'}
+                        </button>
                         <button className="resq-btn-secondary" style={{ flex: 1 }} onClick={sendChatMessage} disabled={chatBusy}>
                           {chatBusy ? t('sendingEllipsis') : t('sendMessage')}
                         </button>
                       </div>
+                      {chatRecording && <p className="resq-subtle" style={{ margin: '6px 0 0', color: '#ff8080' }}>Recording… tap ⏹ to send</p>}
                     </>
                   ) : (
                     <p className="resq-subtle">Claim an emergency below to message the person who reported it.</p>
@@ -962,6 +1088,18 @@ export default function UserPage() {
                       </div>
                     )}
 
+                    <button
+                      type="button"
+                      className="resq-btn-secondary"
+                      style={{ color: '#ff8080', borderColor: 'rgba(255,128,128,0.4)', fontSize: 12, padding: '5px 12px' }}
+                      onClick={() => handleCancelEmergency(activeEmergencies[0]?.id)}
+                      disabled={cancellingEmergency || !activeEmergencies[0]?.id}
+                    >
+                      {cancellingEmergency ? 'Cancelling…' : '✕ Cancel this emergency'}
+                    </button>
+
+                    {error && <p style={{ color: '#ff8080' }}>{error}</p>}
+
                     <div style={{ marginTop: 20 }}>
                       <h3 style={{ marginTop: 0 }}>{t('chatWithResponders')}</h3>
                       {chatThread}
@@ -982,10 +1120,20 @@ export default function UserPage() {
                         >
                           {chatPhotoBusy ? '…' : '📷'}
                         </button>
+                        <button
+                          type="button"
+                          className="resq-btn-secondary"
+                          onClick={chatRecording ? stopVoiceRecording : startVoiceRecording}
+                          disabled={chatVoiceBusy}
+                          title={chatRecording ? 'Stop and send' : 'Record a voice note'}
+                        >
+                          {chatVoiceBusy ? '…' : chatRecording ? '⏹' : '🎙️'}
+                        </button>
                         <button className="resq-btn-secondary" style={{ flex: 1 }} onClick={sendChatMessage} disabled={chatBusy}>
                           {chatBusy ? t('sendingEllipsis') : t('sendMessage')}
                         </button>
                       </div>
+                      {chatRecording && <p className="resq-subtle" style={{ margin: '6px 0 0', color: '#ff8080' }}>Recording… tap ⏹ to send</p>}
                       {chatError && <p style={{ color: '#ff8080' }}>{chatError}</p>}
                     </div>
 
@@ -1081,7 +1229,7 @@ export default function UserPage() {
                         {new Date(emergency.created_at).toLocaleString()}
                       </p>
                       <span className={statusBadgeClass(emergency.status, emergency.claimed_by)}>
-                        {emergency.claimed_by ? 'Claimed' : 'Open'} \u00b7 {emergency.status}
+                        {emergency.claimed_by ? 'Claimed' : 'Open'} · {emergency.status}
                       </span>
                       {isResponderView && emergency.claimant && (
                         <p className="resq-subtle" style={{ margin: '4px 0 0', color: '#7fe3f2', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -1089,9 +1237,9 @@ export default function UserPage() {
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={emergency.claimant.avatar_url} alt="" width={16} height={16} style={{ borderRadius: '50%', objectFit: 'cover' }} />
                           )}
-                          \u270b Claimed by {emergency.claimant.full_name}{emergency.claimant.admission_number ? ' (' + emergency.claimant.admission_number + ')' : ''}
+                          ✋ Claimed by {emergency.claimant.full_name}{emergency.claimant.admission_number ? ' (' + emergency.claimant.admission_number + ')' : ''}
                           {emergency.claimant.phone && (
-                            <a href={`tel:${emergency.claimant.phone}`} style={{ color: '#7fe3f2' }}>\ud83d\udcde {emergency.claimant.phone}</a>
+                            <a href={`tel:${emergency.claimant.phone}`} style={{ color: '#7fe3f2' }}>📞 {emergency.claimant.phone}</a>
                           )}
                         </p>
                       )}
@@ -1112,21 +1260,21 @@ export default function UserPage() {
                       {isResponderView && (
                         <p className="resq-subtle" style={{ margin: '6px 0 0' }}>
                           {emergency.reporter?.full_name ? (
-                            <>\ud83d\udc64 {emergency.reporter.full_name}{emergency.reporter.admission_number ? ' (' + emergency.reporter.admission_number + ')' : ''}{(emergency.reporter.phone || emergency.triggered_by_phone) ? ' \u00b7 ' + (emergency.reporter.phone || emergency.triggered_by_phone) : ''}</>
+                            <>👤 {emergency.reporter.full_name}{emergency.reporter.admission_number ? ' (' + emergency.reporter.admission_number + ')' : ''}{(emergency.reporter.phone || emergency.triggered_by_phone) ? ' · ' + (emergency.reporter.phone || emergency.triggered_by_phone) : ''}</>
                           ) : emergency.triggered_by_phone ? (
-                            <>\ud83d\udcde {emergency.triggered_by_phone} {emergency.triggered_via === 'ussd' ? '(USSD)' : emergency.triggered_via === 'sms' ? '(SMS)' : ''}</>
+                            <>📞 {emergency.triggered_by_phone} {emergency.triggered_via === 'ussd' ? '(USSD)' : emergency.triggered_via === 'sms' ? '(SMS)' : ''}</>
                           ) : (
                             <>Reporter details unavailable</>
                           )}
                           {emergency.lat != null && emergency.lng != null && (
                             <>
-                              {' \u00b7 '}
+                              {' · '}
                               <a
                                 href={`https://www.google.com/maps?q=${emergency.lat},${emergency.lng}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                               >
-                                \ud83d\udccd View location
+                                📍 View location
                               </a>
                             </>
                           )}
@@ -1137,6 +1285,18 @@ export default function UserPage() {
                           <strong>AI flag</strong>
                           <p style={{ margin: '4px 0 0' }}>{emergency.ai_flag_to_responder}</p>
                         </div>
+                      )}
+                      {isResponderView && emergency.photo_url && (
+                        <div style={{ margin: '8px 0 0' }}>
+                          <p className="resq-subtle" style={{ margin: '0 0 4px', fontSize: 12 }}>Photo from the scene:</p>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={emergency.photo_url} alt="Evidence from the scene" style={{ maxWidth: 220, borderRadius: 8, display: 'block' }} />
+                        </div>
+                      )}
+                      {isResponderView && emergency.video_url && (
+                        <p style={{ margin: '8px 0 0' }}>
+                          <a href={emergency.video_url} target="_blank" rel="noopener noreferrer">🎥 View video from the scene</a>
+                        </p>
                       )}
                     </div>
                     {/* Once a plain responder's case is claimed, the claim button

@@ -56,6 +56,7 @@ export default function EmergencyDetailScreen({ route, navigation }) {
   const [myId, setMyId] = useState(null)
   const [myPermission, setMyPermission] = useState('full')
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [uploadingVideo, setUploadingVideo] = useState(false)
   const [ratingDraft, setRatingDraft] = useState(0)
   const [ratingSubmitting, setRatingSubmitting] = useState(false)
   const listRef = useRef(null)
@@ -313,6 +314,53 @@ export default function EmergencyDetailScreen({ route, navigation }) {
     }
   }
 
+  async function pickAndSendVideo() {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!permission.granted) {
+      Alert.alert('Video access needed', 'Enable photo/video library access in settings to attach a video.')
+      return
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['videos'], quality: 0.7 })
+    if (result.canceled || !result.assets?.[0]) return
+
+    const asset = result.assets[0]
+    const maxBytes = 50 * 1024 * 1024
+    const knownSize = asset.fileSize ?? (await FileSystem.getInfoAsync(asset.uri)).size
+    if (knownSize > maxBytes) {
+      Alert.alert('Video too large', 'Please choose a video under 50MB.')
+      return
+    }
+
+    setUploadingVideo(true)
+    try {
+      const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 })
+      const arrayBuffer = decode(base64)
+      const ext = asset.uri.split('.').pop() || 'mp4'
+      const path = `${emergencyId}-chat-video-${Date.now()}.${ext}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('emergency-photos')
+        .upload(path, arrayBuffer, { contentType: asset.mimeType || 'video/mp4', upsert: true })
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage.from('emergency-photos').getPublicUrl(path)
+
+      const { error: insertError } = await supabase.from('emergency_messages').insert({
+        emergency_id: emergencyId,
+        sender_id: myId,
+        sender_role: 'responder',
+        message: '🎥 Video',
+        media_url: urlData.publicUrl,
+        media_type: 'video'
+      })
+      if (insertError) throw insertError
+    } catch (err) {
+      Alert.alert('Could not send video', err.message)
+    } finally {
+      setUploadingVideo(false)
+    }
+  }
+
   if (!emergency) {
     return <View style={styles.container}><Text style={{ color: '#9aa4bf' }}>Loading...</Text></View>
   }
@@ -435,6 +483,10 @@ export default function EmergencyDetailScreen({ route, navigation }) {
                 <Image source={{ uri: item.media_url }} style={styles.chatPhoto} resizeMode="cover" />
               ) : item.media_type === 'voice' && item.media_url ? (
                 <VoiceMessageBubble uri={item.media_url} textStyle={textStyle} />
+              ) : item.media_type === 'video' && item.media_url ? (
+                <TouchableOpacity onPress={() => Linking.openURL(item.media_url)}>
+                  <Text style={textStyle}>🎥 Video message — tap to view</Text>
+                </TouchableOpacity>
               ) : (
                 <Text style={textStyle}>{item.message}</Text>
               )}
@@ -447,6 +499,9 @@ export default function EmergencyDetailScreen({ route, navigation }) {
         <View style={styles.inputRow}>
           <TouchableOpacity style={styles.photoButton} onPress={pickAndSendPhoto} disabled={uploadingPhoto}>
             <Text style={{ fontSize: 16 }}>{uploadingPhoto ? '⏳' : '📷'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.photoButton} onPress={pickAndSendVideo} disabled={uploadingVideo}>
+            <Text style={{ fontSize: 16 }}>{uploadingVideo ? '⏳' : '🎥'}</Text>
           </TouchableOpacity>
           <TextInput
             style={styles.input}

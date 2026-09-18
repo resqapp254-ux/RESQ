@@ -15,6 +15,7 @@ import * as FileSystem from 'expo-file-system/legacy'
 import { decode } from 'base64-arraybuffer'
 import { useAudioRecorder, useAudioPlayer, AudioModule, RecordingPresets } from 'expo-audio'
 import { supabase } from '../lib/supabase'
+import { API_BASE_URL } from '../lib/config'
 
 const STATUS_LABELS = {
   triggered: 'Waiting for a responder...',
@@ -58,6 +59,8 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
   const [isRecording, setIsRecording] = useState(false)
   const [uploadingVoice, setUploadingVoice] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [uploadingVideo, setUploadingVideo] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
   const voiceNoteTimeoutRef = useRef(null)
 
@@ -181,6 +184,40 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
     )
   }
 
+  function confirmCancel() {
+    Alert.alert(
+      'Cancel this emergency?',
+      'If you cancel, no responder will come to help with this. If you\'re not sure, it\'s safer to wait a little ' +
+      'longer instead — a responder may still be on the way.',
+      [
+        { text: 'Keep waiting', style: 'cancel' },
+        { text: 'Cancel emergency', style: 'destructive', onPress: cancelEmergency }
+      ]
+    )
+  }
+
+  async function cancelEmergency() {
+    setCancelling(true)
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const res = await fetch(`${API_BASE_URL}/api/emergency/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData.session?.access_token || ''}` },
+        body: JSON.stringify({ emergencyId })
+      })
+      const data = await res.json()
+      if (!data.success) {
+        Alert.alert('Could not cancel', data.error || 'Unknown error')
+        setCancelling(false)
+        return
+      }
+      navigation.replace('Home')
+    } catch (err) {
+      Alert.alert('Could not cancel', err.message)
+      setCancelling(false)
+    }
+  }
+
   function callResponder() {
     if (!responderProfile?.phone) {
       Alert.alert('No phone number available for this responder yet.')
@@ -248,6 +285,53 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
       Alert.alert('Could not send photo', err.message)
     } finally {
       setUploadingPhoto(false)
+    }
+  }
+
+  async function pickAndSendVideo() {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!permission.granted) {
+      Alert.alert('Video access needed', 'Enable photo/video library access in settings to attach a video.')
+      return
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['videos'], quality: 0.7 })
+    if (result.canceled || !result.assets?.[0]) return
+
+    const asset = result.assets[0]
+    const maxBytes = 50 * 1024 * 1024
+    const knownSize = asset.fileSize ?? (await FileSystem.getInfoAsync(asset.uri)).size
+    if (knownSize > maxBytes) {
+      Alert.alert('Video too large', 'Please choose a video under 50MB.')
+      return
+    }
+
+    setUploadingVideo(true)
+    try {
+      const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 })
+      const arrayBuffer = decode(base64)
+      const ext = asset.uri.split('.').pop() || 'mp4'
+      const path = `${emergencyId}-chat-video-${Date.now()}.${ext}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('emergency-photos')
+        .upload(path, arrayBuffer, { contentType: asset.mimeType || 'video/mp4', upsert: true })
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage.from('emergency-photos').getPublicUrl(path)
+
+      const { error: insertError } = await supabase.from('emergency_messages').insert({
+        emergency_id: emergencyId,
+        sender_id: myId,
+        sender_role: 'user',
+        message: '🎥 Video',
+        media_url: urlData.publicUrl,
+        media_type: 'video'
+      })
+      if (insertError) throw insertError
+    } catch (err) {
+      Alert.alert('Could not send video', err.message)
+    } finally {
+      setUploadingVideo(false)
     }
   }
 
@@ -327,6 +411,12 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Text style={styles.statusHeader}>{STATUS_LABELS[emergency.status]}</Text>
 
+      {!['resolved', 'cancelled'].includes(emergency.status) && (
+        <TouchableOpacity style={styles.cancelButton} onPress={confirmCancel} disabled={cancelling}>
+          <Text style={styles.cancelButtonText}>{cancelling ? 'Cancelling…' : '✕ Cancel this emergency'}</Text>
+        </TouchableOpacity>
+      )}
+
       {routedInstitution?.name && (
         <View style={styles.routedBox}>
           {routedInstitution.logo_url && (
@@ -373,6 +463,10 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
                 <Image source={{ uri: item.media_url }} style={styles.chatPhoto} resizeMode="cover" />
               ) : item.media_type === 'voice' && item.media_url ? (
                 <VoiceMessageBubble uri={item.media_url} textStyle={textStyle} />
+              ) : item.media_type === 'video' && item.media_url ? (
+                <TouchableOpacity onPress={() => Linking.openURL(item.media_url)}>
+                  <Text style={textStyle}>🎥 Video message — tap to view</Text>
+                </TouchableOpacity>
               ) : (
                 <Text style={textStyle}>{item.message}</Text>
               )}
@@ -384,6 +478,9 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
       <View style={styles.inputRow}>
         <TouchableOpacity style={styles.photoButton} onPress={pickAndSendPhoto} disabled={uploadingPhoto}>
           <Text style={{ fontSize: 16 }}>{uploadingPhoto ? '⏳' : '📷'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.photoButton} onPress={pickAndSendVideo} disabled={uploadingVideo}>
+          <Text style={{ fontSize: 16 }}>{uploadingVideo ? '⏳' : '🎥'}</Text>
         </TouchableOpacity>
         <TextInput
           style={styles.input}
@@ -412,6 +509,8 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: '#05070d' },
   statusHeader: { fontSize: 20, fontWeight: 'bold', marginBottom: 12, color: '#ff2b2b' },
+  cancelButton: { alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,128,128,0.4)', marginBottom: 12 },
+  cancelButtonText: { color: '#ff8080', fontSize: 12, fontWeight: '600' },
   routedBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.06)', padding: 10, borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
   routedLogo: { width: 28, height: 28, borderRadius: 6, marginRight: 10 },
   routedText: { color: '#f4f6fb', fontSize: 13, flex: 1 },
