@@ -468,6 +468,9 @@ th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:
           <Link href="/super-admin/animation-lab" className="resq-btn-secondary" style={{ textDecoration: 'none' }}>
             🎛 Animation Lab
           </Link>
+          <Link href="/super-admin/terminal" className="resq-btn-secondary" style={{ textDecoration: 'none' }}>
+            🖥 Terminal
+          </Link>
           <button className="resq-btn-secondary" onClick={downloadBackup} title="Download a full JSON snapshot of all data: a self-serve recovery point in addition to Supabase's own backups">
             ⬇ Download Backup
           </button>

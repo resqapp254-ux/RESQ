@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { rateLimit } from '../../../../lib/rateLimit'
 import { friendlyAuthError, isEmailAlreadyExistsError } from '../../../../lib/authErrors'
+import { logActivity } from '../../../../lib/logActivity'
 
 async function getCallerProfile(request) {
   const authHeader = request.headers.get('authorization') || ''
@@ -111,6 +112,8 @@ export async function POST(request) {
         console.error('RESPONDER SETTINGS ASSIGN ERROR:', assignError.message)
       }
     }
+
+    logActivity({ eventType: 'responder_created', detail: `${fullName} (${permission === 'view_only' ? 'secondary' : 'primary'})`, userId: authUser.user.id, institutionId: caller.institution_id })
 
     return NextResponse.json({ success: true, responderId: authUser.user.id })
   } catch (err) {

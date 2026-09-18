@@ -4,6 +4,7 @@ import { getAuthenticatedUser } from '../../../../lib/authorizeRequest'
 import { rateLimit } from '../../../../lib/rateLimit'
 import { pickPublicInstitution } from '../../../../lib/publicInstitutionRouting'
 import { hasAvailableResponder } from '../../../../lib/checkResponderAvailability'
+import { logActivity } from '../../../../lib/logActivity'
 
 const VALID_EMERGENCY_TYPES = ['medical', 'fire', 'accident', 'security', 'gbv', 'mental_health', 'property_damage', 'other']
 
@@ -21,6 +22,7 @@ export async function POST(request) {
     // scripted abuse of a valid session, not genuine use.
     const { allowed } = rateLimit('trigger:' + user.id, 5, 10 * 60 * 1000)
     if (!allowed) {
+      logActivity({ eventType: 'rate_limited', detail: 'emergency/trigger', userId: user.id })
       return NextResponse.json({ success: false, error: 'Too many emergencies triggered from this account recently. If this is urgent, call local emergency services directly.' }, { status: 429 })
     }
 
@@ -60,6 +62,7 @@ export async function POST(request) {
 
       const match = pickPublicInstitution(availablePublicInstitutions, { emergencyType, lat, lng })
       if (!match) {
+        logActivity({ eventType: 'trigger_blocked_no_responder', detail: `Public · type=${emergencyType}`, userId: user.id })
         return NextResponse.json({ success: false, error: 'No public responder, company, or service is currently available to receive this emergency. If this is urgent, call local emergency services directly.' }, { status: 503 })
       }
       institutionId = match.id
@@ -68,6 +71,7 @@ export async function POST(request) {
       // a report into an institution with nobody who would receive it.
       const available = await hasAvailableResponder(supabaseAdmin, institutionId, { emergencyType, lat, lng })
       if (!available) {
+        logActivity({ eventType: 'trigger_blocked_no_responder', detail: `Private · type=${emergencyType}`, userId: user.id, institutionId })
         return NextResponse.json({ success: false, error: 'Your institution has no responder currently available to receive this emergency. Please contact them directly, or call local emergency services if this is urgent.' }, { status: 503 })
       }
     }
@@ -107,6 +111,8 @@ export async function POST(request) {
     if (insertError) {
       return NextResponse.json({ success: false, error: insertError.message }, { status: 500 })
     }
+
+    logActivity({ eventType: 'emergency_triggered', detail: `type=${emergencyType} · via=app`, userId: user.id, institutionId })
 
     // Tell the user who they were routed to — especially important for
     // public accounts, which have no fixed institution and might

@@ -12,6 +12,7 @@ import { randomInt } from 'crypto'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { getClientIp, rateLimit } from '../../../../lib/rateLimit'
 import { friendlyAuthError, isEmailAlreadyExistsError } from '../../../../lib/authErrors'
+import { logActivity } from '../../../../lib/logActivity'
 
 async function verifySuperAdmin(request) {
   const authHeader = request.headers.get('authorization') || ''
@@ -112,6 +113,8 @@ export async function POST(request) {
         { status: isEmailAlreadyExistsError(authError) ? 409 : 500 }
       )
     }
+
+    logActivity({ eventType: 'institution_created', detail: institutionName, userId: authUser.user.id, institutionId: institution.id })
 
     return NextResponse.json({
       success: true,

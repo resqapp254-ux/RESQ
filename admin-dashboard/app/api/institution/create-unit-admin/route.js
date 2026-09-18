@@ -15,6 +15,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { rateLimit } from '../../../../lib/rateLimit'
 import { friendlyAuthError, isEmailAlreadyExistsError } from '../../../../lib/authErrors'
+import { logActivity } from '../../../../lib/logActivity'
 
 async function getCallerProfile(request) {
   const authHeader = request.headers.get('authorization') || ''
@@ -128,6 +129,8 @@ export async function POST(request) {
     if (assignError) {
       console.error('UNIT ADMIN SERVICE ASSIGN ERROR:', assignError.message)
     }
+
+    logActivity({ eventType: 'unit_admin_created', detail: email, userId: authUser.user.id, institutionId: caller.institution_id })
 
     return NextResponse.json({ success: true, serviceId, unitAdminId: authUser.user.id })
   } catch (err) {
