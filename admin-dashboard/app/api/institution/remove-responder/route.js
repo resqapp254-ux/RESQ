@@ -1,14 +1,20 @@
 // app/api/institution/remove-responder/route.js
 //
-// "Remove" a responder without deleting them: emergencies.triggered_by
-// and .claimed_by both reference profiles(id) with no ON DELETE
-// clause, so a hard delete would fail outright for any responder who
-// has ever claimed a case, and would be wrong anyway since it would
-// destroy that case's audit trail. Instead this bans their login
-// (Auth Admin API) and marks profiles.is_active = false, clears their
-// push token so they stop receiving alerts immediately, while every
-// past emergency they were ever involved in still shows their name.
-// Reactivating (active: true) reverses all of it.
+// "Remove" tries a real Supabase Auth account deletion first — clean,
+// and exactly what most people expect "remove" to mean. It only
+// works when nothing references that profile: emergencies.
+// triggered_by and .claimed_by both reference profiles(id) with no
+// ON DELETE clause, so a responder who has ever claimed a case can't
+// be hard-deleted (Postgres refuses it, since it would leave that
+// case's audit trail pointing at nothing). When that happens, this
+// falls back automatically to banning their login (Auth Admin API)
+// and marking profiles.is_active = false instead — every past
+// emergency they were ever involved in still shows their name, they
+// just can't sign in or be assigned new ones. The response's
+// `outcome` field tells the caller which one happened.
+//
+// Reactivating (active: true) only makes sense for the fallback path
+// (a deleted account has nothing left to reactivate).
 //
 // Callable by the institution_admin for any responder OR unit_admin
 // login in their institution (e.g. to revoke a unit's dashboard login
@@ -64,23 +70,50 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'That responder is not in your institution/unit' }, { status: 403 })
     }
 
-    const { error: banError } = await supabaseAdmin.auth.admin.updateUserById(responderId, {
-      ban_duration: active ? 'none' : BAN_DURATION
-    })
+    if (active) {
+      // Reactivating only ever applies to the ban+deactivate fallback
+      // path — if this account was actually deleted, there's nothing
+      // left to reactivate and this will fail with "user not found".
+      const { error: unbanError } = await supabaseAdmin.auth.admin.updateUserById(responderId, { ban_duration: 'none' })
+      if (unbanError) {
+        return NextResponse.json({ success: false, error: unbanError.message }, { status: 500 })
+      }
+      const { error: updateError } = await supabaseAdmin.from('profiles').update({ is_active: true }).eq('id', responderId)
+      if (updateError) {
+        return NextResponse.json({ success: false, error: updateError.message }, { status: 500 })
+      }
+      return NextResponse.json({ success: true, outcome: 'reactivated' })
+    }
+
+    // Try a real delete first — clean, and what "remove" should mean
+    // whenever it's actually possible.
+    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(responderId)
+    if (!deleteError) {
+      return NextResponse.json({ success: true, outcome: 'deleted' })
+    }
+
+    // Couldn't delete (almost always because they've claimed or
+    // triggered at least one emergency) — fall back to revoking
+    // access instead of losing that case history.
+    const { error: banError } = await supabaseAdmin.auth.admin.updateUserById(responderId, { ban_duration: BAN_DURATION })
     if (banError) {
       return NextResponse.json({ success: false, error: banError.message }, { status: 500 })
     }
 
     const { error: updateError } = await supabaseAdmin
       .from('profiles')
-      .update({ is_active: active, ...(active ? {} : { push_token: null }) })
+      .update({ is_active: false, push_token: null })
       .eq('id', responderId)
 
     if (updateError) {
       return NextResponse.json({ success: false, error: updateError.message }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({
+      success: true,
+      outcome: 'deactivated',
+      note: 'This account has case history on record, so it was deactivated rather than deleted. Their past cases still show their name correctly.'
+    })
   } catch (err) {
     console.error('REMOVE RESPONDER ERROR:', err)
     return NextResponse.json({ success: false, error: err.message || 'Unknown error' }, { status: 500 })

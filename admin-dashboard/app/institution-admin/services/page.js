@@ -222,7 +222,7 @@ export default function ManageServicesPage() {
     const nextActive = !unitAdmin.is_active
     if (!nextActive) {
       const confirmed = window.confirm(
-        `Revoke the dashboard login for "${service.name}"? It will no longer be able to sign in. You can create a new login for this unit afterward.`
+        `Remove the dashboard login for "${service.name}"? It will no longer be able to sign in. You can create a new login for this unit afterward.`
       )
       if (!confirmed) return
     }
@@ -239,6 +239,9 @@ export default function ManageServicesPage() {
     if (!result.success) {
       alert('Failed: ' + result.error)
       return
+    }
+    if (result.note) {
+      alert(result.note)
     }
     await loadServices(institutionId)
   }

@@ -204,6 +204,14 @@ export default function UnitAdminPage() {
   }
 
   async function toggleResponderActive(responder) {
+    if (responder.is_active) {
+      const confirmed = window.confirm(
+        `Remove ${responder.full_name}? If they have no case history, their account is deleted outright. ` +
+        `If they've ever claimed or triggered an emergency, their access is revoked instead so that case's record stays intact.`
+      )
+      if (!confirmed) return
+    }
+
     setBusyResponderId(responder.id)
     const { data: sessionData } = await supabase.auth.getSession()
     const res = await fetch('/api/institution/remove-responder', {
@@ -217,6 +225,7 @@ export default function UnitAdminPage() {
       alert('Failed: ' + result.error)
       return
     }
+    if (result.note) alert(result.note)
     await loadResponders(serviceId)
   }
 

@@ -216,8 +216,8 @@ export default function InstitutionAdminPage() {
     const nextActive = !responder.is_active
     if (!nextActive) {
       const confirmed = window.confirm(
-        `Remove ${responder.full_name}? They will no longer be able to sign in or be assigned new emergencies. ` +
-        `Their past cases are kept exactly as they are.`
+        `Remove ${responder.full_name}? If they have no case history, their account is deleted outright. ` +
+        `If they've ever claimed or triggered an emergency, their access is revoked instead so that case's record stays intact.`
       )
       if (!confirmed) return
     }
@@ -233,6 +233,11 @@ export default function InstitutionAdminPage() {
     setBusyResponderId('')
     if (!result.success) {
       alert('Failed: ' + result.error)
+      return
+    }
+    if (result.note) alert(result.note)
+    if (result.outcome === 'deleted') {
+      setResponders((prev) => prev.filter((r) => r.id !== responder.id))
       return
     }
     setResponders((prev) => prev.map((r) => (r.id === responder.id ? { ...r, is_active: nextActive } : r)))

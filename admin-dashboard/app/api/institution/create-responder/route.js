@@ -9,6 +9,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { rateLimit } from '../../../../lib/rateLimit'
+import { friendlyAuthError, isEmailAlreadyExistsError } from '../../../../lib/authErrors'
 
 async function getCallerProfile(request) {
   const authHeader = request.headers.get('authorization') || ''
@@ -91,7 +92,10 @@ export async function POST(request) {
 
     if (authError) {
       console.error('RESPONDER CREATE ERROR:', JSON.stringify(authError, null, 2))
-      return NextResponse.json({ success: false, error: authError.message || 'Failed to create responder account' }, { status: 500 })
+      return NextResponse.json(
+        { success: false, error: friendlyAuthError(authError), emailExists: isEmailAlreadyExistsError(authError) },
+        { status: isEmailAlreadyExistsError(authError) ? 409 : 500 }
+      )
     }
 
     if (serviceId || permission === 'view_only' || emergencyTypes?.length > 0) {

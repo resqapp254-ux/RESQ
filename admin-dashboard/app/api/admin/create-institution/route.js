@@ -11,6 +11,7 @@ import { NextResponse } from 'next/server'
 import { randomInt } from 'crypto'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { getClientIp, rateLimit } from '../../../../lib/rateLimit'
+import { friendlyAuthError, isEmailAlreadyExistsError } from '../../../../lib/authErrors'
 
 async function verifySuperAdmin(request) {
   const authHeader = request.headers.get('authorization') || ''
@@ -106,7 +107,10 @@ export async function POST(request) {
       console.error('AUTH USER CREATE ERROR:', JSON.stringify(authError, null, 2))
       // Roll back the institution if admin creation fails
       await supabaseAdmin.from('institutions').delete().eq('id', institution.id)
-      return NextResponse.json({ success: false, error: authError.message || JSON.stringify(authError) }, { status: 500 })
+      return NextResponse.json(
+        { success: false, error: friendlyAuthError(authError), emailExists: isEmailAlreadyExistsError(authError) },
+        { status: isEmailAlreadyExistsError(authError) ? 409 : 500 }
+      )
     }
 
     return NextResponse.json({
