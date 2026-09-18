@@ -97,6 +97,9 @@ export default function TermsPage() {
             <br />
             Phone: <a href="tel:+254794698660">+254 794 698 660</a>
           </p>
+          <p className="resq-subtle" style={{ marginTop: 20 }}>
+            Also see our <a href="/privacy">Privacy Policy</a> and <a href="/data-protection">Data Protection Agreement</a>.
+          </p>
         </div>
       </div>
     </main>

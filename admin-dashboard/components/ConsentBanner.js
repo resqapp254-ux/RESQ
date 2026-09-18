@@ -52,8 +52,9 @@ export default function ConsentBanner() {
       <p style={{ margin: 0, fontSize: 13, color: '#9aa4bf', lineHeight: 1.5 }}>
         RESQ uses essential cookies to keep you signed in, and collects your location and emergency reports solely to
         route help to you and your institution's responders. We never sell your data or use it for advertising. See our{' '}
+        <a href="/terms" style={{ color: '#7fe3f2' }}>Terms</a>,{' '}
         <a href="/privacy" style={{ color: '#7fe3f2' }}>Privacy Policy</a> and{' '}
-        <a href="/terms" style={{ color: '#7fe3f2' }}>Terms of Service</a>.
+        <a href="/data-protection" style={{ color: '#7fe3f2' }}>Data Protection Agreement</a>.
       </p>
       <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 12, fontSize: 13, color: '#f4f6fb', cursor: 'pointer' }}>
         <input
@@ -62,7 +63,7 @@ export default function ConsentBanner() {
           onChange={(e) => setAgreed(e.target.checked)}
           style={{ marginTop: 2 }}
         />
-        I agree to the use of essential cookies and to the Privacy Policy and Terms of Service.
+        I agree to the use of essential cookies and to the Terms, Privacy Policy, and Data Protection Agreement.
       </label>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
         <button

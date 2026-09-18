@@ -86,7 +86,7 @@ export default function AuthPage({ defaultMode = 'signin' }) {
     setMessage('')
 
     if (!agreedToTerms) {
-      setError('Please agree to the Terms and Privacy Policy to continue.')
+      setError('Please agree to the Terms, Privacy Policy, and Data Protection Agreement to continue.')
       return
     }
 
@@ -275,8 +275,9 @@ export default function AuthPage({ defaultMode = 'signin' }) {
                     style={{ marginTop: 3 }}
                   />
                   <span className="resq-subtle" style={{ fontSize: 13 }}>
-                    I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a> and{' '}
-                    <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+                    I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer">Terms</a>,{' '}
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a> and{' '}
+                    <a href="/data-protection" target="_blank" rel="noopener noreferrer">Data Protection Agreement</a>.
                   </span>
                 </label>
 

@@ -46,12 +46,16 @@ export default function LanguageConsentScreen({ navigation }) {
         <Text style={styles.consentTitle}>{t('dataConsentTitle')}</Text>
         <Text style={styles.consentBody}>{t('dataConsentBody')}</Text>
         <View style={styles.legalLinksRow}>
+          <TouchableOpacity onPress={() => Linking.openURL(`${API_BASE_URL}/terms`)}>
+            <Text style={styles.legalLink}>Terms</Text>
+          </TouchableOpacity>
+          <Text style={styles.consentBody}> · </Text>
           <TouchableOpacity onPress={() => Linking.openURL(`${API_BASE_URL}/privacy`)}>
             <Text style={styles.legalLink}>Privacy Policy</Text>
           </TouchableOpacity>
           <Text style={styles.consentBody}> · </Text>
-          <TouchableOpacity onPress={() => Linking.openURL(`${API_BASE_URL}/terms`)}>
-            <Text style={styles.legalLink}>Terms of Service</Text>
+          <TouchableOpacity onPress={() => Linking.openURL(`${API_BASE_URL}/data-protection`)}>
+            <Text style={styles.legalLink}>Data Protection Agreement</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -66,9 +70,11 @@ export default function LanguageConsentScreen({ navigation }) {
         </View>
         <Text style={styles.checkboxLabel}>
           I agree to the use of cookies/local storage and to the{' '}
+          <Text style={styles.legalLink} onPress={() => Linking.openURL(`${API_BASE_URL}/terms`)}>Terms</Text>
+          {', '}
           <Text style={styles.legalLink} onPress={() => Linking.openURL(`${API_BASE_URL}/privacy`)}>Privacy Policy</Text>
-          {' '}and{' '}
-          <Text style={styles.legalLink} onPress={() => Linking.openURL(`${API_BASE_URL}/terms`)}>Terms of Service</Text>.
+          {' and '}
+          <Text style={styles.legalLink} onPress={() => Linking.openURL(`${API_BASE_URL}/data-protection`)}>Data Protection Agreement</Text>.
         </Text>
       </TouchableOpacity>
 

@@ -1,11 +1,17 @@
 // lib/rateLimit.js
 // Sliding-window rate limiting for Next.js API routes. Uses Upstash
 // Redis (works natively on Vercel, shared across every serverless
-// instance) when UPSTASH_REDIS_REST_URL/TOKEN are set; otherwise falls
-// back to the original in-memory limiter automatically, so nothing
-// breaks for anyone who hasn't set up an Upstash database yet — each
-// serverless instance just keeps its own counters again, exactly as
-// before.
+// instance) when credentials are available; otherwise falls back to
+// the original in-memory limiter automatically, so nothing breaks for
+// anyone who hasn't set up an Upstash database yet — each serverless
+// instance just keeps its own counters again, exactly as before.
+//
+// Two naming conventions are accepted: UPSTASH_REDIS_REST_URL/TOKEN
+// (the raw @upstash SDK names, set directly in .env.local) and
+// KV_REST_API_URL/TOKEN (what Vercel's own Upstash-KV marketplace
+// integration sets automatically in production) — checking both means
+// connecting the integration in Vercel is enough on its own, no
+// manual env var duplication required.
 //
 // Deliberately async either way (even the in-memory path), so every
 // call site awaits the same shape and swapping backends never needs a
@@ -14,10 +20,12 @@
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 
-const hasUpstash = !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
+const redisUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL
+const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN
+const hasUpstash = !!(redisUrl && redisToken)
 
 const redis = hasUpstash
-  ? new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN })
+  ? new Redis({ url: redisUrl, token: redisToken })
   : null
 
 // One Ratelimit instance per distinct (limit, windowMs) pair, cached —
