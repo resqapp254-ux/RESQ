@@ -1,12 +1,14 @@
 // components/SignOutOverlay.js
-// Shown while signing out of any screen: the guardian flies in from a
-// random edge each time, waves goodbye, then onComplete actually signs
-// out and resets navigation. Rendered as a full-screen Modal so it
-// covers whatever screen was open, regardless of navigation state.
+// Shown while signing out of any screen: a plain smiling shield (no
+// limbs, so it never reads as a devil/horned figure) glides in from a
+// random edge each time and rocks gently like a nod goodbye, then
+// onComplete actually signs out and resets navigation. Rendered as a
+// full-screen Modal so it covers whatever screen was open, regardless
+// of navigation state.
 
 import React, { useEffect, useRef, useState } from 'react'
 import { Modal, View, Text, Animated, StyleSheet, Dimensions } from 'react-native'
-import Guardian from './Guardian'
+import GoodbyeShield from './GoodbyeShield'
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window')
 
@@ -45,7 +47,7 @@ export default function SignOutOverlay({ visible, onComplete }) {
     <Modal transparent visible={visible} animationType="fade">
       <View style={styles.overlay}>
         <Animated.View style={{ position: 'absolute', transform: [{ translateX: pos.x }, { translateY: pos.y }] }}>
-          <Guardian pose={waved ? 'wave' : 'fly'} />
+          <GoodbyeShield rocking={waved} />
         </Animated.View>
         {waved && (
           <Animated.View style={[styles.textWrap, { opacity: textFade }]}>

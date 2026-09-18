@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import ResqHero from './ResqHero'
+import GoodbyeShield from './GoodbyeShield'
 
 // A different edge/position every time — "come from anywhere, not a
 // single point" per spec — so signing out never feels mechanically
@@ -15,11 +15,13 @@ function randomStart() {
   return { top: `${along}%`, left: '-15%' }
 }
 
-// Shown while signing out of any page: the guardian flies in from a
-// random edge, arrives center-screen, waves goodbye, then the caller's
-// onComplete actually performs the sign-out + redirect. Deliberately
-// short (~2.4s total) — signing IN stays fast and un-fussy; this is
-// the one place a little ceremony fits.
+// Shown while signing out of any page: a plain smiling shield (no
+// limbs at all, so it can never read as a devil/horned figure) glides
+// in from a random edge, arrives center-screen, and rocks gently side
+// to side like a nod goodbye, then the caller's onComplete actually
+// performs the sign-out + redirect. Deliberately short (~2.4s total)
+// — signing IN stays fast and un-fussy; this is the one place a
+// little ceremony fits.
 export default function SignOutOverlay({ onComplete }) {
   const [start] = useState(randomStart)
   const [arrived, setArrived] = useState(false)
@@ -59,7 +61,7 @@ export default function SignOutOverlay({ onComplete }) {
           transition: 'top 0.9s cubic-bezier(0.2,0.8,0.2,1), left 0.9s cubic-bezier(0.2,0.8,0.2,1)'
         }}
       >
-        <ResqHero pose={waved ? 'wave' : 'fly'} size={110} />
+        <GoodbyeShield size={110} rocking={waved} />
       </div>
       {waved && (
         <div

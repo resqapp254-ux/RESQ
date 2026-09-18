@@ -230,18 +230,33 @@
 @keyframes resq-monitor-scroll { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-50%, 0, 0); } }
 
 /* ---------------- Shield + heartbeat guardian graphic ---------------- */
+/* Only rendered at all while alert=true (see GuardianShield.js), so
+   this animation only ever plays during an actual emergency — no more
+   "always beating, just faster when alert". transform-box: fill-box
+   on the element itself (inline style) anchors the scale to the
+   heart's own center; this keyframe only adds the extra pulse scale
+   on top of that, it never sets `translate` (that stays as the
+   element's own transform attribute), unlike the old version which
+   let the animation silently replace the attribute's translate too.
+*/
 .resq-guardian-heart {
-  transform-origin: center;
-  animation: resq-guardian-systole 1.3s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+  animation: resq-guardian-systole 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
   will-change: transform;
 }
-.resq-guardian.resq-guardian-alert .resq-guardian-heart { animation-duration: 0.55s; }
 @keyframes resq-guardian-systole {
-  0% { transform: translate(0, 20px) scale(1.6); }
-  15% { transform: translate(0, 20px) scale(1.82); }
-  28% { transform: translate(0, 20px) scale(1.58); }
-  42% { transform: translate(0, 20px) scale(1.74); }
-  60%, 100% { transform: translate(0, 20px) scale(1.6); }
+  0% { scale: 1; }
+  15% { scale: 1.14; }
+  28% { scale: 0.98; }
+  42% { scale: 1.08; }
+  60%, 100% { scale: 1; }
+}
+/* Idle-only slow spin of the whole shield (face included) — stops
+   dead the instant alert=true swaps this class off, so the heartbeat
+   never has to fight a still-spinning shield. */
+.resq-guardian-idle-spin { animation: resq-guardian-idle-spin 14s linear infinite; }
+@keyframes resq-guardian-idle-spin {
+  0% { rotate: 0deg; }
+  100% { rotate: 360deg; }
 }
 .resq-guardian-ring { transform-origin: center; animation: resq-guardian-ring-radar 2.4s cubic-bezier(0.1, 0.7, 0.3, 1) infinite; }
 @keyframes resq-guardian-ring-radar {
@@ -332,7 +347,7 @@
   .resq-live-dot::before,
   .resq-fade-in,
   .resq-monitor svg,
-  .resq-guardian-heart, .resq-guardian-ring,
+  .resq-guardian-heart, .resq-guardian-ring, .resq-guardian-idle-spin,
   .resq-alert-shell, .resq-siren-banner,
   .resq-loading-mark,
   .resq-radar-sweep, .resq-radar-blip,

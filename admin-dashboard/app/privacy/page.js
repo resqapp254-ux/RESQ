@@ -39,10 +39,22 @@ export default function PrivacyPage() {
           <h2 style={{ marginTop: 20 }}>Who can see it</h2>
           <p className="resq-subtle">
             An emergency you trigger, along with your name, phone number, and location, is visible to the responders
-            and institution admin at the institution it was routed to; that is the entire purpose of the report.
-            Your account details are never visible to another institution you haven't connected to or been routed
-            to.
+            and admins (institution admin, and if it was routed to a partner unit, that unit's own admin) at the
+            institution it was routed to; that is the entire purpose of the report. A secondary responder can see the
+            same live details and log but cannot claim or resolve it themselves. Your account details are never
+            visible to another institution you haven't connected to or been routed to.
           </p>
+
+          <h2 style={{ marginTop: 20 }}>Third-party services we use</h2>
+          <p className="resq-subtle">
+            RESQ relies on a small number of outside services to function, each given only what it needs:
+          </p>
+          <ul className="resq-subtle" style={{ marginTop: -8 }}>
+            <li><strong style={{ color: 'var(--resq-text-primary)' }}>Supabase</strong> — hosts our database, authentication, and file storage.</li>
+            <li><strong style={{ color: 'var(--resq-text-primary)' }}>Groq</strong> — generates the brief AI safety guidance shown to you right after you trigger an emergency. It only ever receives the emergency type and the channel you used (app, SMS, etc.) — never your name, phone number, or location.</li>
+            <li><strong style={{ color: 'var(--resq-text-primary)' }}>Resend</strong> — delivers account emails (sign-up confirmation, password reset) and, to institution admins, weekly case-summary reports.</li>
+            <li><strong style={{ color: 'var(--resq-text-primary)' }}>Africa's Talking</strong> — carries SMS, USSD, and voice-call emergency triggers for anyone reporting without the app, and delivers the offline SMS alerts responders receive.</li>
+          </ul>
 
           <h2 style={{ marginTop: 20 }}>Storage and retention</h2>
           <p className="resq-subtle">

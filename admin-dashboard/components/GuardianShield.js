@@ -78,28 +78,53 @@ export default function GuardianShield({ buildingCount = 1, alert = false, size 
           )}
         </g>
         <g transform="translate(200 110)">
-          {/* Dual radar shockwave rings */}
+          {/* Dual radar shockwave rings — the heart/face never leaves
+              this same group, so it's always visually "within the
+              rings" regardless of which state is showing. */}
           <circle className="resq-guardian-ring" r="76" fill="none" stroke={alert ? '#ff2b2b' : '#35d0e8'} strokeWidth="2.5" />
           <circle className="resq-guardian-ring" r="76" fill="none" stroke={alert ? '#ff2b2b' : '#35d0e8'} strokeWidth="1.5" style={{ animationDelay: '0.6s' }} />
 
-          {/* Primary Aegis Shield */}
-          <path
-            d="M0,-88 L52,-46 V12 C52,82 27,118 0,140 C-27,118 -52,82 -52,12 V-46 Z"
-            fill={alert ? 'rgba(204,0,0,0.94)' : 'rgba(16,26,48,0.94)'}
-            stroke={alert ? '#ff8080' : '#35d0e8'}
-            strokeWidth="2.5"
-            filter="drop-shadow(0 4px 16px rgba(0,0,0,0.6))"
-          />
-
-          {/* Beating Heart Core */}
-          <g className="resq-guardian-heart" transform="translate(0 20) scale(1.15)">
+          {/* Slowly spins only while idle; holds still the instant an
+              emergency starts, so the heartbeat reads clearly. transform-box:
+              fill-box anchors both the spin and the heartbeat scale to this
+              shield's own center — the earlier bug (heart appearing to fly
+              off toward a corner) was the browser instead using the whole
+              SVG viewBox's center as the transform origin. */}
+          <g className={'resq-guardian-core' + (alert ? '' : ' resq-guardian-idle-spin')} style={{ transformBox: 'fill-box', transformOrigin: '50% 50%' }}>
+            {/* Primary Aegis Shield */}
             <path
-              d={HEART_PATH}
-              fill="url(#guardianHeartGlow)"
-              stroke={alert ? '#ffffff' : '#ff8080'}
-              strokeWidth="1.5"
-              filter={alert ? 'drop-shadow(0 0 10px #ffffff)' : 'drop-shadow(0 0 8px rgba(255,43,43,0.85))'}
+              d="M0,-88 L52,-46 V12 C52,82 27,118 0,140 C-27,118 -52,82 -52,12 V-46 Z"
+              fill={alert ? 'rgba(204,0,0,0.94)' : 'rgba(16,26,48,0.94)'}
+              stroke={alert ? '#ff8080' : '#35d0e8'}
+              strokeWidth="2.5"
+              filter="drop-shadow(0 4px 16px rgba(0,0,0,0.6))"
             />
+
+            {/* Idle: a plain smiling face, no heartbeat. */}
+            {!alert && (
+              <g className="resq-guardian-face">
+                <circle cx="-18" cy="0" r="6" fill="#ffffff" />
+                <circle cx="18" cy="0" r="6" fill="#ffffff" />
+                <path d="M-20,26 Q0,50 20,26" stroke="#ffffff" strokeWidth="5" strokeLinecap="round" fill="none" />
+              </g>
+            )}
+
+            {/* Alert: the smile is replaced by the shield's own beating heart. */}
+            {alert && (
+              <g
+                className="resq-guardian-heart"
+                transform="translate(0 20) scale(1.15)"
+                style={{ transformBox: 'fill-box', transformOrigin: '50% 50%' }}
+              >
+                <path
+                  d={HEART_PATH}
+                  fill="url(#guardianHeartGlow)"
+                  stroke="#ffffff"
+                  strokeWidth="1.5"
+                  filter="drop-shadow(0 0 10px #ffffff)"
+                />
+              </g>
+            )}
           </g>
         </g>
       </svg>
