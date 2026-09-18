@@ -3,6 +3,7 @@ import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { getAuthenticatedUser } from '../../../../lib/authorizeRequest'
 import { rateLimit } from '../../../../lib/rateLimit'
 import { pickPublicInstitution } from '../../../../lib/publicInstitutionRouting'
+import { hasAvailableResponder } from '../../../../lib/checkResponderAvailability'
 
 const VALID_EMERGENCY_TYPES = ['medical', 'fire', 'accident', 'security', 'gbv', 'mental_health', 'property_damage', 'other']
 
@@ -36,7 +37,11 @@ export async function POST(request) {
 
     // Public accounts aren't tied to one institution's code — route to
     // the nearest active public institution that handles this type,
-    // same nearest-match idea used for institution_services.
+    // same nearest-match idea used for institution_services. Only
+    // institutions/companies that actually have a responder able to
+    // take this specific emergency (type + location) are considered —
+    // an emergency should never be filed to a public institution that
+    // exists but has nobody who would ever see it.
     let institutionId = profile.institution_id
     if (isPublicUser) {
       const { data: publicInstitutions } = await supabaseAdmin
@@ -45,11 +50,26 @@ export async function POST(request) {
         .eq('visibility', 'public')
         .eq('status', 'active')
 
-      const match = pickPublicInstitution(publicInstitutions, { emergencyType, lat, lng })
+      const availabilityChecks = await Promise.all(
+        (publicInstitutions || []).map(async (inst) => ({
+          inst,
+          available: await hasAvailableResponder(supabaseAdmin, inst.id, { emergencyType, lat, lng })
+        }))
+      )
+      const availablePublicInstitutions = availabilityChecks.filter((c) => c.available).map((c) => c.inst)
+
+      const match = pickPublicInstitution(availablePublicInstitutions, { emergencyType, lat, lng })
       if (!match) {
-        return NextResponse.json({ success: false, error: 'No public institution is available to receive this emergency right now. If this is urgent, call local emergency services directly.' }, { status: 503 })
+        return NextResponse.json({ success: false, error: 'No public responder, company, or service is currently available to receive this emergency. If this is urgent, call local emergency services directly.' }, { status: 503 })
       }
       institutionId = match.id
+    } else if (institutionId) {
+      // Private (code-connected) account — same guarantee: don't file
+      // a report into an institution with nobody who would receive it.
+      const available = await hasAvailableResponder(supabaseAdmin, institutionId, { emergencyType, lat, lng })
+      if (!available) {
+        return NextResponse.json({ success: false, error: 'Your institution has no responder currently available to receive this emergency. Please contact them directly, or call local emergency services if this is urgent.' }, { status: 503 })
+      }
     }
 
     // One open emergency per account at a time — a second SOS while

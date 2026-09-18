@@ -61,6 +61,8 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [uploadingVideo, setUploadingVideo] = useState(false)
   const [cancelling, setCancelling] = useState(false)
+  const [aiQuestion, setAiQuestion] = useState('')
+  const [askingAi, setAskingAi] = useState(false)
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
   const voiceNoteTimeoutRef = useRef(null)
 
@@ -239,6 +241,34 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
     })
 
     if (error) Alert.alert('Failed to send', error.message)
+  }
+
+  async function askAi() {
+    const question = aiQuestion.trim()
+    if (!question) return
+
+    setAskingAi(true)
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const res = await fetch(`${API_BASE_URL}/api/emergency/ask-ai`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData.session?.access_token || ''}` },
+        body: JSON.stringify({ emergencyId, question })
+      })
+      const data = await res.json()
+      if (!data.success) {
+        Alert.alert('Could not ask AI', data.error || 'Unknown error')
+        return
+      }
+      setAiQuestion('')
+      if (!data.answered) {
+        Alert.alert('No confident answer', "The AI couldn't confidently answer that — your question is in the chat for a responder to see.")
+      }
+    } catch (err) {
+      Alert.alert('Could not ask AI', err.message)
+    } finally {
+      setAskingAi(false)
+    }
   }
 
   async function pickAndSendPhoto() {
@@ -475,6 +505,20 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
         }}
       />
 
+      <View style={styles.aiRow}>
+        <TextInput
+          style={styles.aiInput}
+          value={aiQuestion}
+          onChangeText={setAiQuestion}
+          placeholder="🤖 Ask AI a quick question while you wait…"
+          placeholderTextColor="#5c6480"
+          onSubmitEditing={askAi}
+        />
+        <TouchableOpacity style={styles.aiButton} onPress={askAi} disabled={askingAi || !aiQuestion.trim()}>
+          <Text style={{ color: 'white', fontSize: 12 }}>{askingAi ? '…' : 'Ask'}</Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.inputRow}>
         <TouchableOpacity style={styles.photoButton} onPress={pickAndSendPhoto} disabled={uploadingPhoto}>
           <Text style={{ fontSize: 16 }}>{uploadingPhoto ? '⏳' : '📷'}</Text>
@@ -530,6 +574,9 @@ const styles = StyleSheet.create({
   bubbleTextTheirs: { color: '#f4f6fb' },
   chatPhoto: { width: 180, height: 180, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.08)' },
   inputRow: { flexDirection: 'row', marginTop: 8, alignItems: 'center' },
+  aiRow: { flexDirection: 'row', marginTop: 6, alignItems: 'center' },
+  aiInput: { flex: 1, borderWidth: 1, borderColor: 'rgba(53,208,232,0.3)', borderRadius: 8, padding: 8, marginRight: 8, backgroundColor: 'rgba(53,208,232,0.06)', color: '#f4f6fb', fontSize: 13 },
+  aiButton: { backgroundColor: '#35d0e8', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8, justifyContent: 'center' },
   input: { flex: 1, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 8, padding: 10, marginRight: 8, backgroundColor: 'rgba(255,255,255,0.05)', color: '#f4f6fb' },
   sendButton: { backgroundColor: '#cc0000', borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center' },
   photoButton: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 8, paddingHorizontal: 12, justifyContent: 'center', marginRight: 8 },

@@ -81,7 +81,7 @@ export default function SuperAdminPage() {
     const { count } = await supabase
       .from('emergencies')
       .select('id', { count: 'exact', head: true })
-      .neq('status', 'resolved')
+      .in('status', ['triggered', 'claimed', 'in_progress'])
     setActiveEmergencyCount(count || 0)
   }
 

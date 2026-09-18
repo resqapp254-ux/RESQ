@@ -71,6 +71,17 @@ export function buildWeeklyReportHtml({ institutionName, cases, rangeLabel }) {
   return wrapDocument(institutionName, `RESQ Weekly Report`, summary + body)
 }
 
+// Every resolved case an institution (or one partner unit within it)
+// has ever had, all in one file — not limited to the last 7 days like
+// buildWeeklyReportHtml.
+export function buildAllCasesReportHtml({ institutionName, cases, scopeLabel }) {
+  const body = cases.length
+    ? cases.map((c) => renderCase(c.emergency, c.messages)).join('<hr/>')
+    : '<p class="muted">No emergencies have been resolved yet.</p>'
+  const summary = `<p class="muted">${cases.length} case${cases.length === 1 ? '' : 's'} resolved in total${scopeLabel ? ', ' + scopeLabel : ''}.</p>`
+  return wrapDocument(institutionName, `RESQ Full Case Report`, summary + body)
+}
+
 // Super-admin only: every resolved emergency across every institution,
 // each one tagged with which institution it belongs to since this
 // isn't scoped to just one.

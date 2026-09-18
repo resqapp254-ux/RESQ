@@ -77,6 +77,8 @@ export default function UserPage() {
   const chatPhotoInputRef = useRef(null)
   const [chatRecording, setChatRecording] = useState(false)
   const [chatVoiceBusy, setChatVoiceBusy] = useState(false)
+  const [aiQuestion, setAiQuestion] = useState('')
+  const [askingAi, setAskingAi] = useState(false)
   const chatRecorderRef = useRef(null)
   const chatRecordingTimeoutRef = useRef(null)
   const [locationBusy, setLocationBusy] = useState(false)
@@ -255,7 +257,7 @@ export default function UserPage() {
         .from('emergencies')
         .select('id, emergency_type, status, created_at, claimed_by, ai_advice_to_user')
         .eq('triggered_by', userId)
-        .neq('status', 'resolved')
+        .in('status', ['triggered', 'claimed', 'in_progress'])
         .order('created_at', { ascending: false })
         .limit(10)
 
@@ -664,6 +666,35 @@ export default function UserPage() {
     setMessage('Message sent.')
   }
 
+  async function askAi() {
+    const question = aiQuestion.trim()
+    if (!question || !chatTargetId) return
+
+    setAskingAi(true)
+    setChatError('')
+    const accessToken = await getAccessToken()
+    try {
+      const response = await fetch('/api/emergency/ask-ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (accessToken || '') },
+        body: JSON.stringify({ emergencyId: chatTargetId, question })
+      })
+      const result = await response.json()
+      if (!response.ok || !result.success) {
+        setChatError(result.error || 'Could not reach the AI right now.')
+        return
+      }
+      setAiQuestion('')
+      if (!result.answered) {
+        setMessage("The AI couldn't confidently answer that — your question is in the chat for a responder to see.")
+      }
+    } catch (err) {
+      setChatError(err.message)
+    } finally {
+      setAskingAi(false)
+    }
+  }
+
   async function sendChatPhoto(file) {
     if (!file || !chatTargetId) return
     setChatError('')
@@ -967,6 +998,19 @@ export default function UserPage() {
                   {myClaimedEmergency ? (
                     <>
                       {chatThread}
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                        <input
+                          className="resq-input"
+                          style={{ flex: 1, fontSize: 13 }}
+                          placeholder="🤖 Ask AI a quick question about this case…"
+                          value={aiQuestion}
+                          onChange={(e) => setAiQuestion(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && askAi()}
+                        />
+                        <button type="button" className="resq-btn-secondary" onClick={askAi} disabled={askingAi || !aiQuestion.trim()}>
+                          {askingAi ? '…' : 'Ask'}
+                        </button>
+                      </div>
                       <textarea
                         className="resq-input"
                         style={{ minHeight: 120 }}
@@ -1103,6 +1147,19 @@ export default function UserPage() {
                     <div style={{ marginTop: 20 }}>
                       <h3 style={{ marginTop: 0 }}>{t('chatWithResponders')}</h3>
                       {chatThread}
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                        <input
+                          className="resq-input"
+                          style={{ flex: 1, fontSize: 13 }}
+                          placeholder="🤖 Ask AI a quick question while you wait…"
+                          value={aiQuestion}
+                          onChange={(e) => setAiQuestion(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && askAi()}
+                        />
+                        <button type="button" className="resq-btn-secondary" onClick={askAi} disabled={askingAi || !aiQuestion.trim()}>
+                          {askingAi ? '…' : 'Ask'}
+                        </button>
+                      </div>
                       <textarea
                         className="resq-input"
                         style={{ minHeight: 100 }}

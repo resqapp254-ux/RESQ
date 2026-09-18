@@ -15,7 +15,7 @@ import EmergencyPulseBackground from '../../../components/EmergencyPulseBackgrou
 import RadarSweepBackground from '../../../components/RadarSweepBackground'
 import LoadingScreen from '../../../components/LoadingScreen'
 import LanguageSwitcher from '../../../components/LanguageSwitcher'
-import { buildEmergencyReportHtml, buildWeeklyReportHtml, downloadHtmlFile } from '../../../lib/buildEmergencyReport'
+import { buildEmergencyReportHtml, buildWeeklyReportHtml, buildAllCasesReportHtml, downloadHtmlFile } from '../../../lib/buildEmergencyReport'
 
 const CASE_SELECT = `
   id, emergency_type, status, created_at, claimed_at, resolved_at, lat, lng,
@@ -33,6 +33,7 @@ export default function CaseReportsPage() {
   const [error, setError] = useState('')
   const [downloadingId, setDownloadingId] = useState('')
   const [downloadingWeekly, setDownloadingWeekly] = useState(false)
+  const [downloadingAll, setDownloadingAll] = useState(false)
 
   useEffect(() => {
     load()
@@ -125,6 +126,36 @@ export default function CaseReportsPage() {
     }
   }
 
+  // Every case this institution has ever resolved — internal
+  // responders and every partner unit together — not just the last
+  // 100 shown on this page or the last 7 days.
+  async function downloadAll() {
+    setDownloadingAll(true)
+    try {
+      const { data: allCases, error: fetchError } = await supabase
+        .from('emergencies')
+        .select(CASE_SELECT)
+        .eq('institution_id', institutionId)
+        .eq('status', 'resolved')
+        .order('resolved_at', { ascending: false })
+
+      if (fetchError) {
+        setError(fetchError.message)
+        return
+      }
+
+      const withMessages = []
+      for (const emergency of allCases || []) {
+        withMessages.push({ emergency, messages: await loadMessages(emergency.id) })
+      }
+
+      const html = buildAllCasesReportHtml({ institutionName, cases: withMessages })
+      downloadHtmlFile(`resq-all-solved-emergencies-${new Date().toISOString().slice(0, 10)}.html`, html)
+    } finally {
+      setDownloadingAll(false)
+    }
+  }
+
   if (loading) {
     return (
       <main className="resq-shell">
@@ -153,9 +184,14 @@ export default function CaseReportsPage() {
               kept on RESQ's servers beyond the case's normal retention period.
             </p>
           </div>
-          <button className="resq-btn-primary" onClick={downloadWeekly} disabled={downloadingWeekly} style={{ whiteSpace: 'nowrap' }}>
-            {downloadingWeekly ? 'Preparing...' : '⬇ Download Weekly Report'}
-          </button>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button className="resq-btn-secondary" onClick={downloadAll} disabled={downloadingAll} style={{ whiteSpace: 'nowrap' }}>
+              {downloadingAll ? 'Preparing...' : '⬇ All Solved Emergencies'}
+            </button>
+            <button className="resq-btn-primary" onClick={downloadWeekly} disabled={downloadingWeekly} style={{ whiteSpace: 'nowrap' }}>
+              {downloadingWeekly ? 'Preparing...' : '⬇ Download Weekly Report'}
+            </button>
+          </div>
         </div>
 
         {error && <p style={{ color: '#ff8080' }}>{error}</p>}

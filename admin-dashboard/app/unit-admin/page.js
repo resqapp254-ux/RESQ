@@ -15,6 +15,7 @@ import RadarSweepBackground from '../../components/RadarSweepBackground'
 import LoadingScreen from '../../components/LoadingScreen'
 import LanguageSwitcher from '../../components/LanguageSwitcher'
 import { pickMatchingServices } from '../../lib/serviceDispatch'
+import { buildAllCasesReportHtml, downloadHtmlFile } from '../../lib/buildEmergencyReport'
 
 const SERVICE_TYPES = [
   { key: 'hospital', label: 'Hospital', emoji: '🏥' },
@@ -43,6 +44,7 @@ export default function UnitAdminPage() {
   const [liveEmergencies, setLiveEmergencies] = useState([])
   const [resolvedCount, setResolvedCount] = useState(0)
   const [resolvingId, setResolvingId] = useState('')
+  const [downloadingAll, setDownloadingAll] = useState(false)
 
   const [addForm, setAddForm] = useState({ fullName: '', email: '', phone: '', tempPassword: '', permission: 'full' })
   const [adding, setAdding] = useState(false)
@@ -319,6 +321,53 @@ export default function UnitAdminPage() {
     await loadLiveEmergencies(institutionId, serviceId)
   }
 
+  // Every emergency this unit's own responders have ever resolved —
+  // separate from the institution admin's institution-wide report,
+  // since a partner unit only manages/sees its own responders.
+  async function downloadAllSolved() {
+    setDownloadingAll(true)
+    try {
+      const ids = responders.map((r) => r.id)
+      if (ids.length === 0) {
+        const html = buildAllCasesReportHtml({ institutionName: form.name, cases: [], scopeLabel: 'for this unit' })
+        downloadHtmlFile(`resq-${form.name.replace(/\s+/g, '-').toLowerCase()}-solved-emergencies-${new Date().toISOString().slice(0, 10)}.html`, html)
+        return
+      }
+
+      const { data: cases, error: fetchError } = await supabase
+        .from('emergencies')
+        .select(`
+          id, emergency_type, status, created_at, claimed_at, resolved_at, lat, lng,
+          triggered_by_phone, triggered_via, photo_url, video_url, rating, rating_comment,
+          reporter:profiles!emergencies_triggered_by_fkey(full_name, phone, email),
+          claimant:profiles!emergencies_claimed_by_fkey(full_name, email)
+        `)
+        .in('claimed_by', ids)
+        .eq('status', 'resolved')
+        .order('resolved_at', { ascending: false })
+
+      if (fetchError) {
+        setError(fetchError.message)
+        return
+      }
+
+      const withMessages = []
+      for (const emergency of cases || []) {
+        const { data: messages } = await supabase
+          .from('emergency_messages')
+          .select('sender_role, message, media_url, media_type, is_ai_generated, created_at')
+          .eq('emergency_id', emergency.id)
+          .order('created_at', { ascending: true })
+        withMessages.push({ emergency, messages: messages || [] })
+      }
+
+      const html = buildAllCasesReportHtml({ institutionName: form.name, cases: withMessages, scopeLabel: 'for this unit' })
+      downloadHtmlFile(`resq-${form.name.replace(/\s+/g, '-').toLowerCase()}-solved-emergencies-${new Date().toISOString().slice(0, 10)}.html`, html)
+    } finally {
+      setDownloadingAll(false)
+    }
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut()
     router.replace('/login')
@@ -346,7 +395,12 @@ export default function UnitAdminPage() {
             <h1 className="resq-h1" style={{ fontSize: 26 }}>{form.name}</h1>
             <p className="resq-subtle" style={{ marginTop: 4 }}>Your unit's own dashboard · {resolvedCount} case{resolvedCount === 1 ? '' : 's'} resolved</p>
           </div>
-          <button className="resq-btn-secondary" onClick={handleLogout}>Log Out</button>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button className="resq-btn-secondary" onClick={downloadAllSolved} disabled={downloadingAll}>
+              {downloadingAll ? 'Preparing…' : '⬇ Solved Emergencies'}
+            </button>
+            <button className="resq-btn-secondary" onClick={handleLogout}>Log Out</button>
+          </div>
         </div>
 
         {error && <p style={{ color: '#ff8080' }}>{error}</p>}
