@@ -55,7 +55,15 @@ export default function MobileBridgePage() {
       if (data.role === 'super_admin') {
         router.replace('/super-admin')
       } else if (data.role === 'institution_admin') {
-        router.replace(data.next_step === 'enter_verification_code' ? '/institution-admin/verify' : '/institution-admin')
+        router.replace(
+          data.next_step === 'enter_verification_code'
+            ? '/institution-admin/verify'
+            : data.next_step === 'sign_contract'
+              ? '/institution-admin/contract'
+              : '/institution-admin'
+        )
+      } else if (data.role === 'unit_admin') {
+        router.replace('/unit-admin')
       } else {
         router.replace('/login')
       }

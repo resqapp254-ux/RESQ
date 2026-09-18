@@ -1,9 +1,10 @@
 // app/api/institution/create-responder/route.js
 //
-// SERVER-SIDE ROUTE. Called by an institution_admin.
-// Creates a responder account tied to the CALLER's own institution —
-// the caller cannot specify a different institution_id; it's always
-// pulled from their own verified profile.
+// SERVER-SIDE ROUTE. Called by an institution_admin (any responder
+// for their institution, optionally linked to any of its units) or a
+// unit_admin (a responder for their own unit only — service_id and
+// institution_id are always forced to the unit_admin's own values,
+// never taken from the request body).
 
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
@@ -19,7 +20,7 @@ async function getCallerProfile(request) {
 
   const { data: profile, error: profileError } = await supabaseAdmin
     .from('profiles')
-    .select('id, role, institution_id')
+    .select('id, role, institution_id, service_id')
     .eq('id', userData.user.id)
     .single()
 
@@ -30,8 +31,11 @@ async function getCallerProfile(request) {
 export async function POST(request) {
   try {
     const caller = await getCallerProfile(request)
-    if (!caller || caller.role !== 'institution_admin' || !caller.institution_id) {
+    if (!caller || !['institution_admin', 'unit_admin'].includes(caller.role) || !caller.institution_id) {
       return NextResponse.json({ success: false, error: 'Not authorized. Institution admin login required.' }, { status: 403 })
+    }
+    if (caller.role === 'unit_admin' && !caller.service_id) {
+      return NextResponse.json({ success: false, error: 'Your account is not linked to a unit' }, { status: 403 })
     }
 
     if (!rateLimit('create-responder:' + caller.id, 30, 60 * 60 * 1000).allowed) {
@@ -50,14 +54,17 @@ export async function POST(request) {
     }
 
     const body = await request.json()
-    const { fullName, email, phone, tempPassword, serviceId, permission, emergencyTypes } = body
+    const { fullName, email, phone, tempPassword, permission, emergencyTypes } = body
+    // A unit_admin can only ever create responders for their own
+    // unit — ignore whatever serviceId the request body claims.
+    const serviceId = caller.role === 'unit_admin' ? caller.service_id : body.serviceId
 
     if (!fullName || !email || !tempPassword) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 })
     }
 
-    // If a secondary service was picked, make sure it actually belongs
-    // to the caller's own institution before assigning it.
+    // If a partner-unit link was picked (or forced, for a unit_admin),
+    // make sure it actually belongs to the caller's own institution.
     if (serviceId) {
       const { data: service } = await supabaseAdmin
         .from('institution_services')
@@ -66,7 +73,7 @@ export async function POST(request) {
         .eq('institution_id', caller.institution_id)
         .maybeSingle()
       if (!service) {
-        return NextResponse.json({ success: false, error: 'Selected service was not found for your institution' }, { status: 400 })
+        return NextResponse.json({ success: false, error: 'Selected unit was not found for your institution' }, { status: 400 })
       }
     }
 

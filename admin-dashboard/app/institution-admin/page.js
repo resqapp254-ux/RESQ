@@ -23,6 +23,7 @@ export default function InstitutionAdminPage() {
   const [openReportCount, setOpenReportCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [busyResponderId, setBusyResponderId] = useState('')
 
   // inline shift form state
   const [shiftForm, setShiftForm] = useState({ responderId: '', start: '', end: '' })
@@ -204,6 +205,32 @@ export default function InstitutionAdminPage() {
     setResponders((prev) => prev.map((r) => (r.id === responderId ? { ...r, responder_permission: permission } : r)))
   }
 
+  async function toggleResponderActive(responder) {
+    const nextActive = !responder.is_active
+    if (!nextActive) {
+      const confirmed = window.confirm(
+        `Remove ${responder.full_name}? They will no longer be able to sign in or be assigned new emergencies. ` +
+        `Their past cases are kept exactly as they are.`
+      )
+      if (!confirmed) return
+    }
+
+    setBusyResponderId(responder.id)
+    const { data: sessionData } = await supabase.auth.getSession()
+    const res = await fetch('/api/institution/remove-responder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (sessionData.session?.access_token || '') },
+      body: JSON.stringify({ responderId: responder.id, active: nextActive })
+    })
+    const result = await res.json()
+    setBusyResponderId('')
+    if (!result.success) {
+      alert('Failed: ' + result.error)
+      return
+    }
+    setResponders((prev) => prev.map((r) => (r.id === responder.id ? { ...r, is_active: nextActive } : r)))
+  }
+
   if (!authorized || loading) {
     return (
       <div className="resq-shell">
@@ -316,12 +343,14 @@ export default function InstitutionAdminPage() {
               <th style={{ padding: 10 }}>Email</th>
               <th style={{ padding: 10 }}>Phone</th>
               <th style={{ padding: 10 }}>Permission</th>
+              <th style={{ padding: 10 }}>Status</th>
               <th style={{ padding: 10 }}>Upcoming Shifts</th>
+              <th style={{ padding: 10 }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {responders.map((r) => (
-              <tr key={r.id} className="resq-row-interactive">
+              <tr key={r.id} className="resq-row-interactive" style={{ opacity: r.is_active === false ? 0.5 : 1 }}>
                 <td style={{ padding: 10 }}>{r.full_name}</td>
                 <td style={{ padding: 10 }}>{r.email}</td>
                 <td style={{ padding: 10 }}>{r.phone}</td>
@@ -330,11 +359,17 @@ export default function InstitutionAdminPage() {
                     className="resq-input"
                     value={r.responder_permission || 'full'}
                     onChange={(e) => updatePermission(r.id, e.target.value)}
+                    disabled={r.is_active === false}
                     style={{ minWidth: 120 }}
                   >
                     <option value="full">Full (claim & respond)</option>
                     <option value="view_only">View only</option>
                   </select>
+                </td>
+                <td style={{ padding: 10 }}>
+                  <span className={r.is_active === false ? 'resq-badge resq-badge-open' : 'resq-badge resq-badge-resolved'}>
+                    {r.is_active === false ? 'Removed' : 'Active'}
+                  </span>
                 </td>
                 <td style={{ padding: 10 }}>
                   {(shiftsByResponder[r.id] || []).length === 0 && <span className="resq-subtle">None scheduled</span>}
@@ -343,6 +378,16 @@ export default function InstitutionAdminPage() {
                       {new Date(s.shift_start).toLocaleString()} → {new Date(s.shift_end).toLocaleString()}
                     </div>
                   ))}
+                </td>
+                <td style={{ padding: 10 }}>
+                  <button
+                    className="resq-btn-secondary"
+                    onClick={() => toggleResponderActive(r)}
+                    disabled={busyResponderId === r.id}
+                    style={{ color: r.is_active === false ? undefined : '#ff8080' }}
+                  >
+                    {busyResponderId === r.id ? '...' : r.is_active === false ? 'Reactivate' : 'Remove'}
+                  </button>
                 </td>
               </tr>
             ))}

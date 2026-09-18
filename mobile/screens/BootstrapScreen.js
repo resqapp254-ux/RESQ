@@ -62,7 +62,7 @@ export default function BootstrapScreen({ navigation }) {
         } else {
           navigation.replace('Home')
         }
-      } else if (data.role === 'institution_admin' || data.role === 'super_admin') {
+      } else if (data.role === 'institution_admin' || data.role === 'super_admin' || data.role === 'unit_admin') {
         navigation.replace('AdminWebView')
       } else {
         navigation.replace('Auth')

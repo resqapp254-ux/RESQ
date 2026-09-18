@@ -44,8 +44,16 @@ export default function ManageServicesPage() {
     lat: '',
     lng: '',
     contactPhone: '',
+    contactEmail: '',
     handlesTypes: DEFAULT_HANDLES_BY_SERVICE_TYPE.hospital
   })
+
+  const [unitAdminServiceIds, setUnitAdminServiceIds] = useState(new Set())
+  const [loginFormForId, setLoginFormForId] = useState('')
+  const [loginForm, setLoginForm] = useState({ email: '', tempPassword: '' })
+  const [creatingLogin, setCreatingLogin] = useState(false)
+  const [loginError, setLoginError] = useState('')
+  const [createdLoginCreds, setCreatedLoginCreds] = useState(null)
 
   useEffect(() => {
     load()
@@ -83,8 +91,23 @@ export default function ManageServicesPage() {
       .eq('institution_id', instId)
       .order('created_at', { ascending: false })
 
-    if (fetchError) setError(fetchError.message)
-    else setServices(data || [])
+    if (fetchError) {
+      setError(fetchError.message)
+      return
+    }
+    setServices(data || [])
+
+    const serviceIds = (data || []).map((s) => s.id)
+    if (serviceIds.length > 0) {
+      const { data: unitAdmins } = await supabase
+        .from('profiles')
+        .select('service_id')
+        .eq('role', 'unit_admin')
+        .in('service_id', serviceIds)
+      setUnitAdminServiceIds(new Set((unitAdmins || []).map((a) => a.service_id)))
+    } else {
+      setUnitAdminServiceIds(new Set())
+    }
   }
 
   function handleServiceTypeChange(serviceType) {
@@ -144,6 +167,7 @@ export default function ManageServicesPage() {
       lat: isIndividual ? null : lat,
       lng: isIndividual ? null : lng,
       contact_phone: form.contactPhone.trim() || null,
+      contact_email: form.contactEmail.trim() || null,
       handles_emergency_types: form.handlesTypes
     })
     setSaving(false)
@@ -153,8 +177,42 @@ export default function ManageServicesPage() {
       return
     }
 
-    setForm({ name: '', serviceType: 'hospital', lat: '', lng: '', contactPhone: '', handlesTypes: DEFAULT_HANDLES_BY_SERVICE_TYPE.hospital })
+    setForm({ name: '', serviceType: 'hospital', lat: '', lng: '', contactPhone: '', contactEmail: '', handlesTypes: DEFAULT_HANDLES_BY_SERVICE_TYPE.hospital })
     await loadServices(institutionId)
+  }
+
+  function generateLoginPassword() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#'
+    let pass = ''
+    for (let i = 0; i < 12; i++) pass += chars[Math.floor(Math.random() * chars.length)]
+    setLoginForm((prev) => ({ ...prev, tempPassword: pass }))
+  }
+
+  async function handleCreateLogin(e, service) {
+    e.preventDefault()
+    setLoginError('')
+    setCreatingLogin(true)
+
+    const { data: sessionData } = await supabase.auth.getSession()
+    try {
+      const res = await fetch('/api/institution/create-unit-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData.session?.access_token || ''}` },
+        body: JSON.stringify({ serviceId: service.id, email: loginForm.email, tempPassword: loginForm.tempPassword })
+      })
+      const data = await res.json()
+      if (!data.success) {
+        setLoginError(data.error || 'Something went wrong')
+      } else {
+        setCreatedLoginCreds({ name: service.name, email: loginForm.email, password: loginForm.tempPassword })
+        setLoginFormForId('')
+        setLoginForm({ email: '', tempPassword: '' })
+        await loadServices(institutionId)
+      }
+    } catch (err) {
+      setLoginError(err.message)
+    }
+    setCreatingLogin(false)
   }
 
   async function toggleActive(service) {
@@ -284,33 +342,79 @@ export default function ManageServicesPage() {
               onChange={(e) => setForm({ ...form, contactPhone: e.target.value })}
             />
 
+            <label>Contact email (optional)</label>
+            <input
+              className="resq-input"
+              style={{ marginTop: 4, marginBottom: 14 }}
+              type="email"
+              value={form.contactEmail}
+              onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
+            />
+
             <button className="resq-btn-primary" disabled={saving} style={{ width: '100%' }}>
               {saving ? 'Adding...' : 'Add service'}
             </button>
           </form>
         </section>
 
+        {createdLoginCreds && (
+          <section className="glass-card resq-fade-in resq-success-box" style={{ marginBottom: 24 }}>
+            <p><strong>{createdLoginCreds.name}</strong> can now sign in to its own unit dashboard with:</p>
+            <p style={{ marginTop: 10 }}>Email: <strong>{createdLoginCreds.email}</strong><br />Password: <strong>{createdLoginCreds.password}</strong></p>
+          </section>
+        )}
+
         <section className="glass-card resq-fade-in resq-fade-in-3">
           <h2 style={{ marginTop: 0 }}>Your services ({services.length})</h2>
           {services.length === 0 && <p className="resq-subtle">No partner units yet.</p>}
           {services.map((s) => (
-            <div key={s.id} className="resq-row-interactive" style={{ padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <div>
-                <strong>{SERVICE_TYPES.find((t) => t.key === s.service_type)?.emoji} {s.name}</strong>
-                <p className="resq-subtle" style={{ margin: '4px 0' }}>
-                  {s.service_type} · {(s.handles_emergency_types || []).length === 0 ? 'handles all types' : s.handles_emergency_types.join(', ')}
-                </p>
-                <p className="resq-subtle" style={{ margin: 0, fontFamily: 'monospace', fontSize: 12 }}>
-                  {s.lat != null && s.lng != null ? `${s.lat.toFixed(4)}, ${s.lng.toFixed(4)}` : 'No fixed location'}
-                </p>
+            <div key={s.id} style={{ padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="resq-row-interactive" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <div>
+                  <strong>{SERVICE_TYPES.find((t) => t.key === s.service_type)?.emoji} {s.name}</strong>
+                  <p className="resq-subtle" style={{ margin: '4px 0' }}>
+                    {s.service_type} · {(s.handles_emergency_types || []).length === 0 ? 'handles all types' : s.handles_emergency_types.join(', ')}
+                  </p>
+                  <p className="resq-subtle" style={{ margin: 0, fontFamily: 'monospace', fontSize: 12 }}>
+                    {s.lat != null && s.lng != null ? `${s.lat.toFixed(4)}, ${s.lng.toFixed(4)}` : 'No fixed location'}
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <span className={s.is_active ? 'resq-badge resq-badge-resolved' : 'resq-badge resq-badge-open'}>
+                    {s.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                  {unitAdminServiceIds.has(s.id) ? (
+                    <span className="resq-badge resq-badge-claimed">Has dashboard login</span>
+                  ) : (
+                    <button
+                      className="resq-btn-secondary"
+                      onClick={() => { setLoginFormForId(loginFormForId === s.id ? '' : s.id); setLoginError('') }}
+                    >
+                      🔑 {loginFormForId === s.id ? 'Cancel' : 'Create Dashboard Login'}
+                    </button>
+                  )}
+                  <button className="resq-btn-secondary" onClick={() => toggleActive(s)}>{s.is_active ? 'Deactivate' : 'Activate'}</button>
+                  <button className="resq-btn-secondary" onClick={() => removeService(s)} style={{ color: '#ff8080' }}>Remove</button>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <span className={s.is_active ? 'resq-badge resq-badge-resolved' : 'resq-badge resq-badge-open'}>
-                  {s.is_active ? 'Active' : 'Inactive'}
-                </span>
-                <button className="resq-btn-secondary" onClick={() => toggleActive(s)}>{s.is_active ? 'Deactivate' : 'Activate'}</button>
-                <button className="resq-btn-secondary" onClick={() => removeService(s)} style={{ color: '#ff8080' }}>Remove</button>
-              </div>
+
+              {loginFormForId === s.id && (
+                <form onSubmit={(e) => handleCreateLogin(e, s)} style={{ marginTop: 12, padding: 12, background: 'rgba(255,255,255,0.04)', borderRadius: 10, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <label>Login email</label>
+                    <input className="resq-input" style={{ marginTop: 4 }} type="email" value={loginForm.email} onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })} required />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <label>Temporary password</label>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                      <input className="resq-input" style={{ flex: 1 }} value={loginForm.tempPassword} onChange={(e) => setLoginForm({ ...loginForm, tempPassword: e.target.value })} required />
+                      <button type="button" className="resq-btn-secondary" onClick={generateLoginPassword}>Generate</button>
+                    </div>
+                  </div>
+                  <button className="resq-btn-primary" disabled={creatingLogin}>{creatingLogin ? 'Creating...' : 'Create'}</button>
+                  {loginError && <p style={{ color: '#ff8080', width: '100%', margin: 0 }}>{loginError}</p>}
+                </form>
+              )}
             </div>
           ))}
         </section>
