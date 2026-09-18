@@ -11,6 +11,14 @@
   --resq-text-secondary: #9aa4bf;
   --resq-text-muted: #5c6480;
   --resq-green: #3fe08a;
+  /* Used repeatedly across the app (error text, delete/danger actions,
+     the AI/info accent, and warning/pending status) but never
+     promoted to a token before — every use below was a raw hex value
+     that happened to match. */
+  --resq-red-soft: #ff8080;
+  --resq-cyan: #35d0e8;
+  --resq-cyan-light: #7fe3f2;
+  --resq-amber: #e0b34d;
   --resq-font-display: 'Space Grotesk', Arial, sans-serif;
   --resq-font-body: 'Inter', Arial, sans-serif;
 }
@@ -131,8 +139,8 @@
 }
 
 .resq-badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font: 600 11px var(--resq-font-body); text-transform: uppercase; letter-spacing: 0.03em; }
-.resq-badge-open { background: rgba(255, 43, 43, 0.18); color: #ff8080; animation: resq-badge-glow 1.8s ease-in-out infinite; }
-.resq-badge-claimed { background: rgba(53, 208, 232, 0.18); color: #7fe3f2; }
+.resq-badge-open { background: rgba(255, 43, 43, 0.18); color: var(--resq-red-soft); animation: resq-badge-glow 1.8s ease-in-out infinite; }
+.resq-badge-claimed { background: rgba(53, 208, 232, 0.18); color: var(--resq-cyan-light); }
 .resq-badge-resolved { background: rgba(63, 224, 138, 0.18); color: #3fe08a; }
 @keyframes resq-badge-glow {
   0%, 100% { box-shadow: 0 0 0 0 rgba(255, 43, 43, 0.4); }
@@ -153,7 +161,7 @@
 .resq-two-col { display: grid; gap: 20px; }
 @media (max-width: 860px) { .resq-two-col { grid-template-columns: 1fr !important; } }
 
-.resq-shell a { color: #7fe3f2; }
+.resq-shell a { color: var(--resq-cyan-light); }
 .resq-shell label { color: var(--resq-text-secondary); font-size: 13px; font-weight: 600; }
 .resq-shell table { border-collapse: collapse; width: 100%; }
 .resq-shell th { text-align: left; color: var(--resq-text-secondary); font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; border-bottom: 1px solid var(--resq-glass-border); }
@@ -194,10 +202,28 @@
   75%, 100% { transform: scale(2.6); opacity: 0; }
 }
 
-/* Buttons/cards that should feel tactile on hover */
-.resq-btn-primary, .resq-btn-secondary { transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease; }
-.resq-btn-primary:hover:not(:disabled), .resq-btn-secondary:hover:not(:disabled) { transform: translateY(-1px); }
-.resq-btn-primary:active:not(:disabled), .resq-btn-secondary:active:not(:disabled) { transform: translateY(0); }
+/* Buttons/cards that should feel tactile: hover lifts with a slight
+   overshoot (a spring-like curve — approximates damping:20/
+   stiffness:300 without needing a JS animation library), press
+   settles flat and slightly compressed, both using transform/opacity
+   only (hardware-accelerated, no layout thrash). */
+.resq-btn-primary, .resq-btn-secondary {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease, border-color 0.15s ease, box-shadow 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.resq-btn-primary:hover:not(:disabled), .resq-btn-secondary:hover:not(:disabled) { transform: translateY(-2px) scale(1.02); }
+.resq-btn-primary:active:not(:disabled), .resq-btn-secondary:active:not(:disabled) { transform: translateY(0) scale(0.97); transition-duration: 0.08s; }
+
+/* Pending/async state: a small inline spinner instead of just a
+   disabled dimmed button, for any button that sets aria-busy="true"
+   while its action is in flight. */
+.resq-btn-primary[aria-busy="true"], .resq-btn-secondary[aria-busy="true"] { position: relative; color: transparent !important; pointer-events: none; }
+.resq-btn-primary[aria-busy="true"]::after, .resq-btn-secondary[aria-busy="true"]::after {
+  content: '';
+  position: absolute; top: 50%; left: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px;
+  border: 2px solid rgba(255, 255, 255, 0.35); border-top-color: #fff; border-radius: 50%;
+  animation: resq-spin 0.7s linear infinite;
+}
+@keyframes resq-spin { to { transform: rotate(360deg); } }
 
 /* Visible keyboard focus everywhere inside the app (accessibility) */
 .resq-shell a:focus-visible,
@@ -205,7 +231,7 @@
 .resq-shell input:focus-visible,
 .resq-shell select:focus-visible,
 .resq-shell textarea:focus-visible,
-.resq-shell [tabindex]:focus-visible { outline: 2px solid #7fe3f2; outline-offset: 2px; border-radius: 4px; }
+.resq-shell [tabindex]:focus-visible { outline: 2px solid var(--resq-cyan-light); outline-offset: 2px; border-radius: 4px; }
 
 /* ---------------- ECG / heart-monitor strip ---------------- */
 .resq-monitor {
@@ -226,7 +252,7 @@
 .resq-monitor-trace { fill: none; stroke: #3fe08a; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 6px rgba(63,224,138,0.85)); }
 .resq-monitor.resq-monitor-alert .resq-monitor-trace { stroke: var(--resq-red-bright); filter: drop-shadow(0 0 8px rgba(255,43,43,0.95)); }
 .resq-monitor-label { position: absolute; top: 8px; left: 12px; font: 700 11px var(--resq-font-body); letter-spacing: 0.06em; text-transform: uppercase; color: #3fe08a; z-index: 1; }
-.resq-monitor.resq-monitor-alert .resq-monitor-label { color: #ff8080; }
+.resq-monitor.resq-monitor-alert .resq-monitor-label { color: var(--resq-red-soft); }
 @keyframes resq-monitor-scroll { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-50%, 0, 0); } }
 
 /* ---------------- Shield + heartbeat guardian graphic ---------------- */
@@ -353,9 +379,17 @@
   .resq-radar-sweep, .resq-radar-blip,
   .resq-shell,
   .resq-badge-open,
-  .resq-row-stagger {
+  .resq-row-stagger,
+  .resq-btn-primary, .resq-btn-secondary {
     animation: none !important;
     transition: none !important;
+  }
+  /* Loading state stays legible without motion — swap the rotating
+     spinner for a static high-contrast dot rather than removing the
+     "this is busy" signal entirely. */
+  .resq-btn-primary[aria-busy="true"]::after, .resq-btn-secondary[aria-busy="true"]::after {
+    animation: none !important;
+    border-color: #fff;
   }
   .resq-fade-in, .resq-row-stagger { opacity: 1 !important; transform: none !important; }
 }
