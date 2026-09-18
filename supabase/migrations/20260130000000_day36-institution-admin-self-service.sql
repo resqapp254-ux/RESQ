@@ -48,6 +48,7 @@ begin
     new.contact_email := old.contact_email;
     new.logo_url := old.logo_url;
     new.visibility := old.visibility;
+    new.public_type := old.public_type;
     new.created_by := old.created_by;
     new.created_at := old.created_at;
   end if;
