@@ -38,7 +38,7 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Not authorized' }, { status: 403 })
     }
 
-    if (!rateLimit('remove-responder:' + caller.id, 30, 60 * 60 * 1000).allowed) {
+    if (!(await rateLimit('remove-responder:' + caller.id, 30, 60 * 60 * 1000)).allowed) {
       return NextResponse.json({ success: false, error: 'Too many requests. Please wait a moment.' }, { status: 429 })
     }
 

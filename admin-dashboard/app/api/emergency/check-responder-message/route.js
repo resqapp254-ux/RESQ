@@ -32,7 +32,7 @@ export async function POST(request) {
     // Each message triggers a paid/quota-limited AI call — chat is
     // meant to be conversational, so this is generous, just enough to
     // stop a scripted flood.
-    if (!rateLimit('checkmsg:' + profile.id, 40, 5 * 60 * 1000).allowed) {
+    if (!(await rateLimit('checkmsg:' + profile.id, 40, 5 * 60 * 1000)).allowed) {
       return NextResponse.json({ success: false, error: 'Too many messages sent too quickly. Please slow down.' }, { status: 429 })
     }
 

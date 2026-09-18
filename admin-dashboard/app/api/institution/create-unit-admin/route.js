@@ -42,7 +42,7 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Not authorized. Institution admin login required.' }, { status: 403 })
     }
 
-    if (!rateLimit('create-unit-admin:' + caller.id, 30, 60 * 60 * 1000).allowed) {
+    if (!(await rateLimit('create-unit-admin:' + caller.id, 30, 60 * 60 * 1000)).allowed) {
       return NextResponse.json({ success: false, error: 'Too many accounts created recently. Please wait before adding more.' }, { status: 429 })
     }
 

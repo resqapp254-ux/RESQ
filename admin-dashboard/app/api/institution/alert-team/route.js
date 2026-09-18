@@ -22,7 +22,7 @@ export async function POST(request) {
 
     // An urgent, attention-grabbing push to the whole team — meant to
     // be rare, so a tight limit here only blocks abuse/alert fatigue.
-    if (!rateLimit('alert-team:' + user.id, 5, 10 * 60 * 1000).allowed) {
+    if (!(await rateLimit('alert-team:' + user.id, 5, 10 * 60 * 1000)).allowed) {
       return NextResponse.json({ success: false, error: 'Too many alerts sent recently. Please wait before sending another.' }, { status: 429 })
     }
 

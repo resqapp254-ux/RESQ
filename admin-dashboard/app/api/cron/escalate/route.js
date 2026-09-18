@@ -25,7 +25,7 @@ export async function GET(request) {
   // Belt-and-braces even when CRON_SECRET is set — and the only real
   // protection while it isn't, so this can't be hammered to run up an
   // Africa's Talking bill or spam responders with premature escalation.
-  const { allowed } = rateLimit('cron-escalate:' + getClientIp(request), 6, 60 * 1000)
+  const { allowed } = await rateLimit('cron-escalate:' + getClientIp(request), 6, 60 * 1000)
   if (!allowed) {
     return NextResponse.json({ success: false, error: 'Too many requests' }, { status: 429 })
   }

@@ -40,7 +40,7 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Your account is not linked to a unit' }, { status: 403 })
     }
 
-    if (!rateLimit('create-responder:' + caller.id, 30, 60 * 60 * 1000).allowed) {
+    if (!(await rateLimit('create-responder:' + caller.id, 30, 60 * 60 * 1000)).allowed) {
       return NextResponse.json({ success: false, error: 'Too many accounts created recently. Please wait before adding more.' }, { status: 429 })
     }
 

@@ -19,7 +19,7 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { allowed } = rateLimit('sms:' + getClientIp(request), 20, 60 * 1000)
+    const { allowed } = await rateLimit('sms:' + getClientIp(request), 20, 60 * 1000)
     if (!allowed) {
       return NextResponse.json({ success: false, error: 'Too many requests' }, { status: 429 })
     }
@@ -40,7 +40,7 @@ export async function POST(request) {
     // A phone number can't be allowed to fire unlimited emergencies —
     // real repeat emergencies are rare enough that a tight limit here
     // only blocks abuse, not genuine use.
-    const perPhone = rateLimit('sms-phone:' + from, 3, 10 * 60 * 1000)
+    const perPhone = await rateLimit('sms-phone:' + from, 3, 10 * 60 * 1000)
     if (!perPhone.allowed) {
       return NextResponse.json({ success: false, error: 'Too many requests from this number' }, { status: 429 })
     }

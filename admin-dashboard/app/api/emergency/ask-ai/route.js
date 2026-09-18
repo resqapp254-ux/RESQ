@@ -36,7 +36,7 @@ export async function POST(request) {
 
     // Paid/quota-limited AI call — generous enough for real back-and-forth,
     // tight enough to stop a scripted flood.
-    if (!rateLimit('ask-ai:' + profile.id, 20, 10 * 60 * 1000).allowed) {
+    if (!(await rateLimit('ask-ai:' + profile.id, 20, 10 * 60 * 1000)).allowed) {
       return NextResponse.json({ success: false, error: 'Too many questions sent too quickly. Please slow down.' }, { status: 429 })
     }
 

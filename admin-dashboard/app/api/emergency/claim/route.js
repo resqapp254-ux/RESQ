@@ -8,7 +8,7 @@ export async function POST(request) {
     const { profile, error: authError } = await getAuthenticatedUser(request)
     if (authError) return NextResponse.json({ success: false, error: authError }, { status: 401 })
 
-    if (!rateLimit('claim:' + profile.id, 30, 5 * 60 * 1000).allowed) {
+    if (!(await rateLimit('claim:' + profile.id, 30, 5 * 60 * 1000)).allowed) {
       return NextResponse.json({ success: false, error: 'Too many requests. Please wait a moment.' }, { status: 429 })
     }
 

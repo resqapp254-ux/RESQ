@@ -23,7 +23,7 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Not authorized' }, { status: 403 })
     }
 
-    if (!rateLimit('update-permission:' + caller.id, 60, 60 * 60 * 1000).allowed) {
+    if (!(await rateLimit('update-permission:' + caller.id, 60, 60 * 60 * 1000)).allowed) {
       return NextResponse.json({ success: false, error: 'Too many requests. Please wait a moment.' }, { status: 429 })
     }
 

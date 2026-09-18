@@ -52,7 +52,7 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Not authorized. Super admin login required.' }, { status: 403 })
     }
 
-    if (!rateLimit('create-institution:' + getClientIp(request), 20, 60 * 60 * 1000).allowed) {
+    if (!(await rateLimit('create-institution:' + getClientIp(request), 20, 60 * 60 * 1000)).allowed) {
       return NextResponse.json({ success: false, error: 'Too many institutions created recently. Please wait before adding more.' }, { status: 429 })
     }
 

@@ -20,7 +20,7 @@ export async function POST(request) {
     // A real repeat emergency from the same account within a few
     // minutes is rare; this only stops accidental double-taps and
     // scripted abuse of a valid session, not genuine use.
-    const { allowed } = rateLimit('trigger:' + user.id, 5, 10 * 60 * 1000)
+    const { allowed } = await rateLimit('trigger:' + user.id, 5, 10 * 60 * 1000)
     if (!allowed) {
       logActivity({ eventType: 'rate_limited', detail: 'emergency/trigger', userId: user.id })
       return NextResponse.json({ success: false, error: 'Too many emergencies triggered from this account recently. If this is urgent, call local emergency services directly.' }, { status: 429 })

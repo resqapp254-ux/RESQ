@@ -41,7 +41,7 @@ export async function POST(request) {
 
     // This calls a paid/quota-limited external AI API — cap retries
     // per account so a scripted loop can't burn through the quota.
-    if (!rateLimit('advice:' + profile.id, 10, 5 * 60 * 1000).allowed) {
+    if (!(await rateLimit('advice:' + profile.id, 10, 5 * 60 * 1000)).allowed) {
       return NextResponse.json({ success: false, error: 'Too many requests. Please wait a moment.' }, { status: 429 })
     }
 

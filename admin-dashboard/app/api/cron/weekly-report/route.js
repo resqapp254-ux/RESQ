@@ -17,7 +17,7 @@ import { getClientIp, rateLimit } from '../../../../lib/rateLimit'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request) {
-  const { allowed } = rateLimit('cron-weekly-report:' + getClientIp(request), 3, 60 * 1000)
+  const { allowed } = await rateLimit('cron-weekly-report:' + getClientIp(request), 3, 60 * 1000)
   if (!allowed) {
     return NextResponse.json({ success: false, error: 'Too many requests' }, { status: 429 })
   }
