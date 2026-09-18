@@ -63,6 +63,8 @@ export default function UserPage() {
   const [ratingDraft, setRatingDraft] = useState({})
   const [ratingSubmittingId, setRatingSubmittingId] = useState('')
   const [identityNeeds, setIdentityNeeds] = useState({ admissionNumber: false, photo: false })
+  const [institutionServicesForRouting, setInstitutionServicesForRouting] = useState([])
+  const [claimableResponders, setClaimableResponders] = useState([])
   const [currentEmergency, setCurrentEmergency] = useState(null)
   const [currentAdvice, setCurrentAdvice] = useState('')
   const [chatMessage, setChatMessage] = useState('')
@@ -181,6 +183,26 @@ export default function UserPage() {
   const myClaimedEmergency = isResponderView ? activeEmergencies.find((e) => e.claimed_by === myUserId) : null
   const chatTargetId = isResponderView ? (myClaimedEmergency?.id || '') : (currentEmergency?.id || activeEmergencies[0]?.id || '')
 
+  // Who is actually eligible to claim a still-unclaimed emergency —
+  // shown so a secondary (view-only) responder can call someone
+  // directly instead of just watching a case sit unclaimed. Mirrors
+  // the same routing rule used to filter each responder's own queue.
+  function getEligibleResponders(emergency) {
+    const matchingServiceIds = pickMatchingServices(institutionServicesForRouting, {
+      emergencyType: emergency.emergency_type,
+      lat: emergency.lat,
+      lng: emergency.lng
+    }).map((s) => s.id)
+
+    return claimableResponders.filter((r) => {
+      if (r.service_id) return matchingServiceIds.includes(r.service_id)
+      // Primary/internal responder — always eligible unless their
+      // admin narrowed which types they personally handle.
+      const types = r.responder_emergency_types
+      return !types || types.length === 0 || types.includes(emergency.emergency_type)
+    })
+  }
+
   async function loadChatMessages(emergencyId) {
     const { data } = await supabase
       .from('emergency_messages')
@@ -253,7 +275,7 @@ export default function UserPage() {
       let openQuery = supabase
         .from('emergencies')
         .select(
-          'id, emergency_type, status, created_at, claimed_by, institution_id, triggered_by, triggered_by_phone, triggered_via, ai_flag_to_responder, lat, lng, reporter:profiles!emergencies_triggered_by_fkey(full_name, phone, admission_number), claimant:profiles!emergencies_claimed_by_fkey(full_name, service_id, admission_number, avatar_url)'
+          'id, emergency_type, status, created_at, claimed_by, institution_id, triggered_by, triggered_by_phone, triggered_via, ai_flag_to_responder, lat, lng, reporter:profiles!emergencies_triggered_by_fkey(full_name, phone, admission_number), claimant:profiles!emergencies_claimed_by_fkey(full_name, phone, service_id, admission_number, avatar_url)'
         )
         .in('status', ['triggered', 'claimed', 'in_progress'])
         .order('created_at', { ascending: false })
@@ -289,6 +311,29 @@ export default function UserPage() {
       // handle (myEmergencyTypes null/empty = all types, unchanged).
       if (roleName === 'responder' && !serviceIdValue && myEmergencyTypes && myEmergencyTypes.length > 0) {
         open = (open || []).filter((emergency) => myEmergencyTypes.includes(emergency.emergency_type))
+      }
+
+      // So a secondary (view-only) responder can see, and call, exactly
+      // who is eligible to claim an unclaimed case instead of just
+      // watching it sit there — computed institution-wide, not scoped
+      // to this viewer's own unit like the filtering above.
+      if (roleName !== 'super_admin' && institutionIdValue) {
+        const [{ data: allServices }, { data: allClaimable }] = await Promise.all([
+          supabase
+            .from('institution_services')
+            .select('id, service_type, lat, lng, handles_emergency_types, is_active')
+            .eq('institution_id', institutionIdValue)
+            .eq('is_active', true),
+          supabase
+            .from('profiles')
+            .select('id, full_name, phone, service_id, responder_emergency_types')
+            .eq('institution_id', institutionIdValue)
+            .eq('role', 'responder')
+            .eq('responder_permission', 'full')
+            .eq('is_active', true)
+        ])
+        setInstitutionServicesForRouting(allServices || [])
+        setClaimableResponders(allClaimable || [])
       }
 
       let resolvedQuery = supabase
@@ -1027,14 +1072,31 @@ export default function UserPage() {
                         {emergency.claimed_by ? 'Claimed' : 'Open'} \u00b7 {emergency.status}
                       </span>
                       {isResponderView && emergency.claimant && (
-                        <p className="resq-subtle" style={{ margin: '4px 0 0', color: '#7fe3f2', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <p className="resq-subtle" style={{ margin: '4px 0 0', color: '#7fe3f2', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           {emergency.claimant.avatar_url && (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={emergency.claimant.avatar_url} alt="" width={16} height={16} style={{ borderRadius: '50%', objectFit: 'cover' }} />
                           )}
                           \u270b Claimed by {emergency.claimant.full_name}{emergency.claimant.admission_number ? ' (' + emergency.claimant.admission_number + ')' : ''}
+                          {emergency.claimant.phone && (
+                            <a href={`tel:${emergency.claimant.phone}`} style={{ color: '#7fe3f2' }}>\ud83d\udcde {emergency.claimant.phone}</a>
+                          )}
                         </p>
                       )}
+                      {isResponderView && !emergency.claimed_by && (() => {
+                        const eligible = getEligibleResponders(emergency)
+                        return eligible.length > 0 ? (
+                          <div className="resq-subtle" style={{ margin: '6px 0 0', color: '#e0b34d' }}>
+                            Who can claim this: {eligible.map((r, i) => (
+                              <span key={r.id}>
+                                {i > 0 ? ', ' : ''}
+                                {r.full_name}
+                                {r.phone && <> (<a href={`tel:${r.phone}`} style={{ color: '#e0b34d' }}>{r.phone}</a>)</>}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null
+                      })()}
                       {isResponderView && (
                         <p className="resq-subtle" style={{ margin: '6px 0 0' }}>
                           {emergency.reporter?.full_name ? (

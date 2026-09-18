@@ -47,6 +47,8 @@ export default function ResponderHomeScreen({ navigation }) {
   const [sirenMuted, setSirenMuted] = useState(false)
   const [myUserId, setMyUserId] = useState('')
   const [identityNeeds, setIdentityNeeds] = useState({ admissionNumber: false, photo: false })
+  const [institutionServicesForRouting, setInstitutionServicesForRouting] = useState([])
+  const [claimableResponders, setClaimableResponders] = useState([])
 
   const sirenPlayer = useAudioPlayer(require('../assets/siren.wav'))
 
@@ -163,7 +165,7 @@ export default function ResponderHomeScreen({ navigation }) {
   async function loadEmergencies(instId, serviceIdArg, emergencyTypesArg) {
     const { data, error } = await supabase
       .from('emergencies')
-      .select('*, claimant:profiles!emergencies_claimed_by_fkey(full_name, service_id, admission_number, avatar_url)')
+      .select('*, claimant:profiles!emergencies_claimed_by_fkey(full_name, phone, service_id, admission_number, avatar_url)')
       .eq('institution_id', instId)
       .in('status', ['triggered', 'claimed', 'in_progress'])
       .order('created_at', { ascending: false })
@@ -175,13 +177,26 @@ export default function ResponderHomeScreen({ navigation }) {
 
     let list = data || []
 
-    if (serviceIdArg) {
-      const { data: services } = await supabase
-        .from('institution_services')
-        .select('id, service_type, lat, lng, handles_emergency_types, is_active')
-        .eq('institution_id', instId)
-        .eq('is_active', true)
+    const { data: services } = await supabase
+      .from('institution_services')
+      .select('id, service_type, lat, lng, handles_emergency_types, is_active')
+      .eq('institution_id', instId)
+      .eq('is_active', true)
+    setInstitutionServicesForRouting(services || [])
 
+    // So a secondary (view-only) responder can see, and call, exactly
+    // who is eligible to claim an unclaimed case instead of just
+    // watching it sit there.
+    const { data: allClaimable } = await supabase
+      .from('profiles')
+      .select('id, full_name, phone, service_id, responder_emergency_types')
+      .eq('institution_id', instId)
+      .eq('role', 'responder')
+      .eq('responder_permission', 'full')
+      .eq('is_active', true)
+    setClaimableResponders(allClaimable || [])
+
+    if (serviceIdArg) {
       list = list.filter((emergency) => {
         const matching = pickMatchingServices(services, {
           emergencyType: emergency.emergency_type,
@@ -196,6 +211,20 @@ export default function ResponderHomeScreen({ navigation }) {
 
     setEmergencies(list)
     setRefreshing(false)
+  }
+
+  function getEligibleResponders(emergency) {
+    const matchingServiceIds = pickMatchingServices(institutionServicesForRouting, {
+      emergencyType: emergency.emergency_type,
+      lat: emergency.lat,
+      lng: emergency.lng
+    }).map((s) => s.id)
+
+    return claimableResponders.filter((r) => {
+      if (r.service_id) return matchingServiceIds.includes(r.service_id)
+      const types = r.responder_emergency_types
+      return !types || types.length === 0 || types.includes(emergency.emergency_type)
+    })
   }
 
   const onRefresh = useCallback(() => {
@@ -274,10 +303,27 @@ export default function ResponderHomeScreen({ navigation }) {
               <Text style={styles.badge}>via {item.triggered_via.toUpperCase()}</Text>
             )}
             {item.claimant && (
-              <Text style={styles.claimedBy}>
-                ✋ Claimed by {item.claimant.full_name}{item.claimant.admission_number ? ` (${item.claimant.admission_number})` : ''}
-              </Text>
+              <TouchableOpacity disabled={!item.claimant.phone} onPress={() => item.claimant.phone && Linking.openURL(`tel:${item.claimant.phone}`)}>
+                <Text style={styles.claimedBy}>
+                  ✋ Claimed by {item.claimant.full_name}{item.claimant.admission_number ? ` (${item.claimant.admission_number})` : ''}
+                  {item.claimant.phone ? ` · 📞 ${item.claimant.phone}` : ''}
+                </Text>
+              </TouchableOpacity>
             )}
+            {!item.claimed_by && (() => {
+              const eligible = getEligibleResponders(item)
+              if (eligible.length === 0) return null
+              return (
+                <View style={{ marginTop: 6 }}>
+                  <Text style={styles.eligibleLabel}>Who can claim this:</Text>
+                  {eligible.map((r) => (
+                    <TouchableOpacity key={r.id} disabled={!r.phone} onPress={() => r.phone && Linking.openURL(`tel:${r.phone}`)}>
+                      <Text style={styles.eligibleRow}>{r.full_name}{r.phone ? ` · 📞 ${r.phone}` : ''}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )
+            })()}
           </TouchableOpacity>
         )}
       />
@@ -324,5 +370,7 @@ const styles = StyleSheet.create({
   time: { color: '#5c6480' },
   location: { color: '#9aa4bf' },
   badge: { marginTop: 6, fontSize: 12, color: '#e0b34d', fontWeight: 'bold' },
-  claimedBy: { marginTop: 6, fontSize: 12, color: '#35d0e8', fontWeight: '600' }
+  claimedBy: { marginTop: 6, fontSize: 12, color: '#35d0e8', fontWeight: '600' },
+  eligibleLabel: { fontSize: 11, color: '#e0b34d', fontWeight: '700' },
+  eligibleRow: { fontSize: 12, color: '#e0b34d', marginTop: 2 }
 })

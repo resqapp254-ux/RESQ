@@ -14,6 +14,7 @@ import EmergencyPulseBackground from '../../components/EmergencyPulseBackground'
 import RadarSweepBackground from '../../components/RadarSweepBackground'
 import LoadingScreen from '../../components/LoadingScreen'
 import LanguageSwitcher from '../../components/LanguageSwitcher'
+import { pickMatchingServices } from '../../lib/serviceDispatch'
 
 const SERVICE_TYPES = [
   { key: 'hospital', label: 'Hospital', emoji: '🏥' },
@@ -38,6 +39,9 @@ export default function UnitAdminPage() {
 
   const [responders, setResponders] = useState([])
   const [busyResponderId, setBusyResponderId] = useState('')
+  const [institutionId, setInstitutionId] = useState('')
+  const [liveEmergencies, setLiveEmergencies] = useState([])
+  const [resolvedCount, setResolvedCount] = useState(0)
 
   const [addForm, setAddForm] = useState({ fullName: '', email: '', phone: '', tempPassword: '', permission: 'full' })
   const [adding, setAdding] = useState(false)
@@ -86,10 +90,45 @@ export default function UnitAdminPage() {
         contactEmail: service.contact_email || '',
         handlesTypes: service.handles_emergency_types || []
       })
+      setInstitutionId(service.institution_id)
+      await loadLiveEmergencies(service.institution_id, profile.service_id)
+
+      // Live updates so a new/claimed/resolved emergency shows up
+      // without needing a manual refresh — this is the unit's own
+      // "where the siren would wail" view of its own routed cases.
+      supabase
+        .channel('unit-admin-emergencies-' + profile.service_id)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'emergencies', filter: `institution_id=eq.${service.institution_id}` },
+          () => loadLiveEmergencies(service.institution_id, profile.service_id)
+        )
+        .subscribe()
     }
 
     await loadResponders(profile.service_id)
     setLoading(false)
+  }
+
+  async function loadLiveEmergencies(instId, sId) {
+    const { data: emergencies } = await supabase
+      .from('emergencies')
+      .select('id, emergency_type, status, created_at, claimed_at, lat, lng, triggered_by_phone, triggered_via, claimant:profiles!emergencies_claimed_by_fkey(full_name, phone)')
+      .eq('institution_id', instId)
+      .in('status', ['triggered', 'claimed', 'in_progress'])
+      .order('created_at', { ascending: false })
+
+    const { data: allServices } = await supabase
+      .from('institution_services')
+      .select('id, service_type, lat, lng, handles_emergency_types, is_active')
+      .eq('institution_id', instId)
+      .eq('is_active', true)
+
+    const mine = (emergencies || []).filter((e) => {
+      const matching = pickMatchingServices(allServices, { emergencyType: e.emergency_type, lat: e.lat, lng: e.lng })
+      return matching.some((s) => s.id === sId)
+    })
+    setLiveEmergencies(mine)
   }
 
   async function loadResponders(sId) {
@@ -100,6 +139,18 @@ export default function UnitAdminPage() {
       .eq('role', 'responder')
       .order('created_at', { ascending: false })
     setResponders(data || [])
+
+    const ids = (data || []).map((r) => r.id)
+    if (ids.length > 0) {
+      const { count } = await supabase
+        .from('emergencies')
+        .select('id', { count: 'exact', head: true })
+        .in('claimed_by', ids)
+        .eq('status', 'resolved')
+      setResolvedCount(count || 0)
+    } else {
+      setResolvedCount(0)
+    }
   }
 
   function toggleHandlesType(type) {
@@ -269,12 +320,36 @@ export default function UnitAdminPage() {
         <div className="glass-card resq-fade-in" style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h1 className="resq-h1" style={{ fontSize: 26 }}>{form.name}</h1>
-            <p className="resq-subtle" style={{ marginTop: 4 }}>Your unit's own dashboard</p>
+            <p className="resq-subtle" style={{ marginTop: 4 }}>Your unit's own dashboard · {resolvedCount} case{resolvedCount === 1 ? '' : 's'} resolved</p>
           </div>
           <button className="resq-btn-secondary" onClick={handleLogout}>Log Out</button>
         </div>
 
         {error && <p style={{ color: '#ff8080' }}>{error}</p>}
+
+        <section className="glass-card resq-fade-in" style={{ marginBottom: 24 }}>
+          <h2 style={{ marginTop: 0 }}>
+            {liveEmergencies.some((e) => !e.claimed_by) ? '🚨 ' : ''}Live Emergencies ({liveEmergencies.length})
+          </h2>
+          {liveEmergencies.length === 0 && <p className="resq-subtle">No active emergencies routed to this unit right now.</p>}
+          {liveEmergencies.map((e) => (
+            <div key={e.id} style={{ padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <strong style={{ textTransform: 'capitalize' }}>{(e.emergency_type || 'other').replace('_', ' ')}</strong>{' '}
+              <span className={e.claimed_by ? 'resq-badge resq-badge-claimed' : 'resq-badge resq-badge-open'}>
+                {e.status.replace('_', ' ')}
+              </span>
+              <p className="resq-subtle" style={{ margin: '4px 0 0', fontSize: 13 }}>
+                Alerted {new Date(e.created_at).toLocaleString()}
+                {e.claimed_at ? ` · Claimed ${new Date(e.claimed_at).toLocaleString()}` : ''}
+              </p>
+              {e.claimant && (
+                <p className="resq-subtle" style={{ margin: '4px 0 0', color: '#7fe3f2', fontSize: 13 }}>
+                  ✋ {e.claimant.full_name}{e.claimant.phone ? ` · 📞 ${e.claimant.phone}` : ''}
+                </p>
+              )}
+            </div>
+          ))}
+        </section>
 
         <section className="glass-card resq-fade-in resq-fade-in-2" style={{ marginBottom: 24 }}>
           <h2 style={{ marginTop: 0 }}>Unit Settings</h2>
