@@ -11,15 +11,22 @@
 //   1. Primary responders (profiles.service_id is null) always see
 //      / are notified of every emergency for their institution.
 //      This file has nothing to do with them.
-//   2. An institution with 2 or fewer active services: every
-//      secondary responder sees/receives every emergency too.
-//   3. An institution with more than 2 active services: a secondary
-//      responder only sees/receives an emergency when their
-//      service's handles_emergency_types matches the emergency's
-//      type (an empty array means "handles everything"), preferring
-//      services within NEARBY_RADIUS_KM of the emergency and
-//      falling back to the single nearest matching service if none
-//      are within that radius.
+//   2. A responder linked to a partner unit (hospital, police, fire,
+//      ambulance, etc) only ever sees/receives an emergency when
+//      their unit's handles_emergency_types matches the emergency's
+//      type (an empty array means "handles everything") AND the
+//      emergency is within NEARBY_RADIUS_KM of that unit's own
+//      coordinates — always, regardless of how many other units the
+//      institution has. Falls back to the single nearest matching
+//      unit if none are within radius, so an emergency is never
+//      silently dropped. An institution with only one or two units
+//      used to get an exemption from this (every unit saw everything
+//      in that case); removed, since a hospital's responders should
+//      never see an emergency on the other side of town just because
+//      it's the institution's only partner unit.
+//   3. 'individual' units (see day24/day25) have no fixed physical
+//      location and are exempt from the distance check, receiving
+//      every matching emergency type regardless of where it happened.
 
 export const NEARBY_RADIUS_KM = 25
 
@@ -50,7 +57,6 @@ export function serviceHandlesType(service, emergencyType) {
 export function pickMatchingServices(services, { emergencyType, lat, lng }) {
   const active = (services || []).filter((s) => s.is_active !== false)
   if (active.length === 0) return []
-  if (active.length <= 2) return active
 
   const typeMatches = active.filter((s) => serviceHandlesType(s, emergencyType))
   if (typeMatches.length === 0) return []

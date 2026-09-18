@@ -27,7 +27,6 @@ export function serviceHandlesType(service, emergencyType) {
 export function pickMatchingServices(services, { emergencyType, lat, lng }) {
   const active = (services || []).filter((s) => s.is_active !== false)
   if (active.length === 0) return []
-  if (active.length <= 2) return active
 
   const typeMatches = active.filter((s) => serviceHandlesType(s, emergencyType))
   if (typeMatches.length === 0) return []

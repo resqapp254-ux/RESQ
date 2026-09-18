@@ -281,9 +281,7 @@ export default function ManageServicesPage() {
   }
 
   const routingNote =
-    services.filter((s) => s.is_active).length <= 2
-      ? 'You have 2 or fewer active services, so every one of them receives every emergency for this institution.'
-      : 'You have more than 2 active services, so each one only receives emergencies matching its type and nearby location.'
+    'Each unit only receives emergencies that match its handled types and are near its own coordinates (individual units, with no fixed location, are the one exception).'
 
   return (
     <main className="resq-shell">
