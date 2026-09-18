@@ -17,6 +17,7 @@ export default function InstitutionAdminPage() {
   const [signingOut, setSigningOut] = useState(false)
   const [institution, setInstitution] = useState(null)
   const [responders, setResponders] = useState([])
+  const [services, setServices] = useState([])
   const [shiftsByResponder, setShiftsByResponder] = useState({})
   const [activeEmergencies, setActiveEmergencies] = useState([])
   const [recentResolved, setRecentResolved] = useState([])
@@ -81,6 +82,12 @@ export default function InstitutionAdminPage() {
       return
     }
     setInstitution(inst)
+
+    const { data: svc } = await supabase
+      .from('institution_services')
+      .select('id, name')
+      .eq('institution_id', profile.institution_id)
+    setServices(svc || [])
 
     const { data: resp, error: respError } = await supabase
       .from('profiles')
@@ -241,6 +248,7 @@ export default function InstitutionAdminPage() {
   }
 
   const hasActiveAlert = activeEmergencies.some((e) => e.status !== 'resolved')
+  const primaryResponders = responders.filter((r) => !r.service_id)
 
   return (
     <div className={'resq-shell' + (hasActiveAlert ? ' resq-alert-shell' : '')}>
@@ -334,67 +342,39 @@ export default function InstitutionAdminPage() {
 
       {responders.length === 0 && <p className="resq-subtle resq-fade-in resq-fade-in-3">No responders yet. Add your first one above.</p>}
 
-      {responders.length > 0 && (
+      {/* Institution-wide responders (no partner unit link) — the
+          institution admin's own directly-managed team. Responders a
+          hospital/unit added for itself are never mixed in here; they
+          show grouped under that unit's own heading below instead. */}
+      {primaryResponders.length > 0 && (
         <section className="glass-card resq-fade-in resq-fade-in-3" style={{ marginBottom: 24, overflowX: 'auto' }}>
-        <table style={{ width: '100%' }}>
-          <thead>
-            <tr>
-              <th style={{ padding: 10 }}>Name</th>
-              <th style={{ padding: 10 }}>Email</th>
-              <th style={{ padding: 10 }}>Phone</th>
-              <th style={{ padding: 10 }}>Permission</th>
-              <th style={{ padding: 10 }}>Status</th>
-              <th style={{ padding: 10 }}>Upcoming Shifts</th>
-              <th style={{ padding: 10 }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {responders.map((r) => (
-              <tr key={r.id} className="resq-row-interactive" style={{ opacity: r.is_active === false ? 0.5 : 1 }}>
-                <td style={{ padding: 10 }}>{r.full_name}</td>
-                <td style={{ padding: 10 }}>{r.email}</td>
-                <td style={{ padding: 10 }}>{r.phone}</td>
-                <td style={{ padding: 10 }}>
-                  <select
-                    className="resq-input"
-                    value={r.responder_permission || 'full'}
-                    onChange={(e) => updatePermission(r.id, e.target.value)}
-                    disabled={r.is_active === false}
-                    style={{ minWidth: 120 }}
-                  >
-                    <option value="full">Full (claim & respond)</option>
-                    <option value="view_only">View only</option>
-                  </select>
-                </td>
-                <td style={{ padding: 10 }}>
-                  <span className={r.is_active === false ? 'resq-badge resq-badge-open' : 'resq-badge resq-badge-resolved'}>
-                    {r.is_active === false ? 'Removed' : 'Active'}
-                  </span>
-                </td>
-                <td style={{ padding: 10 }}>
-                  {(shiftsByResponder[r.id] || []).length === 0 && <span className="resq-subtle">None scheduled</span>}
-                  {(shiftsByResponder[r.id] || []).map((s) => (
-                    <div key={s.id} className="resq-subtle" style={{ fontSize: 13 }}>
-                      {new Date(s.shift_start).toLocaleString()} → {new Date(s.shift_end).toLocaleString()}
-                    </div>
-                  ))}
-                </td>
-                <td style={{ padding: 10 }}>
-                  <button
-                    className="resq-btn-secondary"
-                    onClick={() => toggleResponderActive(r)}
-                    disabled={busyResponderId === r.id}
-                    style={{ color: r.is_active === false ? undefined : '#ff8080' }}
-                  >
-                    {busyResponderId === r.id ? '...' : r.is_active === false ? 'Reactivate' : 'Remove'}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+          <h3 style={{ marginTop: 0 }}>Institution Responders</h3>
+          <ResponderTable
+            list={primaryResponders}
+            shiftsByResponder={shiftsByResponder}
+            busyResponderId={busyResponderId}
+            updatePermission={updatePermission}
+            toggleResponderActive={toggleResponderActive}
+          />
         </section>
       )}
+
+      {services.map((service) => {
+        const unitResponders = responders.filter((r) => r.service_id === service.id)
+        if (unitResponders.length === 0) return null
+        return (
+          <section key={service.id} className="glass-card resq-fade-in resq-fade-in-3" style={{ marginBottom: 24, overflowX: 'auto' }}>
+            <h3 style={{ marginTop: 0 }}>🏥 {service.name} Responders</h3>
+            <ResponderTable
+              list={unitResponders}
+              shiftsByResponder={shiftsByResponder}
+              busyResponderId={busyResponderId}
+              updatePermission={updatePermission}
+              toggleResponderActive={toggleResponderActive}
+            />
+          </section>
+        )
+      })}
 
       {responders.length > 0 && (
         <section className="glass-card resq-fade-in resq-fade-in-3">
@@ -442,5 +422,69 @@ export default function InstitutionAdminPage() {
       )}
       </div>
     </div>
+  )
+}
+
+// Shared table markup for both the institution-wide responder list
+// and each partner unit's own grouped list below it.
+function ResponderTable({ list, shiftsByResponder, busyResponderId, updatePermission, toggleResponderActive }) {
+  return (
+    <table style={{ width: '100%' }}>
+      <thead>
+        <tr>
+          <th style={{ padding: 10 }}>Name</th>
+          <th style={{ padding: 10 }}>Email</th>
+          <th style={{ padding: 10 }}>Phone</th>
+          <th style={{ padding: 10 }}>Permission</th>
+          <th style={{ padding: 10 }}>Status</th>
+          <th style={{ padding: 10 }}>Upcoming Shifts</th>
+          <th style={{ padding: 10 }}>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {list.map((r) => (
+          <tr key={r.id} className="resq-row-interactive" style={{ opacity: r.is_active === false ? 0.5 : 1 }}>
+            <td style={{ padding: 10 }}>{r.full_name}</td>
+            <td style={{ padding: 10 }}>{r.email}</td>
+            <td style={{ padding: 10 }}>{r.phone}</td>
+            <td style={{ padding: 10 }}>
+              <select
+                className="resq-input"
+                value={r.responder_permission || 'full'}
+                onChange={(e) => updatePermission(r.id, e.target.value)}
+                disabled={r.is_active === false}
+                style={{ minWidth: 120 }}
+              >
+                <option value="full">Full (claim & respond)</option>
+                <option value="view_only">View only</option>
+              </select>
+            </td>
+            <td style={{ padding: 10 }}>
+              <span className={r.is_active === false ? 'resq-badge resq-badge-open' : 'resq-badge resq-badge-resolved'}>
+                {r.is_active === false ? 'Removed' : 'Active'}
+              </span>
+            </td>
+            <td style={{ padding: 10 }}>
+              {(shiftsByResponder[r.id] || []).length === 0 && <span className="resq-subtle">None scheduled</span>}
+              {(shiftsByResponder[r.id] || []).map((s) => (
+                <div key={s.id} className="resq-subtle" style={{ fontSize: 13 }}>
+                  {new Date(s.shift_start).toLocaleString()} → {new Date(s.shift_end).toLocaleString()}
+                </div>
+              ))}
+            </td>
+            <td style={{ padding: 10 }}>
+              <button
+                className="resq-btn-secondary"
+                onClick={() => toggleResponderActive(r)}
+                disabled={busyResponderId === r.id}
+                style={{ color: r.is_active === false ? undefined : '#ff8080' }}
+              >
+                {busyResponderId === r.id ? '...' : r.is_active === false ? 'Reactivate' : 'Remove'}
+              </button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
 }
