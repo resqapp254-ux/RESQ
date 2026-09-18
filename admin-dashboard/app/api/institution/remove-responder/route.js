@@ -10,9 +10,10 @@
 // past emergency they were ever involved in still shows their name.
 // Reactivating (active: true) reverses all of it.
 //
-// Callable by the institution_admin for any responder in their
-// institution, or a unit_admin for a responder linked to their own
-// unit only.
+// Callable by the institution_admin for any responder OR unit_admin
+// login in their institution (e.g. to revoke a unit's dashboard login
+// that was created by mistake), or a unit_admin for a responder
+// linked to their own unit only (never another unit_admin).
 
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
@@ -46,8 +47,13 @@ export async function POST(request) {
       .eq('id', responderId)
       .single()
 
-    if (fetchError || !target || target.role !== 'responder') {
-      return NextResponse.json({ success: false, error: 'Responder not found' }, { status: 404 })
+    if (fetchError || !target || !['responder', 'unit_admin'].includes(target.role)) {
+      return NextResponse.json({ success: false, error: 'Account not found' }, { status: 404 })
+    }
+    // A unit_admin can only ever manage responders, never another
+    // unit_admin login (including their own).
+    if (caller.role === 'unit_admin' && target.role !== 'responder') {
+      return NextResponse.json({ success: false, error: 'Not authorized' }, { status: 403 })
     }
 
     const authorized =

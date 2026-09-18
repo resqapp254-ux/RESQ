@@ -48,7 +48,8 @@ export default function ManageServicesPage() {
     handlesTypes: DEFAULT_HANDLES_BY_SERVICE_TYPE.hospital
   })
 
-  const [unitAdminServiceIds, setUnitAdminServiceIds] = useState(new Set())
+  const [unitAdminByServiceId, setUnitAdminByServiceId] = useState(new Map())
+  const [busyUnitAdminId, setBusyUnitAdminId] = useState('')
   const [loginFormForId, setLoginFormForId] = useState('')
   const [loginForm, setLoginForm] = useState({ email: '', tempPassword: '' })
   const [creatingLogin, setCreatingLogin] = useState(false)
@@ -101,12 +102,14 @@ export default function ManageServicesPage() {
     if (serviceIds.length > 0) {
       const { data: unitAdmins } = await supabase
         .from('profiles')
-        .select('service_id')
+        .select('id, service_id, email, is_active')
         .eq('role', 'unit_admin')
         .in('service_id', serviceIds)
-      setUnitAdminServiceIds(new Set((unitAdmins || []).map((a) => a.service_id)))
+      const map = new Map()
+      for (const a of unitAdmins || []) map.set(a.service_id, a)
+      setUnitAdminByServiceId(map)
     } else {
-      setUnitAdminServiceIds(new Set())
+      setUnitAdminByServiceId(new Map())
     }
   }
 
@@ -213,6 +216,31 @@ export default function ManageServicesPage() {
       setLoginError(err.message)
     }
     setCreatingLogin(false)
+  }
+
+  async function toggleUnitAdminActive(unitAdmin, service) {
+    const nextActive = !unitAdmin.is_active
+    if (!nextActive) {
+      const confirmed = window.confirm(
+        `Revoke the dashboard login for "${service.name}"? It will no longer be able to sign in. You can create a new login for this unit afterward.`
+      )
+      if (!confirmed) return
+    }
+
+    setBusyUnitAdminId(unitAdmin.id)
+    const { data: sessionData } = await supabase.auth.getSession()
+    const res = await fetch('/api/institution/remove-responder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData.session?.access_token || ''}` },
+      body: JSON.stringify({ responderId: unitAdmin.id, active: nextActive })
+    })
+    const result = await res.json()
+    setBusyUnitAdminId('')
+    if (!result.success) {
+      alert('Failed: ' + result.error)
+      return
+    }
+    await loadServices(institutionId)
   }
 
   async function toggleActive(service) {
@@ -383,12 +411,33 @@ export default function ManageServicesPage() {
                   <span className={s.is_active ? 'resq-badge resq-badge-resolved' : 'resq-badge resq-badge-open'}>
                     {s.is_active ? 'Active' : 'Inactive'}
                   </span>
-                  {unitAdminServiceIds.has(s.id) ? (
-                    <span className="resq-badge resq-badge-claimed">Has dashboard login</span>
+                  <Link href={`/institution-admin/add-responder?serviceId=${s.id}`} className="resq-btn-secondary" style={{ textDecoration: 'none' }}>
+                    + Add Responder
+                  </Link>
+                  {unitAdminByServiceId.has(s.id) ? (
+                    (() => {
+                      const admin = unitAdminByServiceId.get(s.id)
+                      return (
+                        <>
+                          <span className="resq-badge resq-badge-claimed">
+                            {admin.is_active === false ? 'Login revoked' : 'Has dashboard login'}: {admin.email}
+                          </span>
+                          <button
+                            className="resq-btn-secondary"
+                            onClick={() => toggleUnitAdminActive(admin, s)}
+                            disabled={busyUnitAdminId === admin.id}
+                            style={{ color: admin.is_active === false ? undefined : '#ff8080' }}
+                          >
+                            {busyUnitAdminId === admin.id ? '...' : admin.is_active === false ? 'Reactivate Login' : 'Revoke Login'}
+                          </button>
+                        </>
+                      )
+                    })()
                   ) : (
                     <button
                       className="resq-btn-secondary"
                       onClick={() => { setLoginFormForId(loginFormForId === s.id ? '' : s.id); setLoginError('') }}
+                      title="Creates a separate unit_admin login for this unit, which can sign in and set up its own location, contact details, and responders. Use 'Add Responder' instead if you just want a person who claims and handles emergencies for this unit."
                     >
                       🔑 {loginFormForId === s.id ? 'Cancel' : 'Create Dashboard Login'}
                     </button>

@@ -1,8 +1,8 @@
 // app/institution-admin/add-responder/page.js
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../../lib/supabaseClient'
 import EmergencyPulseBackground from '../../../components/EmergencyPulseBackground'
@@ -12,6 +12,17 @@ import LanguageSwitcher from '../../../components/LanguageSwitcher'
 const EMERGENCY_TYPES = ['medical', 'fire', 'accident', 'security', 'gbv', 'mental_health', 'property_damage', 'other']
 
 export default function AddResponderPage() {
+  return (
+    <Suspense fallback={null}>
+      <AddResponderForm />
+    </Suspense>
+  )
+}
+
+// useSearchParams() (used to preselect a partner unit when arriving
+// from that unit's "+ Add Responder" link) requires a Suspense
+// boundary in the App Router, hence the wrapper above.
+function AddResponderForm() {
   const [form, setForm] = useState({
     fullName: '',
     email: '',
@@ -26,6 +37,8 @@ export default function AddResponderPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const preselectedServiceId = searchParams.get('serviceId') || ''
 
   useEffect(() => {
     async function loadServices() {
@@ -43,8 +56,12 @@ export default function AddResponderPage() {
         .eq('is_active', true)
         .order('name')
       setServices(data || [])
+      if (preselectedServiceId && (data || []).some((s) => s.id === preselectedServiceId)) {
+        update('serviceId', preselectedServiceId)
+      }
     }
     loadServices()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function update(field, value) {
