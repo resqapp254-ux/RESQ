@@ -42,6 +42,7 @@ export default function UnitAdminPage() {
   const [institutionId, setInstitutionId] = useState('')
   const [liveEmergencies, setLiveEmergencies] = useState([])
   const [resolvedCount, setResolvedCount] = useState(0)
+  const [resolvingId, setResolvingId] = useState('')
 
   const [addForm, setAddForm] = useState({ fullName: '', email: '', phone: '', tempPassword: '', permission: 'full' })
   const [adding, setAdding] = useState(false)
@@ -295,6 +296,29 @@ export default function UnitAdminPage() {
     setResponders((prev) => prev.map((r) => (r.id === responderId ? { ...r, responder_permission: permission } : r)))
   }
 
+  async function resolveEmergency(emergency) {
+    const confirmed = window.confirm(
+      `Mark this ${emergency.emergency_type || 'emergency'} as resolved? Use this when the responder who claimed it ` +
+      `(or should have) is unreachable or stuck — it closes the case immediately as this unit's admin.`
+    )
+    if (!confirmed) return
+
+    setResolvingId(emergency.id)
+    const { data: sessionData } = await supabase.auth.getSession()
+    const res = await fetch('/api/emergency/mark-resolved', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (sessionData.session?.access_token || '') },
+      body: JSON.stringify({ emergencyId: emergency.id })
+    })
+    const result = await res.json()
+    setResolvingId('')
+    if (!result.success) {
+      alert('Failed to resolve: ' + result.error)
+      return
+    }
+    await loadLiveEmergencies(institutionId, serviceId)
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut()
     router.replace('/login')
@@ -347,6 +371,15 @@ export default function UnitAdminPage() {
                   ✋ {e.claimant.full_name}{e.claimant.phone ? ` · 📞 ${e.claimant.phone}` : ''}
                 </p>
               )}
+              <button
+                className="resq-btn-secondary"
+                style={{ fontSize: 11, padding: '3px 8px', marginTop: 6 }}
+                onClick={() => resolveEmergency(e)}
+                disabled={resolvingId === e.id}
+                title="Mark resolved yourself, whether or not it's been claimed — use this if the responder is stuck or unreachable"
+              >
+                {resolvingId === e.id ? '...' : '✅ Mark Resolved'}
+              </button>
             </div>
           ))}
         </section>

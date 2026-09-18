@@ -27,6 +27,7 @@ export default function InstitutionAdminPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [busyResponderId, setBusyResponderId] = useState('')
+  const [resolvingId, setResolvingId] = useState('')
 
   // inline shift form state
   const [shiftForm, setShiftForm] = useState({ responderId: '', start: '', end: '' })
@@ -237,6 +238,30 @@ export default function InstitutionAdminPage() {
     await loadShifts(responders.map((r) => r.id))
   }
 
+  async function resolveEmergency(emergency) {
+    const confirmed = window.confirm(
+      `Mark this ${emergency.emergency_type || 'emergency'} as resolved? Use this when the responder who claimed it ` +
+      `(or should have) is unreachable or stuck — it closes the case immediately as the institution admin.`
+    )
+    if (!confirmed) return
+
+    setResolvingId(emergency.id)
+    const { data: sessionData } = await supabase.auth.getSession()
+    const res = await fetch('/api/emergency/mark-resolved', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (sessionData.session?.access_token || '') },
+      body: JSON.stringify({ emergencyId: emergency.id })
+    })
+    const result = await res.json()
+    setResolvingId('')
+    if (!result.success) {
+      alert('Failed to resolve: ' + result.error)
+      return
+    }
+    setActiveEmergencies((prev) => prev.filter((e) => e.id !== emergency.id))
+    await loadEmergencies(institution)
+  }
+
   function handleLogout() {
     setSigningOut(true)
   }
@@ -359,9 +384,20 @@ export default function InstitutionAdminPage() {
                     </p>
                   )}
                 </div>
-                <span className={emergency.claimed_by ? 'resq-badge resq-badge-claimed' : 'resq-badge resq-badge-open'}>
-                  {emergency.status === 'in_progress' ? 'In Progress' : emergency.claimed_by ? 'Claimed' : 'Unclaimed'}
-                </span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                  <span className={emergency.claimed_by ? 'resq-badge resq-badge-claimed' : 'resq-badge resq-badge-open'}>
+                    {emergency.status === 'in_progress' ? 'In Progress' : emergency.claimed_by ? 'Claimed' : 'Unclaimed'}
+                  </span>
+                  <button
+                    className="resq-btn-secondary"
+                    style={{ fontSize: 11, padding: '3px 8px' }}
+                    onClick={() => resolveEmergency(emergency)}
+                    disabled={resolvingId === emergency.id}
+                    title="Mark resolved yourself, whether or not it's been claimed — use this if the responder is stuck or unreachable"
+                  >
+                    {resolvingId === emergency.id ? '...' : '✅ Mark Resolved'}
+                  </button>
+                </div>
               </div>
             </div>
           ))}

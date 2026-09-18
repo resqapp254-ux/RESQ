@@ -27,9 +27,13 @@ export async function POST(request) {
     }
 
     const { data: existingEmergency } = await supabaseAdmin.from('emergencies').select('institution_id, claimed_by').eq('id', emergencyId).single()
-    if (!canAccessEmergency(profile, existingEmergency, ['responder', 'institution_admin', 'super_admin']) || (profile.role === 'responder' && existingEmergency.claimed_by !== profile.id)) {
+    if (!canAccessEmergency(profile, existingEmergency, ['responder', 'institution_admin', 'unit_admin', 'super_admin']) || (profile.role === 'responder' && existingEmergency.claimed_by !== profile.id)) {
       return NextResponse.json({ success: false, error: 'Not authorized for this emergency' }, { status: 403 })
     }
+    // institution_admin and unit_admin can resolve ANY of their
+    // institution's emergencies, claimed or not — an escape hatch for
+    // when the responder who claimed it (or should have) is
+    // unresponsive and a case would otherwise be stuck forever.
 
     const { data: emergency, error: updateError } = await supabaseAdmin
       .from('emergencies')
