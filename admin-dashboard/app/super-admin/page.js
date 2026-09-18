@@ -1,7 +1,7 @@
 // app/super-admin/page.js
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabaseClient'
@@ -30,6 +30,9 @@ export default function SuperAdminPage() {
   const [uploadingLogoFor, setUploadingLogoFor] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
   const [signingOut, setSigningOut] = useState(false)
+  const [expandedInstId, setExpandedInstId] = useState(null)
+  const [instResponders, setInstResponders] = useState({})
+  const [loadingResponders, setLoadingResponders] = useState(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -88,6 +91,35 @@ export default function SuperAdminPage() {
       byInstitution[row.institution_id] = { active: row.active_count, resolved: row.resolved_count }
     }
     setEmergencySummary(byInstitution)
+  }
+
+  async function toggleResponderDrilldown(inst) {
+    if (expandedInstId === inst.id) {
+      setExpandedInstId(null)
+      return
+    }
+    setExpandedInstId(inst.id)
+    if (instResponders[inst.id]) return // already loaded, cached
+    setLoadingResponders(inst.id)
+    const [{ data: people }, { data: units }] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('id, full_name, phone, role, is_active, service_id')
+        .eq('institution_id', inst.id)
+        .in('role', ['institution_admin', 'unit_admin', 'responder']),
+      supabase
+        .from('institution_services')
+        .select('id, name, service_type')
+        .eq('institution_id', inst.id)
+    ])
+    const unitNameById = {}
+    for (const u of units || []) unitNameById[u.id] = u.name
+    const rows = (people || []).map((p) => ({
+      ...p,
+      unitName: p.service_id ? unitNameById[p.service_id] || 'Partner unit' : null
+    }))
+    setInstResponders((prev) => ({ ...prev, [inst.id]: rows }))
+    setLoadingResponders(null)
   }
 
   async function toggleStatus(institution) {
@@ -433,8 +465,12 @@ th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:
             </tr>
           </thead>
           <tbody>
-            {institutions.map((inst, i) => (
-              <tr key={inst.id} className="resq-row-interactive resq-row-stagger" style={{ '--resq-row-index': i }}>
+            {institutions.map((inst, i) => {
+              const instSummary = emergencySummary[inst.id] || { active: 0, resolved: 0 }
+              const instHasLiveAlert = instSummary.active > 0
+              return (
+              <Fragment key={inst.id}>
+              <tr className="resq-row-interactive resq-row-stagger" style={{ '--resq-row-index': i, ...(instHasLiveAlert ? { background: 'rgba(255,80,80,0.08)' } : {}) }}>
                 <td style={{ padding: 10 }}>
                   <label style={{ cursor: 'pointer', display: 'block' }} title="Click to upload a logo">
                     {inst.logo_url ? (
@@ -470,6 +506,11 @@ th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:
                   ) : (
                     <>
                       <strong>{inst.name}</strong>{' '}
+                      {instHasLiveAlert && (
+                        <span className="resq-badge resq-badge-open" style={{ fontSize: 10, marginLeft: 4 }} title={`${instSummary.active} active emergenc${instSummary.active === 1 ? 'y' : 'ies'} right now`}>
+                          🚨 LIVE
+                        </span>
+                      )}
                       <button
                         className="resq-btn-secondary"
                         style={{ padding: '2px 8px', fontSize: 11, marginLeft: 4 }}
@@ -537,6 +578,9 @@ th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:
                   />
                 </td>
                 <td style={{ padding: 10 }}>
+                  <button className="resq-btn-secondary" onClick={() => toggleResponderDrilldown(inst)} style={{ marginRight: 8 }}>
+                    {expandedInstId === inst.id ? '▲ Hide' : '👥 Responders'}
+                  </button>
                   <button className="resq-btn-secondary" onClick={() => downloadContract(inst)} style={{ marginRight: 8 }}>
                     📄 Contract
                   </button>
@@ -548,7 +592,51 @@ th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:
                   </button>
                 </td>
               </tr>
-            ))}
+              {expandedInstId === inst.id && (
+                <tr>
+                  <td colSpan={10} style={{ padding: '4px 10px 16px', background: 'rgba(255,255,255,0.03)' }}>
+                    {loadingResponders === inst.id ? (
+                      <span className="resq-subtle">Loading responders…</span>
+                    ) : (
+                      (() => {
+                        const rows = instResponders[inst.id] || []
+                        if (rows.length === 0) return <span className="resq-subtle">No responders registered yet.</span>
+                        const byUnit = {}
+                        for (const r of rows) {
+                          const key = r.unitName || (r.role === 'institution_admin' ? 'Institution admin' : 'Internal (no partner unit)')
+                          byUnit[key] = byUnit[key] || []
+                          byUnit[key].push(r)
+                        }
+                        return (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
+                            {Object.entries(byUnit).map(([unitName, members]) => (
+                              <div key={unitName} style={{ minWidth: 220 }}>
+                                <div style={{ fontWeight: 'bold', fontSize: 12, marginBottom: 4, opacity: 0.8 }}>{unitName}</div>
+                                {members.map((m) => (
+                                  <div key={m.id} style={{ fontSize: 12, padding: '3px 0', opacity: m.is_active === false ? 0.4 : 1 }}>
+                                    {m.full_name || 'Unnamed'}{' '}
+                                    <span className="resq-subtle">({m.role.replace('_', ' ')})</span>
+                                    {m.phone && (
+                                      <>
+                                        {' — '}
+                                        <a href={`tel:${m.phone}`} style={{ color: 'inherit' }}>{m.phone}</a>
+                                      </>
+                                    )}
+                                    {m.is_active === false && <span style={{ marginLeft: 6, color: '#ff8080' }}>removed</span>}
+                                  </div>
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        )
+                      })()
+                    )}
+                  </td>
+                </tr>
+              )}
+              </Fragment>
+              )
+            })}
           </tbody>
         </table>
         </section>

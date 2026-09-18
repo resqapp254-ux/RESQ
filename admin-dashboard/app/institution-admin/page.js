@@ -11,6 +11,7 @@ import HeartMonitorLine from '../../components/HeartMonitorLine'
 import LoadingScreen from '../../components/LoadingScreen'
 import LanguageSwitcher from '../../components/LanguageSwitcher'
 import SignOutOverlay from '../../components/SignOutOverlay'
+import { pickMatchingServices } from '../../lib/serviceDispatch'
 
 export default function InstitutionAdminPage() {
   const [authorized, setAuthorized] = useState(false)
@@ -21,6 +22,7 @@ export default function InstitutionAdminPage() {
   const [shiftsByResponder, setShiftsByResponder] = useState({})
   const [activeEmergencies, setActiveEmergencies] = useState([])
   const [recentResolved, setRecentResolved] = useState([])
+  const [unitStats, setUnitStats] = useState({})
   const [openReportCount, setOpenReportCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -85,7 +87,7 @@ export default function InstitutionAdminPage() {
 
     const { data: svc } = await supabase
       .from('institution_services')
-      .select('id, name')
+      .select('id, name, service_type, lat, lng, handles_emergency_types, is_active')
       .eq('institution_id', profile.institution_id)
     setServices(svc || [])
 
@@ -103,9 +105,54 @@ export default function InstitutionAdminPage() {
       await loadShifts(resp.map((r) => r.id))
     }
 
-    await loadEmergencies()
+    await loadEmergencies(inst)
+    await loadUnitStats(inst, resp || [], svc || [])
     await loadOpenReportCount()
     setLoading(false)
+  }
+
+  const DELAYED_THRESHOLD_MS = 5 * 60 * 1000
+
+  // Per-partner-unit summary: live emergency routed to it right now,
+  // responders on duty, cases solved, and cases sitting unclaimed/
+  // unresolved past a 5-minute threshold ("delayed").
+  async function loadUnitStats(inst, resp, svc) {
+    if (!inst || svc.length === 0) return
+
+    const { data: resolvedForInst } = await supabase
+      .from('emergencies')
+      .select('claimed_by')
+      .eq('institution_id', inst.id)
+      .eq('status', 'resolved')
+
+    const { data: liveForInst } = await supabase
+      .from('emergencies')
+      .select('id, emergency_type, status, lat, lng, created_at')
+      .eq('institution_id', inst.id)
+      .in('status', ['triggered', 'claimed', 'in_progress'])
+
+    const solvedByResponder = {}
+    for (const e of resolvedForInst || []) {
+      if (!e.claimed_by) continue
+      solvedByResponder[e.claimed_by] = (solvedByResponder[e.claimed_by] || 0) + 1
+    }
+
+    const now = Date.now()
+    const stats = {}
+    for (const unit of svc) {
+      const unitResponders = resp.filter((r) => r.service_id === unit.id)
+      const onDuty = unitResponders.filter((r) => r.is_active !== false).length
+      const solved = unitResponders.reduce((sum, r) => sum + (solvedByResponder[r.id] || 0), 0)
+
+      const liveMatched = (liveForInst || []).filter((e) => {
+        const matching = pickMatchingServices(svc, { emergencyType: e.emergency_type, lat: e.lat, lng: e.lng })
+        return matching.some((s) => s.id === unit.id)
+      })
+      const delayed = liveMatched.filter((e) => now - new Date(e.created_at).getTime() > DELAYED_THRESHOLD_MS).length
+
+      stats[unit.id] = { live: liveMatched.length, onDuty, solved, delayed }
+    }
+    setUnitStats(stats)
   }
 
   async function loadOpenReportCount() {
@@ -134,21 +181,22 @@ export default function InstitutionAdminPage() {
     setShiftsByResponder(grouped)
   }
 
-  async function loadEmergencies() {
-    if (!institution) return
+  async function loadEmergencies(inst) {
+    const targetInstitution = inst || institution
+    if (!targetInstitution) return
 
     const { data: openEmergencies, error: openError } = await supabase
       .from('emergencies')
-      .select('id, emergency_type, status, claimed_by, created_at')
-      .eq('institution_id', institution.id)
-      .in('status', ['open', 'claimed'])
+      .select('id, emergency_type, status, claimed_by, created_at, claimed_at, lat, lng, claimant:profiles!emergencies_claimed_by_fkey(full_name, phone, service_id)')
+      .eq('institution_id', targetInstitution.id)
+      .in('status', ['triggered', 'claimed', 'in_progress'])
       .order('created_at', { ascending: false })
       .limit(10)
 
     const { data: resolvedEmergencies, error: resolvedError } = await supabase
       .from('emergencies')
       .select('id, emergency_type, status, claimed_by, created_at, resolved_at')
-      .eq('institution_id', institution.id)
+      .eq('institution_id', targetInstitution.id)
       .eq('status', 'resolved')
       .order('resolved_at', { ascending: false })
       .limit(10)
@@ -160,6 +208,7 @@ export default function InstitutionAdminPage() {
 
     setActiveEmergencies(openEmergencies || [])
     setRecentResolved(resolvedEmergencies || [])
+    return openEmergencies || []
   }
 
   async function handleAddShift(e) {
@@ -297,10 +346,21 @@ export default function InstitutionAdminPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                 <div>
                   <strong>{emergency.emergency_type || 'Emergency'}</strong>
-                  <p className="resq-subtle" style={{ margin: '4px 0' }}>{new Date(emergency.created_at).toLocaleString()}</p>
+                  <p className="resq-subtle" style={{ margin: '4px 0' }}>
+                    Alerted {new Date(emergency.created_at).toLocaleString()}
+                    {emergency.claimed_at && <> · Claimed {new Date(emergency.claimed_at).toLocaleString()}</>}
+                  </p>
+                  {emergency.claimant?.full_name && (
+                    <p className="resq-subtle" style={{ margin: '4px 0' }}>
+                      Handled by {emergency.claimant.full_name}
+                      {emergency.claimant.phone && (
+                        <> — <a href={`tel:${emergency.claimant.phone}`} style={{ color: 'inherit' }}>{emergency.claimant.phone}</a></>
+                      )}
+                    </p>
+                  )}
                 </div>
                 <span className={emergency.claimed_by ? 'resq-badge resq-badge-claimed' : 'resq-badge resq-badge-open'}>
-                  {emergency.claimed_by ? 'Claimed' : 'Open'}
+                  {emergency.status === 'in_progress' ? 'In Progress' : emergency.claimed_by ? 'Claimed' : 'Unclaimed'}
                 </span>
               </div>
             </div>
@@ -367,9 +427,28 @@ export default function InstitutionAdminPage() {
       {services.map((service) => {
         const unitResponders = responders.filter((r) => r.service_id === service.id)
         if (unitResponders.length === 0) return null
+        const stats = unitStats[service.id] || { live: 0, onDuty: 0, solved: 0, delayed: 0 }
         return (
           <section key={service.id} className="glass-card resq-fade-in resq-fade-in-3" style={{ marginBottom: 24, overflowX: 'auto' }}>
-            <h3 style={{ marginTop: 0 }}>🏥 {service.name} Responders</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+              <h3 style={{ marginTop: 0, marginBottom: 8 }}>
+                🏥 {service.name} Responders
+                {stats.live > 0 && (
+                  <span className="resq-badge resq-badge-open" style={{ fontSize: 10, marginLeft: 8 }}>
+                    🚨 {stats.live} live
+                  </span>
+                )}
+              </h3>
+              <div style={{ display: 'flex', gap: 14, fontSize: 12 }} className="resq-subtle">
+                <span>{stats.onDuty} on duty</span>
+                <span>{stats.solved} solved</span>
+                {stats.delayed > 0 ? (
+                  <span style={{ color: '#ff8080' }}>{stats.delayed} delayed</span>
+                ) : (
+                  <span>0 delayed</span>
+                )}
+              </div>
+            </div>
             <ResponderTable
               list={unitResponders}
               shiftsByResponder={shiftsByResponder}
