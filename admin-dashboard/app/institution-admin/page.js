@@ -57,17 +57,18 @@ export default function InstitutionAdminPage() {
       return
     }
 
+    const userId = sessionData.session.user.id
     setAuthorized(true)
-    await loadAll()
+    await loadAll(userId)
   }
 
-  async function loadAll() {
+  async function loadAll(userId) {
     setLoading(true)
 
     const { data: profile } = await supabase
       .from('profiles')
       .select('institution_id')
-      .eq('id', (await supabase.auth.getUser()).data.user.id)
+      .eq('id', userId)
       .single()
 
     const { data: inst, error: instError } = await supabase
