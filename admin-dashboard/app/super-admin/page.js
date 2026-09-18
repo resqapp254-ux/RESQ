@@ -620,6 +620,11 @@ th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:
                   >
                     {inst.visibility === 'public' ? '🌐 Public' : '🔒 Private'}
                   </button>
+                  {inst.visibility === 'public' && inst.public_type && (
+                    <div className="resq-subtle" style={{ fontSize: 11, marginTop: 4, textAlign: 'center' }}>
+                      {inst.public_type === 'company' ? 'Company' : 'Single Service'}
+                    </div>
+                  )}
                 </td>
                 <td style={{ padding: 10 }}>
                   <select className="resq-input" value={inst.subscription_tier} onChange={(e) => changeTier(inst, e.target.value)}>

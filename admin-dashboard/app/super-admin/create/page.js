@@ -16,9 +16,14 @@ export default function CreateInstitutionPage() {
     contactPhone: '',
     adminFullName: '',
     adminEmail: '',
-    adminTempPassword: ''
+    adminTempPassword: '',
+    visibility: 'private',
+    publicType: 'single_service',
+    lat: '',
+    lng: ''
   })
   const [loading, setLoading] = useState(false)
+  const [locating, setLocating] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState(null)
   const router = useRouter()
@@ -34,11 +39,38 @@ export default function CreateInstitutionPage() {
     update('adminTempPassword', pass)
   }
 
+  function useMyLocation() {
+    if (!navigator.geolocation) {
+      setError('Location is not available in this browser.')
+      return
+    }
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        update('lat', String(position.coords.latitude))
+        update('lng', String(position.coords.longitude))
+        setLocating(false)
+      },
+      () => {
+        setError('Could not read location. Enter latitude/longitude manually, or leave blank — the institution admin can set it later.')
+        setLocating(false)
+      }
+    )
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
     setResult(null)
     setLoading(true)
+
+    if (form.visibility === 'public' && (form.lat.trim() !== '' || form.lng.trim() !== '')) {
+      if (Number.isNaN(parseFloat(form.lat)) || Number.isNaN(parseFloat(form.lng))) {
+        setError('Latitude and longitude must both be valid numbers, or both left blank.')
+        setLoading(false)
+        return
+      }
+    }
 
     // Get the current session so the API route could later verify super_admin server-side (Day 9 hardening)
     const { data: sessionData } = await supabase.auth.getSession()
@@ -50,7 +82,11 @@ export default function CreateInstitutionPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${sessionData.session?.access_token || ''}`
         },
-        body: JSON.stringify(form)
+        body: JSON.stringify({
+          ...form,
+          lat: form.lat.trim() !== '' ? parseFloat(form.lat) : null,
+          lng: form.lng.trim() !== '' ? parseFloat(form.lng) : null
+        })
       })
       const data = await res.json()
 
@@ -116,6 +152,60 @@ export default function CreateInstitutionPage() {
 
             <label>Contact Phone (optional)</label>
             <input className="resq-input" style={{ marginTop: 4, marginBottom: 14 }} value={form.contactPhone} onChange={(e) => update('contactPhone', e.target.value)} />
+
+            <label>Visibility</label>
+            <div style={{ display: 'flex', gap: 8, marginTop: 4, marginBottom: 14 }}>
+              <button
+                type="button"
+                className={'resq-type-chip' + (form.visibility === 'private' ? ' resq-type-chip-selected' : '')}
+                onClick={() => update('visibility', 'private')}
+              >
+                🔒 Private (code-connected)
+              </button>
+              <button
+                type="button"
+                className={'resq-type-chip' + (form.visibility === 'public' ? ' resq-type-chip-selected' : '')}
+                onClick={() => update('visibility', 'public')}
+              >
+                🌐 Public
+              </button>
+            </div>
+
+            {form.visibility === 'public' && (
+              <>
+                <label>Public Type</label>
+                <div style={{ display: 'flex', gap: 8, marginTop: 4, marginBottom: 6 }}>
+                  <button
+                    type="button"
+                    className={'resq-type-chip' + (form.publicType === 'single_service' ? ' resq-type-chip-selected' : '')}
+                    onClick={() => update('publicType', 'single_service')}
+                  >
+                    Single Service
+                  </button>
+                  <button
+                    type="button"
+                    className={'resq-type-chip' + (form.publicType === 'company' ? ' resq-type-chip-selected' : '')}
+                    onClick={() => update('publicType', 'company')}
+                  >
+                    Company
+                  </button>
+                </div>
+                <p className="resq-subtle" style={{ marginTop: 0, marginBottom: 14, fontSize: 12 }}>
+                  A <strong>single service</strong> serves the public directly with its own internal responders. A{' '}
+                  <strong>company</strong> also registers its own partner units (hospitals, police posts, etc.), each
+                  with their own dashboard login, once it's set up.
+                </p>
+
+                <label>Location (optional — leave blank for the institution admin to set from their own dashboard)</label>
+                <div style={{ display: 'flex', gap: 8, marginTop: 4, marginBottom: 6 }}>
+                  <input className="resq-input" placeholder="Latitude (optional)" value={form.lat} onChange={(e) => update('lat', e.target.value)} />
+                  <input className="resq-input" placeholder="Longitude (optional)" value={form.lng} onChange={(e) => update('lng', e.target.value)} />
+                </div>
+                <button type="button" className="resq-btn-secondary" onClick={useMyLocation} disabled={locating} style={{ marginBottom: 14 }}>
+                  {locating ? 'Locating...' : '📍 Use my current location'}
+                </button>
+              </>
+            )}
 
             <h3>First Institution Admin Account</h3>
             <label>Admin Full Name</label>

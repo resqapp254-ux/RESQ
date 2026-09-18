@@ -63,11 +63,20 @@ export async function POST(request) {
       contactPhone,
       adminFullName,
       adminEmail,
-      adminTempPassword
+      adminTempPassword,
+      visibility,
+      publicType,
+      lat,
+      lng
     } = body
 
     if (!institutionName || !contactEmail || !adminEmail || !adminTempPassword) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 })
+    }
+
+    const isPublic = visibility === 'public'
+    if (isPublic && !['single_service', 'company'].includes(publicType)) {
+      return NextResponse.json({ success: false, error: 'Choose whether this public institution is a single service or a company' }, { status: 400 })
     }
 
     const institutionCode = generateCode('RESQ')
@@ -82,7 +91,11 @@ export async function POST(request) {
         verification_code: verificationCode,
         contact_email: contactEmail,
         contact_phone: contactPhone || null,
-        status: 'pending_verification'
+        status: 'pending_verification',
+        visibility: isPublic ? 'public' : 'private',
+        public_type: isPublic ? publicType : null,
+        lat: isPublic && typeof lat === 'number' ? lat : null,
+        lng: isPublic && typeof lng === 'number' ? lng : null
       })
       .select()
       .single()
