@@ -11,6 +11,7 @@ import HeartMonitorLine from '../../components/HeartMonitorLine'
 import LoadingScreen from '../../components/LoadingScreen'
 import LanguageSwitcher from '../../components/LanguageSwitcher'
 import SignOutOverlay from '../../components/SignOutOverlay'
+import EmergencyRoutingMap from '../../components/EmergencyRoutingMap'
 
 const STATUS_COLORS = {
   pending_verification: '#e0b34d',
@@ -33,6 +34,11 @@ export default function SuperAdminPage() {
   const [expandedInstId, setExpandedInstId] = useState(null)
   const [instResponders, setInstResponders] = useState({})
   const [loadingResponders, setLoadingResponders] = useState(null)
+  const [mapInstitutions, setMapInstitutions] = useState([])
+  const [mapUnits, setMapUnits] = useState([])
+  const [mapEmergencies, setMapEmergencies] = useState([])
+  const [loadingMap, setLoadingMap] = useState(false)
+  const [showMap, setShowMap] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -91,6 +97,30 @@ export default function SuperAdminPage() {
       byInstitution[row.institution_id] = { active: row.active_count, resolved: row.resolved_count }
     }
     setEmergencySummary(byInstitution)
+  }
+
+  async function loadRoutingMap() {
+    if (showMap) {
+      setShowMap(false)
+      return
+    }
+    setShowMap(true)
+    setLoadingMap(true)
+
+    const [{ data: instRows }, { data: unitRows }, { data: emergencyRows }] = await Promise.all([
+      supabase.from('institutions').select('id, name, visibility, lat, lng').not('lat', 'is', null).not('lng', 'is', null),
+      supabase.from('institution_services').select('id, name, service_type, lat, lng').not('lat', 'is', null).not('lng', 'is', null),
+      supabase
+        .from('emergencies')
+        .select('id, emergency_type, status, lat, lng, institution_id, created_at')
+        .order('created_at', { ascending: false })
+        .limit(200)
+    ])
+
+    setMapInstitutions(instRows || [])
+    setMapUnits(unitRows || [])
+    setMapEmergencies(emergencyRows || [])
+    setLoadingMap(false)
   }
 
   async function toggleResponderDrilldown(inst) {
@@ -422,6 +452,9 @@ th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:
           <button className="resq-btn-secondary" onClick={downloadBackup} title="Download a full JSON snapshot of all data: a self-serve recovery point in addition to Supabase's own backups">
             ⬇ Download Backup
           </button>
+          <button className="resq-btn-secondary" onClick={loadRoutingMap}>
+            {showMap ? '🗺 Hide Routing Map' : '🗺 Routing Map'}
+          </button>
           <button className="resq-btn-secondary" onClick={handleLogout}>Log Out</button>
         </div>
       </div>
@@ -438,6 +471,20 @@ th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:
             <HeartMonitorLine alert={hasActiveAlert} label={hasActiveAlert ? 'Active emergency' : 'All clear'} />
           </div>
         </div>
+      )}
+
+      {showMap && (
+        <section className="glass-card resq-fade-in" style={{ marginBottom: 24 }}>
+          <h2 style={{ marginTop: 0 }}>🗺 Emergency Routing Map</h2>
+          <p className="resq-subtle" style={{ marginTop: 0 }}>
+            🏢 institutions · 🏥 partner units · 🚨 unresolved emergencies (solid red line to where it was routed) · ✅ resolved (dashed green)
+          </p>
+          {loadingMap ? (
+            <p className="resq-subtle">Loading map…</p>
+          ) : (
+            <EmergencyRoutingMap institutions={mapInstitutions} units={mapUnits} emergencies={mapEmergencies} />
+          )}
+        </section>
       )}
 
       {error && <p style={{ color: '#ff8080' }}>{error}</p>}

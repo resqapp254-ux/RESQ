@@ -32,6 +32,12 @@ export default function InstitutionSettingsPage() {
   const [enabledTypes, setEnabledTypes] = useState([])
   const [requireAdmissionNumber, setRequireAdmissionNumber] = useState(false)
   const [requireResponderPhoto, setRequireResponderPhoto] = useState(false)
+  const [visibility, setVisibility] = useState('private')
+  const [lat, setLat] = useState('')
+  const [lng, setLng] = useState('')
+  const [locating, setLocating] = useState(false)
+  const [savingLocation, setSavingLocation] = useState(false)
+  const [locationMessage, setLocationMessage] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savingIdentity, setSavingIdentity] = useState(false)
@@ -65,7 +71,7 @@ export default function InstitutionSettingsPage() {
 
     const { data: institution, error: fetchError } = await supabase
       .from('institutions')
-      .select('enabled_emergency_types, require_admission_number, require_responder_photo')
+      .select('enabled_emergency_types, require_admission_number, require_responder_photo, visibility, lat, lng')
       .eq('id', profile.institution_id)
       .single()
 
@@ -75,6 +81,9 @@ export default function InstitutionSettingsPage() {
       setEnabledTypes(institution?.enabled_emergency_types || EMERGENCY_TYPES.map((t) => t.key))
       setRequireAdmissionNumber(!!institution?.require_admission_number)
       setRequireResponderPhoto(!!institution?.require_responder_photo)
+      setVisibility(institution?.visibility || 'private')
+      setLat(institution?.lat != null ? String(institution.lat) : '')
+      setLng(institution?.lng != null ? String(institution.lng) : '')
     }
     setLoading(false)
   }
@@ -92,6 +101,46 @@ export default function InstitutionSettingsPage() {
       return
     }
     setIdentityMessage('Saved.')
+  }
+
+  function handleUseMyLocation() {
+    if (!navigator.geolocation) {
+      setError('Location is not available in this browser.')
+      return
+    }
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLat(String(position.coords.latitude))
+        setLng(String(position.coords.longitude))
+        setLocating(false)
+      },
+      (geoError) => {
+        setError('Could not get your location: ' + geoError.message)
+        setLocating(false)
+      }
+    )
+  }
+
+  async function handleSaveLocation() {
+    setLocationMessage('')
+    const latValue = lat.trim() === '' ? null : parseFloat(lat)
+    const lngValue = lng.trim() === '' ? null : parseFloat(lng)
+    if ((lat.trim() !== '' && Number.isNaN(latValue)) || (lng.trim() !== '' && Number.isNaN(lngValue))) {
+      setError('Latitude and longitude must be valid numbers.')
+      return
+    }
+    setSavingLocation(true)
+    const { error: updateError } = await supabase
+      .from('institutions')
+      .update({ lat: latValue, lng: lngValue, updated_at: new Date().toISOString() })
+      .eq('id', institutionId)
+    setSavingLocation(false)
+    if (updateError) {
+      setError(updateError.message)
+      return
+    }
+    setLocationMessage('Saved.')
   }
 
   function toggleType(key) {
@@ -191,6 +240,37 @@ export default function InstitutionSettingsPage() {
 
           <button className="resq-btn-primary" style={{ width: '100%', marginTop: 20 }} onClick={handleSaveIdentity} disabled={savingIdentity}>
             {savingIdentity ? 'Saving...' : 'Save'}
+          </button>
+        </section>
+
+        <div className="glass-card resq-fade-in" style={{ marginTop: 24, marginBottom: 24 }}>
+          <h1 className="resq-h1" style={{ fontSize: 22 }}>Location</h1>
+          <p className="resq-subtle" style={{ marginTop: 8 }}>
+            {visibility === 'public'
+              ? 'Your institution is public, so this location is what nearby public users are matched against. Only super admin can change whether you\'re public or private.'
+              : 'Only used if super admin later makes your institution public — private institutions route by code, not location.'}
+          </p>
+        </div>
+
+        <section className="glass-card resq-fade-in resq-fade-in-2">
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <div>
+              <label className="resq-subtle">Latitude</label><br />
+              <input className="resq-input" value={lat} onChange={(e) => setLat(e.target.value)} placeholder="e.g. -1.2921" style={{ marginTop: 4 }} />
+            </div>
+            <div>
+              <label className="resq-subtle">Longitude</label><br />
+              <input className="resq-input" value={lng} onChange={(e) => setLng(e.target.value)} placeholder="e.g. 36.8219" style={{ marginTop: 4 }} />
+            </div>
+          </div>
+          <button className="resq-btn-secondary" style={{ marginTop: 12 }} onClick={handleUseMyLocation} disabled={locating}>
+            {locating ? 'Locating…' : '📍 Use my current location'}
+          </button>
+
+          {locationMessage && <p className="resq-green" style={{ marginTop: 12 }}>{locationMessage}</p>}
+
+          <button className="resq-btn-primary" style={{ width: '100%', marginTop: 20 }} onClick={handleSaveLocation} disabled={savingLocation}>
+            {savingLocation ? 'Saving...' : 'Save'}
           </button>
         </section>
       </div>
