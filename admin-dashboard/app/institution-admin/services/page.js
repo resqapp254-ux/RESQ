@@ -150,15 +150,22 @@ export default function ManageServicesPage() {
     setError('')
 
     const isIndividual = form.serviceType === 'individual'
-    const lat = parseFloat(form.lat)
-    const lng = parseFloat(form.lng)
+    // A unit's own coordinates are set by the unit itself, from its
+    // own /unit-admin dashboard after it logs in, not by the
+    // institution admin up front — leaving these blank here is
+    // expected and fine; the unit just won't be routed any emergency
+    // by distance until it sets them.
+    const latProvided = form.lat.trim() !== ''
+    const lngProvided = form.lng.trim() !== ''
+    const lat = latProvided ? parseFloat(form.lat) : null
+    const lng = lngProvided ? parseFloat(form.lng) : null
 
     if (!form.name.trim()) {
       setError('Name is required.')
       return
     }
-    if (!isIndividual && (Number.isNaN(lat) || Number.isNaN(lng))) {
-      setError('A valid location (latitude/longitude) is required for this unit type.')
+    if (!isIndividual && (latProvided || lngProvided) && (Number.isNaN(lat) || Number.isNaN(lng))) {
+      setError('Latitude and longitude must both be valid numbers, or both left blank.')
       return
     }
 
@@ -352,11 +359,16 @@ export default function ManageServicesPage() {
               </p>
             ) : (
               <>
-                <label>Location</label>
+                <label>Location (optional — leave blank for the unit to set from its own dashboard)</label>
                 <div style={{ display: 'flex', gap: 8, marginTop: 4, marginBottom: 6 }}>
-                  <input className="resq-input" placeholder="Latitude" value={form.lat} onChange={(e) => setForm({ ...form, lat: e.target.value })} required />
-                  <input className="resq-input" placeholder="Longitude" value={form.lng} onChange={(e) => setForm({ ...form, lng: e.target.value })} required />
+                  <input className="resq-input" placeholder="Latitude (optional)" value={form.lat} onChange={(e) => setForm({ ...form, lat: e.target.value })} />
+                  <input className="resq-input" placeholder="Longitude (optional)" value={form.lng} onChange={(e) => setForm({ ...form, lng: e.target.value })} />
                 </div>
+                <p className="resq-subtle" style={{ marginTop: 0, marginBottom: 6, fontSize: 12 }}>
+                  A real partner unit (a hospital, a police post) should usually set its own coordinates itself, from
+                  its own dashboard after you create its login below, since they know their own location. Only fill
+                  this in yourself if you're setting the unit's location on its behalf.
+                </p>
                 <button type="button" className="resq-btn-secondary" onClick={useMyLocation} disabled={locationBusy} style={{ marginBottom: 14 }}>
                   {locationBusy ? 'Locating...' : '📍 Use my current location'}
                 </button>

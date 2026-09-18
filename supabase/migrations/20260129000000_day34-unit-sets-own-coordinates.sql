@@ -1,0 +1,21 @@
+-- ============================================================
+-- RESQ — Day 34: A partner unit's coordinates are set by the unit
+-- itself (its own unit_admin dashboard), not required up front when
+-- the institution admin registers it.
+-- NOT YET APPLIED. Review before running against the live project.
+--
+-- day25's constraint required every non-'individual' unit to have
+-- lat/lng at creation. That assumed the institution admin sets the
+-- unit's location, which is backwards for a real partner (a hospital,
+-- a police post): they should log in to their own /unit-admin
+-- dashboard and set their own coordinates themselves, the same way
+-- they set their own name/contact details/handled emergency types.
+-- A freshly-registered unit with no coordinates yet simply doesn't
+-- match any emergency by distance until it sets them — pickMatching-
+-- Services already treats a null-coordinate non-individual unit this
+-- way (distanceKm returns null, which is filtered out on both the
+-- "nearby" and "nearest fallback" paths), so this is safe, not a
+-- routing hole.
+-- ============================================================
+
+alter table institution_services drop constraint if exists institution_services_location_required;
