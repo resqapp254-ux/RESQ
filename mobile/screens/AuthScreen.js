@@ -12,6 +12,7 @@ import { API_BASE_URL } from '../lib/config'
 import MiniGlobe from '../components/MiniGlobe'
 import RadarPulseBackground from '../components/RadarPulseBackground'
 import PasswordField from '../components/PasswordField'
+import { friendlyAuthError } from '../lib/authErrors'
 
 export default function AuthScreen({ navigation }) {
   const { t } = useTranslation()
@@ -29,7 +30,7 @@ export default function AuthScreen({ navigation }) {
 
     if (signInError) {
       setLoading(false)
-      Alert.alert('Login failed', signInError.message)
+      Alert.alert('Login failed', friendlyAuthError(signInError, 'Could not sign in right now. Please try again in a moment.'))
       return
     }
 
@@ -73,17 +74,29 @@ export default function AuthScreen({ navigation }) {
     setLoading(false)
 
     if (error) {
-      Alert.alert('Sign up failed', error.message)
+      Alert.alert('Sign up failed', friendlyAuthError(error, 'Could not create your account right now. The server had a temporary problem sending your confirmation email. Please try again in a moment.'))
       return
     }
 
-    if (!data.session) {
-      Alert.alert('Check your email', 'We sent a confirmation link. Verify your email, then log in below.')
+    if (data.session) {
+      navigation.replace('EnterInstitutionCode')
+      return
+    }
+
+    // Supabase silently no-ops signUp() for an email that already has a
+    // confirmed account (no error, no new confirmation email, to avoid
+    // leaking which emails are registered), returning a user object
+    // with an empty identities array in that case — otherwise
+    // indistinguishable from a genuine new signup, and "check your
+    // email" would be actively misleading since no email is coming.
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      Alert.alert('Account may already exist', 'An account with this email may already exist. Try logging in, or use "Forgot password" instead.')
       setMode('signin')
       return
     }
 
-    navigation.replace('EnterInstitutionCode')
+    Alert.alert('Check your email', 'We sent a confirmation link. Verify your email, then log in below.')
+    setMode('signin')
   }
 
   async function handleForgot() {
@@ -98,7 +111,7 @@ export default function AuthScreen({ navigation }) {
     setLoading(false)
 
     if (error) {
-      Alert.alert('Could not send reset link', error.message)
+      Alert.alert('Could not send reset link', friendlyAuthError(error, 'Could not send the reset link right now. Please try again in a moment.'))
       return
     }
     setForgotSent(true)

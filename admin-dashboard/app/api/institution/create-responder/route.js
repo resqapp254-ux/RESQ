@@ -93,7 +93,7 @@ export async function POST(request) {
     if (authError) {
       console.error('RESPONDER CREATE ERROR:', JSON.stringify(authError, null, 2))
       return NextResponse.json(
-        { success: false, error: friendlyAuthError(authError), emailExists: isEmailAlreadyExistsError(authError) },
+        { success: false, error: friendlyAuthError(authError, 'Could not create the responder account right now. Please try again in a moment.'), emailExists: isEmailAlreadyExistsError(authError) },
         { status: isEmailAlreadyExistsError(authError) ? 409 : 500 }
       )
     }

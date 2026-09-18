@@ -13,6 +13,7 @@ import RadarSweepBackground from './RadarSweepBackground'
 import LanguageSwitcher from './LanguageSwitcher'
 import PasswordInput from './PasswordInput'
 import { useTranslation } from '../lib/i18n/LanguageContext'
+import { friendlyAuthError } from '../lib/authErrors'
 
 export default function AuthPage({ defaultMode = 'signin' }) {
   const { t } = useTranslation()
@@ -43,7 +44,7 @@ export default function AuthPage({ defaultMode = 'signin' }) {
     const { error: signInError } = await supabase.auth.signInWithPassword(signInForm)
 
     if (signInError) {
-      setError(signInError.message)
+      setError(friendlyAuthError(signInError, 'Could not sign in right now. Please try again in a moment.'))
       setLoading(false)
       return
     }
@@ -102,7 +103,7 @@ export default function AuthPage({ defaultMode = 'signin' }) {
 
     setLoading(false)
     if (signupError) {
-      setError(signupError.message)
+      setError(friendlyAuthError(signupError, 'Could not create your account right now. The server had a temporary problem sending your confirmation email. Please try again in a moment.'))
       return
     }
     if (data.session) {
@@ -135,7 +136,7 @@ export default function AuthPage({ defaultMode = 'signin' }) {
     })
     setLoading(false)
 
-    if (resetError) setError(resetError.message)
+    if (resetError) setError(friendlyAuthError(resetError, 'Could not send the reset link right now. Please try again in a moment.'))
     else setMessage('If that email is registered, a password-reset link has been sent.')
   }
 

@@ -108,7 +108,7 @@ export async function POST(request) {
       // Roll back the institution if admin creation fails
       await supabaseAdmin.from('institutions').delete().eq('id', institution.id)
       return NextResponse.json(
-        { success: false, error: friendlyAuthError(authError), emailExists: isEmailAlreadyExistsError(authError) },
+        { success: false, error: friendlyAuthError(authError, 'Could not create the institution admin account right now. Please try again in a moment.'), emailExists: isEmailAlreadyExistsError(authError) },
         { status: isEmailAlreadyExistsError(authError) ? 409 : 500 }
       )
     }
