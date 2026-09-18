@@ -88,7 +88,16 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: insertError.message }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, emergency })
+    // Tell the user who they were routed to — especially important for
+    // public accounts, which have no fixed institution and might
+    // otherwise have no idea who is coming.
+    const { data: routedInstitution } = await supabaseAdmin
+      .from('institutions')
+      .select('name, logo_url')
+      .eq('id', institutionId)
+      .maybeSingle()
+
+    return NextResponse.json({ success: true, emergency, routedInstitution })
   } catch (err) {
     console.error('TRIGGER EMERGENCY ERROR:', err)
     return NextResponse.json({ success: false, error: err.message || 'Unknown error' }, { status: 500 })

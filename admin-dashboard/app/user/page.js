@@ -66,6 +66,7 @@ export default function UserPage() {
   const [institutionServicesForRouting, setInstitutionServicesForRouting] = useState([])
   const [claimableResponders, setClaimableResponders] = useState([])
   const [currentEmergency, setCurrentEmergency] = useState(null)
+  const [routedInstitution, setRoutedInstitution] = useState(null)
   const [currentAdvice, setCurrentAdvice] = useState('')
   const [chatMessage, setChatMessage] = useState('')
   const [chatError, setChatError] = useState('')
@@ -418,6 +419,7 @@ export default function UserPage() {
     }
 
     setCurrentEmergency(result.emergency)
+    setRoutedInstitution(result.routedInstitution || null)
     setMessage('Emergency sent. Responders are being notified.')
     await refreshEmergencies(authData.user.id, role)
 
@@ -942,6 +944,16 @@ export default function UserPage() {
                     <p className="resq-subtle resq-fade-in" style={{ marginTop: 0 }}>
                       Your emergency has been sent. Stay on this page to chat with responders and share photos, video, or a voice note. A new SOS can be sent once this one is resolved.
                     </p>
+
+                    {routedInstitution?.name && (
+                      <div className="glass-card resq-fade-in" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 12, marginBottom: 12 }}>
+                        {routedInstitution.logo_url && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={routedInstitution.logo_url} alt={`${routedInstitution.name} logo`} width={28} height={28} style={{ borderRadius: 6, objectFit: 'cover' }} />
+                        )}
+                        <span style={{ fontSize: 13 }}>Routed to <strong>{routedInstitution.name}</strong> — they will respond to you.</span>
+                      </div>
+                    )}
 
                     {currentAdvice && (
                       <div className="resq-advice-box resq-fade-in">

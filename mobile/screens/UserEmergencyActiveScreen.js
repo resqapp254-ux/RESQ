@@ -46,7 +46,7 @@ function VoiceMessageBubble({ uri, textStyle }) {
 }
 
 export default function UserEmergencyActiveScreen({ route, navigation }) {
-  const { emergencyId } = route.params
+  const { emergencyId, routedInstitution } = route.params
   const [emergency, setEmergency] = useState(null)
   const [responderProfile, setResponderProfile] = useState(null)
   const [messages, setMessages] = useState([])
@@ -327,6 +327,15 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Text style={styles.statusHeader}>{STATUS_LABELS[emergency.status]}</Text>
 
+      {routedInstitution?.name && (
+        <View style={styles.routedBox}>
+          {routedInstitution.logo_url && (
+            <Image source={{ uri: routedInstitution.logo_url }} style={styles.routedLogo} />
+          )}
+          <Text style={styles.routedText}>Routed to {routedInstitution.name} — they will respond to you.</Text>
+        </View>
+      )}
+
       {emergency.ai_advice_to_user ? (
         <View style={styles.aiBox}>
           <Text style={styles.aiLabel}>Immediate guidance:</Text>
@@ -403,6 +412,9 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: '#05070d' },
   statusHeader: { fontSize: 20, fontWeight: 'bold', marginBottom: 12, color: '#ff2b2b' },
+  routedBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.06)', padding: 10, borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
+  routedLogo: { width: 28, height: 28, borderRadius: 6, marginRight: 10 },
+  routedText: { color: '#f4f6fb', fontSize: 13, flex: 1 },
   aiBox: { backgroundColor: 'rgba(53,208,232,0.1)', padding: 14, borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(53,208,232,0.25)' },
   aiLabel: { fontWeight: 'bold', fontSize: 12, color: '#35d0e8', marginBottom: 4 },
   aiText: { fontSize: 15, lineHeight: 20, color: '#f4f6fb' },

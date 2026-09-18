@@ -166,7 +166,7 @@ export default function UserHomeScreen({ navigation }) {
       if (photo) uploadPhoto(emergency.id)
 
       setSending(false)
-      navigation.replace('UserEmergencyActive', { emergencyId: emergency.id })
+      navigation.replace('UserEmergencyActive', { emergencyId: emergency.id, routedInstitution: triggerResult.routedInstitution })
     } catch (err) {
       setSending(false)
       Alert.alert('Something went wrong', err.message)
