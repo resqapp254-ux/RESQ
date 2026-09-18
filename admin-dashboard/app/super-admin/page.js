@@ -568,6 +568,14 @@ th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:
                       </button>
                       <br />
                       <small className="resq-subtle">{inst.contact_email}</small>
+                      {inst.contact_phone && (
+                        <>
+                          {' · '}
+                          <small className="resq-subtle">
+                            <a href={`tel:${inst.contact_phone}`} style={{ color: 'inherit' }}>{inst.contact_phone}</a>
+                          </small>
+                        </>
+                      )}
                     </>
                   )}
                 </td>
