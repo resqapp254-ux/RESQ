@@ -12,6 +12,8 @@ import LoadingScreen from '../../components/LoadingScreen'
 import LanguageSwitcher from '../../components/LanguageSwitcher'
 import SignOutOverlay from '../../components/SignOutOverlay'
 import { ManagementFlowDiagram, EmergencyFlowDiagram } from '../../components/FlowDiagrams'
+import LiveRoutingPanel from '../../components/LiveRoutingPanel'
+import OrgTreeNode from '../../components/OrgTreeNode'
 import { buildAllInstitutionsReportHtml, downloadHtmlFile } from '../../lib/buildEmergencyReport'
 
 const STATUS_COLORS = {
@@ -37,6 +39,9 @@ export default function SuperAdminPage() {
   const [instResponders, setInstResponders] = useState({})
   const [loadingResponders, setLoadingResponders] = useState(null)
   const [showFlow, setShowFlow] = useState(false)
+  const [showRouting, setShowRouting] = useState(false)
+  const [loadingRouting, setLoadingRouting] = useState(false)
+  const [liveRoutes, setLiveRoutes] = useState([])
   const router = useRouter()
 
   useEffect(() => {
@@ -95,6 +100,25 @@ export default function SuperAdminPage() {
       byInstitution[row.institution_id] = { active: row.active_count, resolved: row.resolved_count }
     }
     setEmergencySummary(byInstitution)
+  }
+
+  async function toggleRoutingPanel() {
+    if (showRouting) {
+      setShowRouting(false)
+      return
+    }
+    setShowRouting(true)
+    setLoadingRouting(true)
+
+    const { data } = await supabase
+      .from('emergencies')
+      .select('id, emergency_type, claimed_by, created_at, institutions(name)')
+      .in('status', ['triggered', 'claimed', 'in_progress'])
+      .order('created_at', { ascending: false })
+      .limit(50)
+
+    setLiveRoutes((data || []).map((r) => ({ ...r, institutionName: r.institutions?.name })))
+    setLoadingRouting(false)
   }
 
   async function toggleResponderDrilldown(inst) {
@@ -488,6 +512,9 @@ th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:
           <button className="resq-btn-secondary" onClick={() => setShowFlow((v) => !v)}>
             {showFlow ? '📊 Hide System Flow' : '📊 System Flow'}
           </button>
+          <button className="resq-btn-secondary" onClick={toggleRoutingPanel}>
+            {showRouting ? '🛰 Hide Live Routing' : '🛰 Live Routing'}
+          </button>
           <button className="resq-btn-secondary" onClick={handleLogout}>Log Out</button>
         </div>
       </div>
@@ -515,6 +542,14 @@ th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:
           <h2 style={{ marginTop: 28 }}>🚨 Emergency Response Flow</h2>
           <p className="resq-subtle" style={{ marginTop: 0 }}>From the moment a user triggers an SOS to resolution, with every branch.</p>
           <EmergencyFlowDiagram />
+        </section>
+      )}
+
+      {showRouting && (
+        <section className="glass-card resq-fade-in" style={{ marginBottom: 24 }}>
+          <h2 style={{ marginTop: 0 }}>🛰 Live Routing</h2>
+          <p className="resq-subtle" style={{ marginTop: 0 }}>Every currently active emergency and which institution it was routed to.</p>
+          <LiveRoutingPanel routes={liveRoutes} loading={loadingRouting} />
         </section>
       )}
 
@@ -698,11 +733,11 @@ th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:
                           byUnit[key] = byUnit[key] || []
                           byUnit[key].push(r)
                         }
+                        const unitEntries = Object.entries(byUnit)
                         return (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
-                            {Object.entries(byUnit).map(([unitName, members]) => (
-                              <div key={unitName} style={{ minWidth: 220 }}>
-                                <div style={{ fontWeight: 'bold', fontSize: 12, marginBottom: 4, opacity: 0.8 }}>{unitName}</div>
+                          <div style={{ maxWidth: 480 }}>
+                            {unitEntries.map(([unitName, members]) => (
+                              <OrgTreeNode key={unitName} label={unitName} count={members.length} defaultOpen={unitEntries.length === 1}>
                                 {members.map((m) => (
                                   <div key={m.id} style={{ fontSize: 12, padding: '3px 0', opacity: m.is_active === false ? 0.4 : 1 }}>
                                     {m.full_name || 'Unnamed'}{' '}
@@ -716,7 +751,7 @@ th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:
                                     {m.is_active === false && <span style={{ marginLeft: 6, color: '#ff8080' }}>removed</span>}
                                   </div>
                                 ))}
-                              </div>
+                              </OrgTreeNode>
                             ))}
                           </div>
                         )

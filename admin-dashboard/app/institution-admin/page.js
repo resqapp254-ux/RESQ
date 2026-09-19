@@ -12,6 +12,7 @@ import LoadingScreen from '../../components/LoadingScreen'
 import LanguageSwitcher from '../../components/LanguageSwitcher'
 import SignOutOverlay from '../../components/SignOutOverlay'
 import { pickMatchingServices } from '../../lib/serviceDispatch'
+import IncidentChart from '../../components/IncidentChart'
 
 export default function InstitutionAdminPage() {
   const [authorized, setAuthorized] = useState(false)
@@ -327,6 +328,13 @@ export default function InstitutionAdminPage() {
   }
 
   const hasActiveAlert = activeEmergencies.some((e) => e.status !== 'resolved')
+  const incidentChartData = Object.entries(
+    recentResolved.reduce((acc, e) => {
+      const key = e.emergency_type || 'other'
+      acc[key] = (acc[key] || 0) + 1
+      return acc
+    }, {})
+  ).map(([key, count]) => ({ key, label: key.replace('_', ' '), count }))
   const primaryResponders = responders.filter((r) => !r.service_id)
 
   return (
@@ -416,6 +424,12 @@ export default function InstitutionAdminPage() {
           ))}
         </section>
       </div>
+
+      {incidentChartData.length > 0 && (
+        <section className="glass-card resq-fade-in resq-fade-in-2" style={{ margin: '0 0 24px' }}>
+          <IncidentChart data={incidentChartData} title="Recent Incidents by Type" />
+        </section>
+      )}
 
       <div className="resq-fade-in resq-fade-in-3" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '30px 0 12px', flexWrap: 'wrap', gap: 12 }}>
         <h2 style={{ margin: 0 }}>Responders</h2>
