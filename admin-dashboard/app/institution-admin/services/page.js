@@ -421,7 +421,7 @@ export default function ManageServicesPage() {
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <span className={s.is_active ? 'resq-badge resq-badge-resolved' : 'resq-badge resq-badge-open'}>
+                  <span className={s.is_active ? 'resq-badge resq-badge-resolved' : 'resq-badge resq-badge-muted'}>
                     {s.is_active ? 'Active' : 'Inactive'}
                   </span>
                   <Link href={`/institution-admin/add-responder?serviceId=${s.id}`} className="resq-btn-secondary" style={{ textDecoration: 'none' }}>

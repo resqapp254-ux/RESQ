@@ -569,25 +569,25 @@ export default function InstitutionAdminPage() {
 // and each partner unit's own grouped list below it.
 function ResponderTable({ list, shiftsByResponder, busyResponderId, updatePermission, toggleResponderActive }) {
   return (
-    <table style={{ width: '100%' }}>
+    <table className="w-full border-separate" style={{ borderSpacing: 0 }}>
       <thead>
         <tr>
-          <th style={{ padding: 10 }}>Name</th>
-          <th style={{ padding: 10 }}>Email</th>
-          <th style={{ padding: 10 }}>Phone</th>
-          <th style={{ padding: 10 }}>Permission</th>
-          <th style={{ padding: 10 }}>Status</th>
-          <th style={{ padding: 10 }}>Upcoming Shifts</th>
-          <th style={{ padding: 10 }}>Actions</th>
+          <th className="px-4 py-3 text-left">Name</th>
+          <th className="px-4 py-3 text-left">Email</th>
+          <th className="px-4 py-3 text-left">Phone</th>
+          <th className="px-4 py-3 text-left">Permission</th>
+          <th className="px-4 py-3 text-left">Status</th>
+          <th className="px-4 py-3 text-left">Upcoming Shifts</th>
+          <th className="px-4 py-3 text-left">Actions</th>
         </tr>
       </thead>
       <tbody>
         {list.map((r) => (
           <tr key={r.id} className="resq-row-interactive" style={{ opacity: r.is_active === false ? 0.5 : 1 }}>
-            <td style={{ padding: 10 }}>{r.full_name}</td>
-            <td style={{ padding: 10 }}>{r.email}</td>
-            <td style={{ padding: 10 }}>{r.phone}</td>
-            <td style={{ padding: 10 }}>
+            <td className="px-4 py-3">{r.full_name}</td>
+            <td className="px-4 py-3">{r.email}</td>
+            <td className="px-4 py-3">{r.phone}</td>
+            <td className="px-4 py-3">
               <select
                 className="resq-input"
                 value={r.responder_permission || 'full'}
@@ -599,12 +599,12 @@ function ResponderTable({ list, shiftsByResponder, busyResponderId, updatePermis
                 <option value="view_only">View only</option>
               </select>
             </td>
-            <td style={{ padding: 10 }}>
-              <span className={r.is_active === false ? 'resq-badge resq-badge-open' : 'resq-badge resq-badge-resolved'}>
+            <td className="px-4 py-3">
+              <span className={r.is_active === false ? 'resq-badge resq-badge-muted' : 'resq-badge resq-badge-resolved'}>
                 {r.is_active === false ? 'Removed' : 'Active'}
               </span>
             </td>
-            <td style={{ padding: 10 }}>
+            <td className="px-4 py-3">
               {(shiftsByResponder[r.id] || []).length === 0 && <span className="resq-subtle">None scheduled</span>}
               {(shiftsByResponder[r.id] || []).map((s) => (
                 <div key={s.id} className="resq-subtle" style={{ fontSize: 13 }}>
@@ -612,7 +612,7 @@ function ResponderTable({ list, shiftsByResponder, busyResponderId, updatePermis
                 </div>
               ))}
             </td>
-            <td style={{ padding: 10 }}>
+            <td className="px-4 py-3">
               <button
                 className="resq-btn-secondary"
                 onClick={() => toggleResponderActive(r)}

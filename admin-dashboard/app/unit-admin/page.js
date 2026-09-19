@@ -513,7 +513,7 @@ export default function UnitAdminPage() {
             <div key={r.id} style={{ padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <div>
                 <strong style={{ opacity: r.is_active ? 1 : 0.5 }}>{r.full_name}</strong>{' '}
-                {!r.is_active && <span className="resq-badge resq-badge-open">Removed</span>}
+                {!r.is_active && <span className="resq-badge resq-badge-muted">Removed</span>}
                 <p className="resq-subtle" style={{ margin: '4px 0 0' }}>{r.email} {r.phone ? '· ' + r.phone : ''}</p>
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
