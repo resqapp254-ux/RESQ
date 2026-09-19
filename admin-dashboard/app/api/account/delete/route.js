@@ -42,7 +42,15 @@ export async function POST(request) {
 
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(user.id)
     if (!deleteError) {
-      logActivity({ eventType: 'account_self_deleted', detail: `role=${profile.role}`, userId: user.id, institutionId: profile.institution_id })
+      // No userId here on purpose: activity_log.user_id has a foreign
+      // key to profiles(id), and profiles cascade-deletes the instant
+      // auth.users does — by this point that row is already gone, so
+      // passing user.id would violate the FK and logActivity's own
+      // fire-and-forget catch would swallow the failure silently.
+      // That made this the one outcome (account now fully gone) that
+      // never actually left a trace. Identifying info goes in detail
+      // instead, which has no such constraint.
+      logActivity({ eventType: 'account_self_deleted', detail: `role=${profile.role} · was=${user.id} · email=${user.email || 'unknown'}`, institutionId: profile.institution_id })
       return NextResponse.json({ success: true, outcome: 'deleted' })
     }
 

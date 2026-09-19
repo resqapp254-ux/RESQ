@@ -26,7 +26,10 @@ const EVENT_COLORS = {
   emergency_triggered: '#3fe08a',
   institution_created: '#7fe3f2',
   responder_created: '#7fe3f2',
-  unit_admin_created: '#7fe3f2'
+  unit_admin_created: '#7fe3f2',
+  account_self_deleted: '#e0b34d',
+  account_self_deactivated: '#e0b34d',
+  account_removed_by_admin: '#e0b34d'
 }
 
 function formatEvent(e) {

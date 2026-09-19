@@ -25,6 +25,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { getAuthenticatedUser } from '../../../../lib/authorizeRequest'
 import { rateLimit } from '../../../../lib/rateLimit'
+import { logActivity } from '../../../../lib/logActivity'
 
 // ~100 years — effectively permanent, reversible by clearing the ban.
 const BAN_DURATION = '876000h'
@@ -89,6 +90,11 @@ export async function POST(request) {
     // whenever it's actually possible.
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(responderId)
     if (!deleteError) {
+      // Logged against the caller (still exists), not the now-deleted
+      // target — activity_log.user_id has a foreign key to profiles(id),
+      // and that row is gone the instant deleteUser() cascades. The
+      // caller's id is a valid, alive profile either way.
+      logActivity({ eventType: 'account_removed_by_admin', detail: `role=${target.role} · target=${responderId} · outcome=deleted`, userId: caller.id, institutionId: caller.institution_id })
       return NextResponse.json({ success: true, outcome: 'deleted' })
     }
 
@@ -108,6 +114,8 @@ export async function POST(request) {
     if (updateError) {
       return NextResponse.json({ success: false, error: updateError.message }, { status: 500 })
     }
+
+    logActivity({ eventType: 'account_removed_by_admin', detail: `role=${target.role} · target=${responderId} · outcome=deactivated`, userId: caller.id, institutionId: caller.institution_id })
 
     return NextResponse.json({
       success: true,
