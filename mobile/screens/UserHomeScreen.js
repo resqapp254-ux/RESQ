@@ -14,16 +14,17 @@ import { supabase } from '../lib/supabase'
 import { API_BASE_URL } from '../lib/config'
 import IdentityPrompt from '../components/IdentityPrompt'
 import EmergencyTypeIcon from '../components/EmergencyTypeIcon'
+import { EMERGENCY_TYPE_COLORS } from '../lib/emergencyTypeColors'
 
 const EMERGENCY_TYPES = [
-  { key: 'medical', label: 'Medical', color: '#ff5252' },
-  { key: 'fire', label: 'Fire', color: '#ff8a3d' },
-  { key: 'accident', label: 'Accident', color: '#ffca3d' },
-  { key: 'security', label: 'Security', color: '#35d0e8' },
-  { key: 'gbv', label: 'GBV', color: '#c084fc' },
-  { key: 'mental_health', label: 'Mental Health', color: '#7f9cf5' },
-  { key: 'property_damage', label: 'Property Damage', color: '#8d99ae' },
-  { key: 'other', label: 'Other', color: '#e0b34d' }
+  { key: 'medical', label: 'Medical', color: EMERGENCY_TYPE_COLORS.medical },
+  { key: 'fire', label: 'Fire', color: EMERGENCY_TYPE_COLORS.fire },
+  { key: 'accident', label: 'Accident', color: EMERGENCY_TYPE_COLORS.accident },
+  { key: 'security', label: 'Security', color: EMERGENCY_TYPE_COLORS.security },
+  { key: 'gbv', label: 'GBV', color: EMERGENCY_TYPE_COLORS.gbv },
+  { key: 'mental_health', label: 'Mental Health', color: EMERGENCY_TYPE_COLORS.mental_health },
+  { key: 'property_damage', label: 'Property Damage', color: EMERGENCY_TYPE_COLORS.property_damage },
+  { key: 'other', label: 'Other', color: EMERGENCY_TYPE_COLORS.other }
 ]
 
 export default function UserHomeScreen({ navigation }) {
@@ -212,7 +213,7 @@ export default function UserHomeScreen({ navigation }) {
             disabled={sending}
           >
             <View style={[styles.typeEmojiBadge, { backgroundColor: `${t.color}26` }, selectedType === t.key && { shadowColor: t.color, shadowOpacity: 1, shadowRadius: 4, elevation: 3 }]}>
-              <EmergencyTypeIcon type={t.key} color={t.color} size={28} />
+              <EmergencyTypeIcon type={t.key} color={t.color} size={30} />
             </View>
             <Text style={[styles.typeLabel, styles.typeLabelBold, selectedType === t.key && styles.typeLabelSelected]}>{t.label}</Text>
           </TouchableOpacity>
@@ -274,7 +275,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.04)'
   },
   typeChipSelected: { borderColor: '#ff2b2b', backgroundColor: 'rgba(255,43,43,0.16)' },
-  typeEmojiBadge: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  typeEmojiBadge: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   typeLabel: { fontSize: 11, color: '#9aa4bf', fontWeight: '600', textAlign: 'center' },
   typeLabelBold: { fontWeight: '700' },
   typeLabelSelected: { color: '#ff8080' },

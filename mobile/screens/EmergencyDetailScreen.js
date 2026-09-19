@@ -17,6 +17,7 @@ import { supabase } from '../lib/supabase'
 import { API_BASE_URL } from '../lib/config'
 import LiveTrackingMap from '../components/LiveTrackingMap'
 import EmergencyTypeIcon from '../components/EmergencyTypeIcon'
+import { EMERGENCY_TYPE_COLORS } from '../lib/emergencyTypeColors'
 
 const EMERGENCY_TYPE_LABELS = {
   medical: 'Medical',
@@ -519,7 +520,7 @@ export default function EmergencyDetailScreen({ route, navigation }) {
       </View>
 
       <View style={styles.typeBadge}>
-        <EmergencyTypeIcon type={emergency.emergency_type} size={18} />
+        <EmergencyTypeIcon type={emergency.emergency_type} color={EMERGENCY_TYPE_COLORS[emergency.emergency_type] || EMERGENCY_TYPE_COLORS.other} size={20} />
         <Text style={styles.typeBadgeText}>{typeLabel}</Text>
       </View>
 

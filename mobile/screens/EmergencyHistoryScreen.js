@@ -9,6 +9,7 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl } fr
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { supabase } from '../lib/supabase'
 import EmergencyTypeIcon from '../components/EmergencyTypeIcon'
+import { EMERGENCY_TYPE_COLORS } from '../lib/emergencyTypeColors'
 
 const TYPE_LABELS = {
   medical: 'Medical', fire: 'Fire', accident: 'Accident', security: 'Security',
@@ -59,7 +60,7 @@ export default function EmergencyHistoryScreen({ navigation }) {
             onPress={() => navigation.navigate('EmergencyHistoryDetail', { emergencyId: item.id, emergencyType: item.emergency_type })}
           >
             <View style={styles.row}>
-              <EmergencyTypeIcon type={item.emergency_type} size={22} />
+              <EmergencyTypeIcon type={item.emergency_type} color={EMERGENCY_TYPE_COLORS[item.emergency_type] || EMERGENCY_TYPE_COLORS.other} size={22} />
               <Text style={styles.typeText}>{TYPE_LABELS[item.emergency_type] || 'Other'}</Text>
               <Text style={styles.chevron}>›</Text>
             </View>
