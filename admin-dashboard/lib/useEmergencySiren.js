@@ -123,5 +123,5 @@ export function useEmergencySiren(active) {
     }
   }, [])
 
-  return { muted, setMuted }
+  return { muted, setMuted, unlocked }
 }

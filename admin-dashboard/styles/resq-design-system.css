@@ -147,6 +147,12 @@
    borrows the same neon-crimson pulse used for a genuinely live
    emergency. */
 .resq-badge-muted { background: rgba(255, 255, 255, 0.08); color: var(--resq-text-secondary); }
+
+/* "Tap anywhere to enable siren sound" prompt — browsers block audio
+   until the page has had a genuine click/tap, so this needs to stand
+   out enough that a responder actually notices and clicks it instead
+   of assuming the (silent) siren is just broken. */
+.resq-siren-unlock-pulse { animation: resq-badge-glow 1.8s ease-in-out infinite; }
 @keyframes resq-badge-glow {
   0%, 100% { box-shadow: 0 0 8px 2px rgba(255, 43, 43, 0.55), 0 0 0 rgba(255, 43, 43, 0); }
   50% { box-shadow: 0 0 22px 6px rgba(255, 43, 43, 0.85), 0 0 30px 10px rgba(255, 43, 43, 0.25); }
@@ -384,6 +390,7 @@
   .resq-radar-sweep, .resq-radar-blip,
   .resq-shell,
   .resq-badge-open,
+  .resq-siren-unlock-pulse,
   .resq-row-stagger,
   .resq-incident-bar,
   .resq-route-row,
