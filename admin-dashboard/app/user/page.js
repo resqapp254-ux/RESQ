@@ -1569,12 +1569,16 @@ export default function UserPage() {
                           <span className="resq-subtle" style={{ fontSize: 11 }}>
                             {m.sender_role} · {new Date(m.created_at).toLocaleString()}
                           </span>
-                          <p style={{ margin: '2px 0 0' }}>
-                            {m.media_type === 'photo' && m.media_url ? '📷 Photo' :
-                              m.media_type === 'video' && m.media_url ? '🎥 Video' :
-                              m.media_type === 'voice' && m.media_url ? '🎙️ Voice note' :
-                              m.message}
-                          </p>
+                          {m.media_type === 'photo' && m.media_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={m.media_url} alt="Attached" style={{ maxWidth: '100%', borderRadius: 8, marginTop: 6, display: 'block' }} />
+                          ) : m.media_type === 'voice' && m.media_url ? (
+                            <audio controls src={m.media_url} style={{ marginTop: 6, maxWidth: '100%' }} />
+                          ) : m.media_type === 'video' && m.media_url ? (
+                            <video controls src={m.media_url} style={{ marginTop: 6, maxWidth: '100%', borderRadius: 8, display: 'block' }} />
+                          ) : (
+                            <p style={{ margin: '2px 0 0' }}>{m.message}</p>
+                          )}
                         </div>
                       ))}
                     </div>

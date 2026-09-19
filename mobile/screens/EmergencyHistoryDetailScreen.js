@@ -3,7 +3,7 @@
 // once it's resolved, just the record of what was exchanged.
 
 import React, { useEffect, useState } from 'react'
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Linking } from 'react-native'
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Linking, Image } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAudioPlayer } from 'expo-audio'
 import { supabase } from '../lib/supabase'
@@ -56,9 +56,7 @@ export default function EmergencyHistoryDetailScreen({ route }) {
             <View style={[styles.bubble, bubbleStyle]}>
               <Text style={styles.senderLabel}>{item.sender_role} · {new Date(item.created_at).toLocaleString()}</Text>
               {item.media_type === 'photo' && item.media_url ? (
-                <TouchableOpacity onPress={() => Linking.openURL(item.media_url)}>
-                  <Text style={textStyle}>📷 Photo — tap to view</Text>
-                </TouchableOpacity>
+                <Image source={{ uri: item.media_url }} style={styles.chatPhoto} resizeMode="cover" />
               ) : item.media_type === 'video' && item.media_url ? (
                 <TouchableOpacity onPress={() => Linking.openURL(item.media_url)}>
                   <Text style={textStyle}>🎥 Video — tap to view</Text>
@@ -83,6 +81,7 @@ const styles = StyleSheet.create({
   mineBubble: { backgroundColor: 'rgba(255,43,43,0.18)', alignSelf: 'flex-end' },
   theirBubble: { backgroundColor: 'rgba(255,255,255,0.07)', alignSelf: 'flex-start' },
   senderLabel: { color: '#9aa4bf', fontSize: 10, marginBottom: 2, textTransform: 'capitalize' },
+  chatPhoto: { width: 180, height: 180, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.08)' },
   mineText: { color: '#fff' },
   theirText: { color: '#f4f6fb' }
 })
