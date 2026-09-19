@@ -119,7 +119,7 @@ export async function POST(request) {
     // otherwise have no idea who is coming.
     const { data: routedInstitution } = await supabaseAdmin
       .from('institutions')
-      .select('name, logo_url')
+      .select('name, logo_url, lat, lng, contact_phone')
       .eq('id', institutionId)
       .maybeSingle()
 

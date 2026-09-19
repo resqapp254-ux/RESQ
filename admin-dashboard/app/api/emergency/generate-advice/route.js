@@ -31,7 +31,13 @@ Rules:
 - Calm, plain, reassuring tone. No medical diagnosis. No legal advice.
 - Tailor the guidance to the stated emergency type below, but stay generic and safe if it doesn't fit the exact situation.
 - Always mention that help is on the way.
-- Do not ask questions. This is a one-way message the person will read in a stressful moment.`
+- Do not ask questions. This is a one-way message the person will read in a stressful moment.
+- CRITICAL: Never tell the user to call 911, 999, 112, or any other generic emergency hotline number.
+  RESQ has already routed this exact report to a specific responding institution (named below, if
+  known) and their responders are already on the way — do not suggest calling anyone else instead.
+  If a routed institution name is given below, you may reference it by name (e.g. "responders from
+  <name> are on their way"). If a contact phone number is given below, you may mention that they can
+  call it directly if they need to speak to someone before responders arrive.`
 const FALLBACK_ADVICE = 'Stay calm. Help is on the way. Move somewhere safe and visible if you can, keep your phone nearby, and follow instructions from responders.'
 
 export async function POST(request) {
@@ -64,9 +70,18 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Not authorized for this emergency' }, { status: 403 })
     }
 
+    const { data: routedInstitution } = await supabaseAdmin
+      .from('institutions')
+      .select('name, contact_phone')
+      .eq('id', emergency.institution_id)
+      .maybeSingle()
+
     const typeNote = TYPE_GUIDANCE[emergency.emergency_type] || ''
     const systemPrompt = typeNote ? `${SYSTEM_PROMPT_BASE}\n\n${typeNote}` : SYSTEM_PROMPT_BASE
-    const userMessage = `A user just triggered a "${emergency.emergency_type || 'other'}" emergency alert via the ${emergency.triggered_via} channel. Give them immediate safety guidance.`
+    const routingNote = routedInstitution?.name
+      ? ` This was routed to "${routedInstitution.name}".${routedInstitution.contact_phone ? ` Their direct contact number is ${routedInstitution.contact_phone}.` : ''}`
+      : ''
+    const userMessage = `A user just triggered a "${emergency.emergency_type || 'other'}" emergency alert via the ${emergency.triggered_via} channel.${routingNote} Give them immediate safety guidance.`
 
     let adviceText = FALLBACK_ADVICE
     let usedFallback = true
