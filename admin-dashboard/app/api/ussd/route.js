@@ -14,6 +14,8 @@ import { supabaseAdmin } from '../../../lib/supabaseAdmin'
 import { notifyResponders } from '../../../lib/notifyResponders'
 import { verifyWebhookSecret } from '../../../lib/verifyWebhookSecret'
 import { getClientIp, rateLimit } from '../../../lib/rateLimit'
+import { hasAvailableResponder } from '../../../lib/checkResponderAvailability'
+import { logActivity } from '../../../lib/logActivity'
 
 function ussdResponse(text) {
   return new Response(text, { status: 200, headers: { 'Content-Type': 'text/plain' } })
@@ -52,6 +54,8 @@ export async function POST(request) {
 
       if (!institution || institution.status !== 'active') {
         response = 'END Invalid or inactive institution code. Please check and try again.'
+      } else if (!(await hasAvailableResponder(supabaseAdmin, institution.id, { emergencyType: 'other', lat: null, lng: null }))) {
+        response = `END ${institution.name} has no responder currently available to receive this emergency.`
       } else {
         response = `CON Confirm emergency for ${institution.name}?\n1. Yes, send now\n2. Cancel`
       }
@@ -70,6 +74,9 @@ export async function POST(request) {
 
         if (!institution || institution.status !== 'active') {
           response = 'END Invalid or inactive institution code.'
+        } else if (!(await hasAvailableResponder(supabaseAdmin, institution.id, { emergencyType: 'other', lat: null, lng: null }))) {
+          logActivity({ eventType: 'trigger_blocked_no_responder', detail: `USSD · institution=${institution.name}`, institutionId: institution.id })
+          response = `END ${institution.name} has no responder currently available to receive this emergency.`
         } else if (!(await rateLimit('ussd-phone:' + phoneNumber, 3, 10 * 60 * 1000)).allowed) {
           response = 'END Too many requests from this number. Please wait before trying again.'
         } else if (

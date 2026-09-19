@@ -12,6 +12,8 @@ import { supabaseAdmin } from '../../../lib/supabaseAdmin'
 import { notifyResponders } from '../../../lib/notifyResponders'
 import { verifyWebhookSecret } from '../../../lib/verifyWebhookSecret'
 import { getClientIp, rateLimit } from '../../../lib/rateLimit'
+import { hasAvailableResponder } from '../../../lib/checkResponderAvailability'
+import { logActivity } from '../../../lib/logActivity'
 
 export async function POST(request) {
   try {
@@ -56,6 +58,15 @@ export async function POST(request) {
       // which is a separate paid step, for now we just log it server-side.
       console.log(`SMS emergency attempt with invalid/inactive code: ${code} from ${from}`)
       return NextResponse.json({ success: false, error: 'Invalid or inactive institution code' })
+    }
+
+    // Same guarantee as the app: never file a report into an
+    // institution with nobody who could ever claim it. SMS has no
+    // type/GPS to check against, only whether anyone at all is set up
+    // to respond (emergency_type defaults to 'other' for this channel).
+    if (!(await hasAvailableResponder(supabaseAdmin, institution.id, { emergencyType: 'other', lat: null, lng: null }))) {
+      logActivity({ eventType: 'trigger_blocked_no_responder', detail: `SMS · institution=${institution.name}`, institutionId: institution.id })
+      return NextResponse.json({ success: false, error: `${institution.name} has no responder currently available to receive this emergency.` })
     }
 
     // One open emergency per phone number at a time, same rule as the app.
