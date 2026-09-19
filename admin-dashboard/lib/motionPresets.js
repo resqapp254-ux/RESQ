@@ -18,3 +18,16 @@ export const staggerCard = {
   hidden: { opacity: 0, y: 15, scale: 0.98 },
   show: { opacity: 1, y: 0, scale: 1, transition: SPRING_SNAPPY }
 }
+
+// Dashboard-page card cascade (super-admin / institution-admin).
+export const SPRING_DASHBOARD = { type: 'spring', mass: 1, stiffness: 200, damping: 25 }
+
+export const dashboardStagger = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.1 } }
+}
+
+export const dashboardCard = {
+  hidden: { opacity: 0, y: 20, scale: 0.97 },
+  show: { opacity: 1, y: 0, scale: 1, transition: SPRING_DASHBOARD }
+}

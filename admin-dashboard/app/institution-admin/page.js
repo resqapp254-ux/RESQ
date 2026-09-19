@@ -4,7 +4,9 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 import { supabase } from '../../lib/supabaseClient'
+import { dashboardStagger, dashboardCard } from '../../lib/motionPresets'
 import EmergencyPulseBackground from '../../components/EmergencyPulseBackground'
 import GuardianShield from '../../components/GuardianShield'
 import HeartMonitorLine from '../../components/HeartMonitorLine'
@@ -360,15 +362,17 @@ export default function InstitutionAdminPage() {
 
       {error && <p style={{ color: '#ff8080' }}>{error}</p>}
 
-      <div className="glass-card resq-tilt-card resq-fade-in resq-fade-in-2" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 28, margin: '20px 0' }}>
+      <motion.div initial="hidden" animate="show" variants={dashboardStagger}>
+
+      <motion.div variants={dashboardCard} className="glass-card resq-tilt-card bg-zinc-900/60 backdrop-blur-xl border border-zinc-800/80 rounded-2xl" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 28, margin: '20px 0' }}>
         <GuardianShield buildingCount={1} alert={hasActiveAlert} size={140} label={hasActiveAlert ? 'Responding' : 'Protecting your institution'} />
         <div style={{ flex: '1 1 260px', minWidth: 260 }}>
           <HeartMonitorLine alert={hasActiveAlert} label={hasActiveAlert ? 'Active emergency' : 'All clear'} />
         </div>
-      </div>
+      </motion.div>
 
-      <div className="resq-two-col resq-fade-in resq-fade-in-2" style={{ gridTemplateColumns: '1.4fr 1fr', margin: '24px 0' }}>
-        <section className="glass-card" style={{ minHeight: 180 }}>
+      <div className="resq-two-col" style={{ gridTemplateColumns: '1.4fr 1fr', margin: '24px 0' }}>
+        <motion.section variants={dashboardCard} className="glass-card bg-zinc-900/60 backdrop-blur-xl border border-zinc-800/80 rounded-2xl" style={{ minHeight: 180 }}>
           <h2 style={{ marginTop: 0 }}>
             {activeEmergencies.length > 0 && <span className="resq-live-dot" aria-hidden="true" />}
             Active Emergencies
@@ -409,8 +413,8 @@ export default function InstitutionAdminPage() {
               </div>
             </div>
           ))}
-        </section>
-        <section className="glass-card" style={{ minHeight: 180 }}>
+        </motion.section>
+        <motion.section variants={dashboardCard} className="glass-card bg-zinc-900/60 backdrop-blur-xl border border-zinc-800/80 rounded-2xl" style={{ minHeight: 180 }}>
           <h2 style={{ marginTop: 0 }}>Recently Resolved</h2>
         <p className="resq-subtle" style={{ marginTop: 0 }}>Weekly report emails go to this institution admin with resolution details.</p>
           {recentResolved.length === 0 && <p className="resq-subtle">No resolved emergencies yet.</p>}
@@ -422,14 +426,16 @@ export default function InstitutionAdminPage() {
               </p>
             </div>
           ))}
-        </section>
+        </motion.section>
       </div>
 
       {incidentChartData.length > 0 && (
-        <section className="glass-card resq-fade-in resq-fade-in-2" style={{ margin: '0 0 24px' }}>
+        <motion.section variants={dashboardCard} className="glass-card bg-zinc-900/60 backdrop-blur-xl border border-zinc-800/80 rounded-2xl" style={{ margin: '0 0 24px' }}>
           <IncidentChart data={incidentChartData} title="Recent Incidents by Type" />
-        </section>
+        </motion.section>
       )}
+
+      </motion.div>
 
       <div className="resq-fade-in resq-fade-in-3" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '30px 0 12px', flexWrap: 'wrap', gap: 12 }}>
         <h2 style={{ margin: 0 }}>Responders</h2>
@@ -462,7 +468,7 @@ export default function InstitutionAdminPage() {
           hospital/unit added for itself are never mixed in here; they
           show grouped under that unit's own heading below instead. */}
       {primaryResponders.length > 0 && (
-        <section className="glass-card resq-fade-in resq-fade-in-3" style={{ marginBottom: 24, overflowX: 'auto' }}>
+        <section className="glass-card resq-fade-in resq-fade-in-3 bg-zinc-900/60 backdrop-blur-xl border border-zinc-800/80 rounded-2xl" style={{ marginBottom: 24, overflowX: 'auto' }}>
           <h3 style={{ marginTop: 0 }}>Institution Responders</h3>
           <ResponderTable
             list={primaryResponders}
@@ -479,7 +485,7 @@ export default function InstitutionAdminPage() {
         if (unitResponders.length === 0) return null
         const stats = unitStats[service.id] || { live: 0, onDuty: 0, solved: 0, delayed: 0 }
         return (
-          <section key={service.id} className="glass-card resq-fade-in resq-fade-in-3" style={{ marginBottom: 24, overflowX: 'auto' }}>
+          <section key={service.id} className="glass-card resq-fade-in resq-fade-in-3 bg-zinc-900/60 backdrop-blur-xl border border-zinc-800/80 rounded-2xl" style={{ marginBottom: 24, overflowX: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
               <h3 style={{ marginTop: 0, marginBottom: 8 }}>
                 🏥 {service.name} Responders
@@ -511,7 +517,7 @@ export default function InstitutionAdminPage() {
       })}
 
       {responders.length > 0 && (
-        <section className="glass-card resq-fade-in resq-fade-in-3">
+        <section className="glass-card resq-fade-in resq-fade-in-3 bg-zinc-900/60 backdrop-blur-xl border border-zinc-800/80 rounded-2xl">
           <h3 style={{ marginTop: 0 }}>Schedule a Shift</h3>
           <form onSubmit={handleAddShift} style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div>

@@ -4,7 +4,9 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 import { supabase } from '../../lib/supabaseClient'
+import { dashboardStagger, dashboardCard } from '../../lib/motionPresets'
 import EmergencyPulseBackground from '../../components/EmergencyPulseBackground'
 import GuardianShield from '../../components/GuardianShield'
 import HeartMonitorLine from '../../components/HeartMonitorLine'
@@ -533,8 +535,10 @@ th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:
         </div>
       </div>
 
+      <motion.div initial="hidden" animate="show" variants={dashboardStagger}>
+
       {!loading && institutions.length > 0 && (
-        <div className="glass-card resq-tilt-card resq-fade-in resq-fade-in-2" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 28, margin: '4px 0 24px' }}>
+        <motion.div variants={dashboardCard} className="glass-card resq-tilt-card bg-zinc-900/60 backdrop-blur-xl border border-zinc-800/80 rounded-2xl" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 28, margin: '4px 0 24px' }}>
           <GuardianShield
             buildingCount={institutions.length}
             alert={hasActiveAlert}
@@ -544,11 +548,17 @@ th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:
           <div style={{ flex: '1 1 260px', minWidth: 260 }}>
             <HeartMonitorLine alert={hasActiveAlert} label={hasActiveAlert ? 'Active emergency' : 'All clear'} />
           </div>
-        </div>
+        </motion.div>
       )}
 
       {showFlow && (
-        <section className="glass-card resq-fade-in" style={{ marginBottom: 24 }}>
+        <motion.section
+          initial={{ opacity: 0, y: 20, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: 'spring', mass: 1, stiffness: 200, damping: 25 }}
+          className="glass-card bg-zinc-900/60 backdrop-blur-xl border border-zinc-800/80 rounded-2xl"
+          style={{ marginBottom: 24 }}
+        >
           <h2 style={{ marginTop: 0 }}>📊 Management Flow</h2>
           <p className="resq-subtle" style={{ marginTop: 0 }}>Who sets up whom, and who reports to whom.</p>
           <ManagementFlowDiagram />
@@ -556,15 +566,21 @@ th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:
           <h2 style={{ marginTop: 28 }}>🚨 Emergency Response Flow</h2>
           <p className="resq-subtle" style={{ marginTop: 0 }}>From the moment a user triggers an SOS to resolution, with every branch.</p>
           <EmergencyFlowDiagram />
-        </section>
+        </motion.section>
       )}
 
       {showRouting && (
-        <section className="glass-card resq-fade-in" style={{ marginBottom: 24 }}>
+        <motion.section
+          initial={{ opacity: 0, y: 20, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: 'spring', mass: 1, stiffness: 200, damping: 25 }}
+          className="glass-card bg-zinc-900/60 backdrop-blur-xl border border-zinc-800/80 rounded-2xl"
+          style={{ marginBottom: 24 }}
+        >
           <h2 style={{ marginTop: 0 }}>🛰 Live Routing</h2>
           <p className="resq-subtle" style={{ marginTop: 0 }}>Every currently active emergency and which institution it was routed to.</p>
           <LiveRoutingPanel routes={liveRoutes} loading={loadingRouting} />
-        </section>
+        </motion.section>
       )}
 
       {error && <p style={{ color: '#ff8080' }}>{error}</p>}
@@ -575,7 +591,7 @@ th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:
       )}
 
       {!loading && institutions.length > 0 && (
-        <section className="glass-card resq-fade-in resq-fade-in-2" style={{ overflowX: 'auto' }}>
+        <motion.section variants={dashboardCard} className="glass-card bg-zinc-900/60 backdrop-blur-xl border border-zinc-800/80 rounded-2xl" style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%' }}>
           <thead>
             <tr>
@@ -779,8 +795,9 @@ th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:
             })}
           </tbody>
         </table>
-        </section>
+        </motion.section>
       )}
+      </motion.div>
       </div>
     </div>
   )
