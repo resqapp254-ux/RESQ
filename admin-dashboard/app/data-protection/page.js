@@ -65,13 +65,12 @@ export default function DataProtectionPage() {
 
           <h2 style={{ marginTop: 20 }}>Data subject rights</h2>
           <p className="resq-subtle">
-            A user can review their own account details from their dashboard, switch between institutions they've
-            joined or between a public and private account, and ask their institution admin (or RESQ directly, for a
-            public account) to deactivate their account. A responder or institution admin's account can be
-            deactivated the same way. Because an emergency's core record (type, timestamps, who handled it) is an
-            institution's case history, deleting an account does not retroactively remove that institution's record
-            of a past emergency — the same principle already described in the <a href="/privacy">Privacy Policy</a>'s
-            Storage and Retention section.
+            A user or responder can review their own account details and delete their own account directly, from
+            the app or dashboard, at any time — no admin needed. An institution admin's own account is managed
+            through their institution or RESQ directly instead. Because an emergency's core record (type,
+            timestamps, who handled it) is an institution's case history, deleting an account does not
+            retroactively remove that institution's record of a past emergency — the same principle already
+            described in the <a href="/privacy">Privacy Policy</a>'s Storage and Retention section.
           </p>
 
           <h2 style={{ marginTop: 20 }}>Breach notification</h2>

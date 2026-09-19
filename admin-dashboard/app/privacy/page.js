@@ -82,9 +82,11 @@ export default function PrivacyPage() {
           <h2 style={{ marginTop: 20 }}>Your choices</h2>
           <p className="resq-subtle">
             You can review or delete your trusted contacts at any time from your dashboard, switch between a public
-            and private account or between institutions you've joined, and ask your institution admin to deactivate
-            your account. Location is only requested at the moment of an emergency trigger; RESQ does not track your
-            location in the background otherwise.
+            and private account or between institutions you've joined, and delete your own account directly from
+            the app or dashboard at any time — no need to ask an admin. If you have no case history, deletion is
+            immediate; if you've triggered or claimed a past emergency, your login is disabled instead so that
+            case's record stays intact, and you can no longer sign in. Location is only requested at the moment of
+            an emergency trigger; RESQ does not track your location in the background otherwise.
           </p>
 
           <h2 style={{ marginTop: 20 }}>Contact</h2>

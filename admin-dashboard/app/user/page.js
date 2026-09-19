@@ -84,6 +84,7 @@ export default function UserPage() {
   const [locationBusy, setLocationBusy] = useState(false)
   const [triggerBusy, setTriggerBusy] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
+  const [deletingAccount, setDeletingAccount] = useState(false)
 
   const [chatMessages, setChatMessages] = useState([])
   const [myUserId, setMyUserId] = useState('')
@@ -585,6 +586,36 @@ export default function UserPage() {
     router.replace('/login')
   }
 
+  async function handleDeleteAccount() {
+    const confirmed = window.confirm(
+      "Delete your account? This permanently removes your access to RESQ. If you have no case history, your " +
+      "account and its data are deleted immediately. If you've triggered or claimed an emergency before, your " +
+      "login is permanently disabled instead so that case's record stays intact. This cannot be undone."
+    )
+    if (!confirmed) return
+
+    setDeletingAccount(true)
+    const accessToken = await getAccessToken()
+    try {
+      const res = await fetch('/api/account/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (accessToken || '') }
+      })
+      const result = await res.json()
+      if (!result.success) {
+        alert('Could not delete account: ' + result.error)
+        setDeletingAccount(false)
+        return
+      }
+      if (result.note) alert(result.note)
+      await supabase.auth.signOut()
+      router.replace('/login')
+    } catch (err) {
+      alert('Could not delete account: ' + err.message)
+      setDeletingAccount(false)
+    }
+  }
+
   async function sendChatMessage() {
     setChatError('')
     setChatSuggestion('')
@@ -857,6 +888,24 @@ export default function UserPage() {
     setReportMessage('')
   }
 
+  async function reportChatMessage(m) {
+    if (!window.confirm("Report this message to the institution admin? Use this if it's abusive, inappropriate, or unsafe.")) return
+    const matchingEmergency = [...activeEmergencies, ...resolvedEmergencies].find((e) => e.id === chatTargetId)
+    const { error } = await supabase.from('responder_reports').insert({
+      institution_id: matchingEmergency?.institution_id || institutionId,
+      emergency_id: chatTargetId,
+      reported_by: myUserId,
+      reported_responder_id: m.sender_id,
+      category: 'other',
+      message: `Reported chat message: "${(m.message || '[media]').slice(0, 300)}"`
+    })
+    if (error) {
+      alert('Could not report message: ' + error.message)
+      return
+    }
+    alert('Reported. Your institution admin has been notified.')
+  }
+
   const chatThread = chatMessages.length > 0 && (
     <div
       style={{
@@ -896,6 +945,16 @@ export default function UserPage() {
             ) : (
               <p style={{ margin: '2px 0 0' }}>{m.message}</p>
             )}
+            {!mine && !m.is_ai_generated && (
+              <button
+                type="button"
+                onClick={() => reportChatMessage(m)}
+                className="resq-subtle"
+                style={{ background: 'none', border: 'none', padding: 0, marginTop: 4, fontSize: 10, cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                🚩 Report
+              </button>
+            )}
           </div>
         )
       })}
@@ -928,7 +987,17 @@ export default function UserPage() {
       <LanguageSwitcher />
       <div className="resq-content" style={{ padding: 32, maxWidth: 1200, margin: '0 auto' }}>
         <div className="glass-card resq-fade-in" style={{ maxWidth: 720, marginBottom: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+            {(role === 'user' || role === 'responder') && (
+              <button
+                className="resq-btn-secondary"
+                style={{ color: '#ff8080', borderColor: 'rgba(255,128,128,0.4)' }}
+                onClick={handleDeleteAccount}
+                disabled={deletingAccount}
+              >
+                {deletingAccount ? 'Deleting…' : 'Delete My Account'}
+              </button>
+            )}
             <button className="resq-btn-secondary" onClick={handleLogout}>{t('logOut')}</button>
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>

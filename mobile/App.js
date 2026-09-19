@@ -11,8 +11,10 @@ Sentry.init({
   enableAutoSessionTracking: true,
 })
 
+import { TouchableOpacity, Text, View } from 'react-native'
 import { LanguageProvider } from './lib/i18n'
 import LogoutButton from './components/LogoutButton'
+import AccountScreen from './screens/AccountScreen'
 import WelcomeScreen from './screens/WelcomeScreen'
 import BootstrapScreen from './screens/BootstrapScreen'
 import LanguageConsentScreen from './screens/LanguageConsentScreen'
@@ -46,6 +48,28 @@ function withLogout(title) {
   })
 }
 
+// The two screens a self-registered account (user or responder) lands
+// on also get an "Account" entry point, since that's where Play Store
+// review expects to find self-service account deletion.
+function withAccountAndLogout(title) {
+  return ({ navigation }) => ({
+    headerShown: true,
+    title,
+    headerRight: () => (
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Account')}
+          style={{ paddingHorizontal: 8, paddingVertical: 6 }}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Text style={{ color: '#7fe3f2', fontWeight: '600', fontSize: 14 }}>Account</Text>
+        </TouchableOpacity>
+        <LogoutButton navigation={navigation} />
+      </View>
+    )
+  })
+}
+
 function App() {
   return (
     <LanguageProvider>
@@ -57,10 +81,11 @@ function App() {
             <Stack.Screen name="LanguageConsent" component={LanguageConsentScreen} />
             <Stack.Screen name="Auth" component={AuthScreen} />
             <Stack.Screen name="EnterInstitutionCode" component={EnterInstitutionCodeScreen} options={withLogout('Connect Institution')} />
-            <Stack.Screen name="Home" component={UserHomeScreen} options={withLogout('RESQ')} />
+            <Stack.Screen name="Home" component={UserHomeScreen} options={withAccountAndLogout('RESQ')} />
+            <Stack.Screen name="Account" component={AccountScreen} options={{ headerShown: true, title: 'Account' }} />
             <Stack.Screen name="ManageGuardians" component={ManageGuardiansScreen} options={withLogout('Trusted Contacts')} />
             <Stack.Screen name="UserEmergencyActive" component={UserEmergencyActiveScreen} options={withLogout('Emergency Active')} />
-            <Stack.Screen name="ResponderHome" component={ResponderHomeScreen} options={withLogout('RESQ Responder')} />
+            <Stack.Screen name="ResponderHome" component={ResponderHomeScreen} options={withAccountAndLogout('RESQ Responder')} />
             <Stack.Screen name="EmergencyDetail" component={EmergencyDetailScreen} options={withLogout('Emergency Details')} />
             <Stack.Screen name="InstitutionChat" component={InstitutionChatScreen} options={withLogout('Team Chat')} />
             <Stack.Screen name="MyInstitutions" component={MyInstitutionsScreen} options={withLogout('My Institutions')} />

@@ -297,6 +297,35 @@ export default function EmergencyDetailScreen({ route, navigation }) {
     }
   }
 
+  function confirmReportMessage(item) {
+    if (item.sender_id === myId) return
+    Alert.alert(
+      'Report this message?',
+      "This flags the message to the institution admin for review. Use this if it's abusive, inappropriate, or unsafe.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Report', style: 'destructive', onPress: () => reportMessage(item) }
+      ]
+    )
+  }
+
+  async function reportMessage(item) {
+    try {
+      const { error } = await supabase.from('responder_reports').insert({
+        institution_id: emergency?.institution_id,
+        emergency_id: emergencyId,
+        reported_by: myId,
+        reported_responder_id: item.sender_id,
+        category: 'other',
+        message: `Reported chat message: "${(item.message || '[media]').slice(0, 300)}"`
+      })
+      if (error) throw error
+      Alert.alert('Reported', 'The institution admin has been notified.')
+    } catch (err) {
+      Alert.alert('Could not report message', err.message)
+    }
+  }
+
   async function pickAndSendPhoto() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!permission.granted) {
@@ -508,7 +537,12 @@ export default function EmergencyDetailScreen({ route, navigation }) {
           const bubbleStyle = mine ? styles.bubbleMine : styles.bubbleTheirs
           const textStyle = mine ? styles.bubbleTextMine : styles.bubbleTextTheirs
           return (
-            <View style={[styles.bubble, bubbleStyle]}>
+            <TouchableOpacity
+              style={[styles.bubble, bubbleStyle]}
+              activeOpacity={mine ? 1 : 0.7}
+              onLongPress={mine ? undefined : () => confirmReportMessage(item)}
+              delayLongPress={400}
+            >
               {item.media_type === 'photo' && item.media_url ? (
                 <Image source={{ uri: item.media_url }} style={styles.chatPhoto} resizeMode="cover" />
               ) : item.media_type === 'voice' && item.media_url ? (
@@ -520,7 +554,8 @@ export default function EmergencyDetailScreen({ route, navigation }) {
               ) : (
                 <Text style={textStyle}>{item.message}</Text>
               )}
-            </View>
+              {!mine && <Text style={styles.reportHint}>Hold to report</Text>}
+            </TouchableOpacity>
           )
         }}
       />
@@ -607,6 +642,7 @@ const styles = StyleSheet.create({
   bubbleTheirs: { backgroundColor: 'rgba(255,255,255,0.1)', alignSelf: 'flex-start' },
   bubbleTextMine: { color: 'white' },
   bubbleTextTheirs: { color: '#f4f6fb' },
+  reportHint: { color: '#5c6480', fontSize: 9, marginTop: 3 },
   inputRow: { flexDirection: 'row', marginTop: 8, alignItems: 'center' },
   aiRow: { flexDirection: 'row', marginTop: 6, alignItems: 'center' },
   aiInput: { flex: 1, borderWidth: 1, borderColor: 'rgba(53,208,232,0.3)', borderRadius: 8, padding: 8, marginRight: 8, backgroundColor: 'rgba(53,208,232,0.06)', color: '#f4f6fb', fontSize: 13 },

@@ -66,7 +66,9 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "RESQ needs your location to send accurate help to your exact position during an emergency.",
-        "NSMicrophoneUsageDescription": "RESQ needs microphone access to let you send a voice note during an emergency."
+        "NSMicrophoneUsageDescription": "RESQ needs microphone access to let you send a voice note during an emergency.",
+        "NSCameraUsageDescription": "RESQ needs camera access to let you photograph or record video of the situation during an emergency.",
+        "NSPhotoLibraryUsageDescription": "RESQ needs access to your photos and videos to attach evidence to an emergency."
       }
     },
     "android": {
@@ -85,7 +87,8 @@
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.CAMERA",
-        "android.permission.READ_MEDIA_IMAGES"
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO"
       ]
     },
     "extra": {
