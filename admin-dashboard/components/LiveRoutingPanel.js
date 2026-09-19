@@ -57,9 +57,6 @@ export default function LiveRoutingPanel({ routes, loading }) {
         .resq-route-row {
           animation: resq-route-row-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
         }
-        @media (prefers-reduced-motion: reduce) {
-          .resq-route-row { animation: none !important; }
-        }
       `}</style>
     </div>
   )

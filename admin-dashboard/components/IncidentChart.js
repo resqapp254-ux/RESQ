@@ -5,16 +5,7 @@
 // Deliberately plain SVG + CSS, no charting library, to match the
 // rest of the app's dependency-light styling approach.
 
-const TYPE_COLORS = {
-  medical: '#ff5252',
-  fire: '#ff8a3d',
-  accident: '#ffca3d',
-  security: 'var(--resq-cyan)',
-  gbv: '#c084fc',
-  mental_health: '#7f9cf5',
-  property_damage: '#8d99ae',
-  other: 'var(--resq-amber)'
-}
+import { EMERGENCY_TYPE_COLORS } from '../lib/emergencyTypeColors'
 
 export default function IncidentChart({ data, title }) {
   const max = Math.max(1, ...data.map((d) => d.count))
@@ -39,7 +30,7 @@ export default function IncidentChart({ data, title }) {
           {data.map((d, i) => {
             const barHeight = (d.count / max) * chartHeight
             const x = gap + i * (barWidth + gap)
-            const color = TYPE_COLORS[d.key] || 'var(--resq-cyan)'
+            const color = EMERGENCY_TYPE_COLORS[d.key] || 'var(--resq-cyan)'
             return (
               <g key={d.key} className="resq-incident-bar" style={{ animationDelay: `${i * 70}ms` }}>
                 <rect
@@ -71,9 +62,6 @@ export default function IncidentChart({ data, title }) {
           transform-box: fill-box;
           transform-origin: bottom;
           animation: resq-incident-bar-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .resq-incident-bar { animation: none !important; }
         }
       `}</style>
     </div>

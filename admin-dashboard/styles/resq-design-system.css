@@ -380,6 +380,8 @@
   .resq-shell,
   .resq-badge-open,
   .resq-row-stagger,
+  .resq-incident-bar,
+  .resq-route-row,
   .resq-btn-primary, .resq-btn-secondary {
     animation: none !important;
     transition: none !important;

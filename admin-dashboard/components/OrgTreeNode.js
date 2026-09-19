@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 // A single collapsible node in an org-hierarchy tree (institution →
 // partner unit → responders). Uses the CSS grid 0fr/1fr trick for
@@ -10,6 +10,15 @@ import { useState } from 'react'
 
 export default function OrgTreeNode({ label, count, defaultOpen = false, children }) {
   const [open, setOpen] = useState(defaultOpen)
+
+  // defaultOpen is a prop, not just an initial value — if the parent
+  // recomputes it for an already-mounted node (e.g. the unit count
+  // changes), follow it instead of freezing at whatever it was on
+  // first mount.
+  useEffect(() => {
+    setOpen(defaultOpen)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultOpen])
 
   return (
     <div style={{ marginBottom: 6 }}>

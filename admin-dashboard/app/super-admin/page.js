@@ -1,7 +1,7 @@
 // app/super-admin/page.js
 'use client'
 
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabaseClient'
@@ -42,6 +42,7 @@ export default function SuperAdminPage() {
   const [showRouting, setShowRouting] = useState(false)
   const [loadingRouting, setLoadingRouting] = useState(false)
   const [liveRoutes, setLiveRoutes] = useState([])
+  const routingRequestRef = useRef(0)
   const router = useRouter()
 
   useEffect(() => {
@@ -109,13 +110,26 @@ export default function SuperAdminPage() {
     }
     setShowRouting(true)
     setLoadingRouting(true)
+    setError('')
 
-    const { data } = await supabase
+    // Guards against a stale response overwriting a newer one if the
+    // panel is closed/reopened while a fetch is still in flight.
+    const requestId = ++routingRequestRef.current
+
+    const { data, error: fetchError } = await supabase
       .from('emergencies')
       .select('id, emergency_type, claimed_by, created_at, institutions(name)')
       .in('status', ['triggered', 'claimed', 'in_progress'])
       .order('created_at', { ascending: false })
       .limit(50)
+
+    if (requestId !== routingRequestRef.current) return // a newer request has since started
+
+    if (fetchError) {
+      setError(fetchError.message)
+      setLoadingRouting(false)
+      return
+    }
 
     setLiveRoutes((data || []).map((r) => ({ ...r, institutionName: r.institutions?.name })))
     setLoadingRouting(false)
@@ -512,7 +526,7 @@ th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:
           <button className="resq-btn-secondary" onClick={() => setShowFlow((v) => !v)}>
             {showFlow ? '📊 Hide System Flow' : '📊 System Flow'}
           </button>
-          <button className="resq-btn-secondary" onClick={toggleRoutingPanel}>
+          <button className="resq-btn-secondary" onClick={toggleRoutingPanel} aria-busy={loadingRouting}>
             {showRouting ? '🛰 Hide Live Routing' : '🛰 Live Routing'}
           </button>
           <button className="resq-btn-secondary" onClick={handleLogout}>Log Out</button>
@@ -737,7 +751,7 @@ th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:
                         return (
                           <div style={{ maxWidth: 480 }}>
                             {unitEntries.map(([unitName, members]) => (
-                              <OrgTreeNode key={unitName} label={unitName} count={members.length} defaultOpen={unitEntries.length === 1}>
+                              <OrgTreeNode key={unitName} label={unitName} count={members.length} defaultOpen>
                                 {members.map((m) => (
                                   <div key={m.id} style={{ fontSize: 12, padding: '3px 0', opacity: m.is_active === false ? 0.4 : 1 }}>
                                     {m.full_name || 'Unnamed'}{' '}

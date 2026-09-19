@@ -15,16 +15,17 @@ import LoadingScreen from '../../components/LoadingScreen'
 import MediaAttach from '../../components/MediaAttach'
 import MyInstitutionsPanel from '../../components/MyInstitutionsPanel'
 import IdentityPrompt from '../../components/IdentityPrompt'
+import { EMERGENCY_TYPE_COLORS } from '../../lib/emergencyTypeColors'
 
 const EMERGENCY_TYPES = [
-  { key: 'medical', translationKey: 'medical', emoji: '🏥', color: '#ff5252' },
-  { key: 'fire', translationKey: 'fire', emoji: '🔥', color: '#ff8a3d' },
-  { key: 'accident', translationKey: 'accident', emoji: '🚑', color: '#ffca3d' },
-  { key: 'security', translationKey: 'security', emoji: '🛡️', color: '#35d0e8' },
-  { key: 'gbv', translationKey: 'gbv', emoji: '🤝', color: '#c084fc' },
-  { key: 'mental_health', translationKey: 'mentalHealth', emoji: '🧠', color: '#7f9cf5' },
-  { key: 'property_damage', translationKey: 'propertyDamage', emoji: '🏚️', color: '#8d99ae' },
-  { key: 'other', translationKey: 'other', emoji: '⚠️', color: '#e0b34d' }
+  { key: 'medical', translationKey: 'medical', emoji: '🏥', color: EMERGENCY_TYPE_COLORS.medical },
+  { key: 'fire', translationKey: 'fire', emoji: '🔥', color: EMERGENCY_TYPE_COLORS.fire },
+  { key: 'accident', translationKey: 'accident', emoji: '🚑', color: EMERGENCY_TYPE_COLORS.accident },
+  { key: 'security', translationKey: 'security', emoji: '🛡️', color: EMERGENCY_TYPE_COLORS.security },
+  { key: 'gbv', translationKey: 'gbv', emoji: '🤝', color: EMERGENCY_TYPE_COLORS.gbv },
+  { key: 'mental_health', translationKey: 'mentalHealth', emoji: '🧠', color: EMERGENCY_TYPE_COLORS.mental_health },
+  { key: 'property_damage', translationKey: 'propertyDamage', emoji: '🏚️', color: EMERGENCY_TYPE_COLORS.property_damage },
+  { key: 'other', translationKey: 'other', emoji: '⚠️', color: EMERGENCY_TYPE_COLORS.other }
 ]
 
 function typeLabel(key, t) {
