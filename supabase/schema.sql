@@ -192,7 +192,10 @@ create policy "institution isolation on shifts"
 -- ---------------- EMERGENCIES ----------------
 create policy "institution isolation on emergencies"
   on emergencies for select
-  using (institution_id = auth_institution_id() or auth_role() = 'super_admin');
+  using (institution_id = auth_institution_id() or auth_role() = 'super_admin' or triggered_by = auth.uid());
+  -- ^ triggered_by = auth.uid() added in day43: a public-mode user has
+  -- no fixed institution_id, so without this carve-out they could
+  -- never see their own emergency after it routed elsewhere.
 
 create policy "users can insert their own emergency"
   on emergencies for insert
