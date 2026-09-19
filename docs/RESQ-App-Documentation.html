@@ -386,9 +386,8 @@
       upgraded. The in-app tracking map (react-native-maps) and other native modules added recently work fine in
       Expo Go for development/testing, but shipping them to real users needs a new production build once quota
       allows.</li>
-  <li><strong>Pending database migration:</strong> <code>day42-code-attempt-throttle.sql</code> (the join/verification
-      code brute-force guard) needs to be run once in the Supabase SQL Editor — DDL changes can't be applied
-      automatically from this environment as a safety measure. Everything through day41 is confirmed applied.</li>
+  <li><strong>Database migrations:</strong> everything through day42 (the join/verification code brute-force guard)
+      is confirmed applied — verified live against the database, not just checked off from the migration files.</li>
   <li><strong>Hosting:</strong> deployed on Vercel's free Hobby tier at a default <code>*.vercel.app</code> URL, with
       no custom domain. Vercel's Hobby plan terms of service restrict commercial/for-profit use — a Pro plan and a
       custom domain are worth doing before treating this as an official, public-facing service.</li>
