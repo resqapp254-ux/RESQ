@@ -5,8 +5,18 @@
 // to) as it loads. Entry animation follows the spring-like overshoot
 // curve documented in CLAUDE.md — transform/opacity only, each row
 // delayed slightly behind the last for a staggered reveal.
+//
+// Anchored by a real Leaflet tracking viewport at the top (loaded
+// client-only — Leaflet reads `window` at import time and would
+// crash Next's server render otherwise).
+
+import dynamic from 'next/dynamic'
+
+const LiveTrackingMapWeb = dynamic(() => import('./LiveTrackingMapWeb'), { ssr: false })
 
 export default function LiveRoutingPanel({ routes, loading }) {
+  const hasLocated = routes.some((r) => r.lat != null && r.lng != null)
+
   return (
     <div
       style={{
@@ -19,6 +29,11 @@ export default function LiveRoutingPanel({ routes, loading }) {
         minHeight: 80
       }}
     >
+      {!loading && hasLocated && (
+        <div style={{ marginBottom: 14 }}>
+          <LiveTrackingMapWeb routes={routes} />
+        </div>
+      )}
       {loading && <p className="resq-subtle" style={{ margin: 0 }}>Loading active routes…</p>}
       {!loading && routes.length === 0 && <p className="resq-subtle" style={{ margin: 0 }}>No active emergencies right now.</p>}
       {routes.map((r, i) => (

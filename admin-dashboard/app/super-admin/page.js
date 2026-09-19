@@ -120,7 +120,7 @@ export default function SuperAdminPage() {
 
     const { data, error: fetchError } = await supabase
       .from('emergencies')
-      .select('id, emergency_type, claimed_by, created_at, institutions(name)')
+      .select('id, emergency_type, claimed_by, created_at, lat, lng, institutions(name)')
       .in('status', ['triggered', 'claimed', 'in_progress'])
       .order('created_at', { ascending: false })
       .limit(50)
