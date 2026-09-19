@@ -407,17 +407,28 @@ th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:
     const confirmedAfterDownload = window.confirm(
       `The archive for "${institution.name}" has been downloaded. Proceed with permanent deletion now?`
     )
-    setDeletingId(null)
-    if (!confirmedAfterDownload) return
-
-    const { error: deleteError } = await supabase
-      .from('institutions')
-      .delete()
-      .eq('id', institution.id)
-
-    if (deleteError) {
-      alert('Failed to delete: ' + deleteError.message)
+    if (!confirmedAfterDownload) {
+      setDeletingId(null)
       return
+    }
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const response = await fetch('/api/admin/delete-institution', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData.session?.access_token || ''}` },
+        body: JSON.stringify({ institutionId: institution.id })
+      })
+      const result = await response.json()
+      if (!response.ok || !result.success) {
+        alert('Failed to delete: ' + (result.error || 'Unknown error'))
+        return
+      }
+      if (result.accountsFailed > 0) {
+        alert(`Institution deleted, but ${result.accountsFailed} member account(s) could not be removed — check server logs.`)
+      }
+    } finally {
+      setDeletingId(null)
     }
     loadInstitutions()
   }
