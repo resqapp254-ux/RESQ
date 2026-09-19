@@ -1,4 +1,5 @@
 import '../styles/resq-design-system.css'
+import '../styles/tailwind.css'
 import { LanguageProvider } from '../lib/i18n/LanguageContext'
 import ConsentBanner from '../components/ConsentBanner'
 

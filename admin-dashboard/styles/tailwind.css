@@ -1,0 +1,7 @@
+/* styles/tailwind.css
+   Utility-only Tailwind layer (preflight disabled in tailwind.config.js)
+   — additive on top of resq-design-system.css, which stays the source
+   of truth for base/reset styles and the existing design tokens. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
