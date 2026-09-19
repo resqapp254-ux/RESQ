@@ -13,6 +13,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, Alert, Linking, Platform, Image } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAudioPlayer } from 'expo-audio'
+import { MotiView } from 'moti'
 import { supabase } from '../lib/supabase'
 import { registerForPushNotifications } from '../lib/notifications'
 import { pickMatchingServices } from '../lib/serviceDispatch'
@@ -291,9 +292,19 @@ export default function ResponderHomeScreen({ navigation }) {
             onPress={() => navigation.navigate('EmergencyDetail', { emergencyId: item.id })}
           >
             <View style={styles.cardHeader}>
-              <Text style={[styles.status, { color: STATUS_COLORS[item.status] }]}>
-                {STATUS_LABELS[item.status]}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                {!item.claimed_by && item.status === 'triggered' && (
+                  <MotiView
+                    from={{ opacity: 0.4, scale: 1 }}
+                    animate={{ opacity: 1, scale: 1.15 }}
+                    transition={{ type: 'timing', duration: 700, loop: true, repeatReverse: true }}
+                    style={styles.liveDot}
+                  />
+                )}
+                <Text style={[styles.status, { color: STATUS_COLORS[item.status] }]}>
+                  {STATUS_LABELS[item.status]}
+                </Text>
+              </View>
               <Text style={styles.time}>{new Date(item.created_at).toLocaleTimeString()}</Text>
             </View>
             <Text style={styles.location}>
@@ -367,6 +378,7 @@ const styles = StyleSheet.create({
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   status: { fontWeight: 'bold', fontSize: 16 },
+  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#ff2b2b' },
   time: { color: '#5c6480' },
   location: { color: '#9aa4bf' },
   badge: { marginTop: 6, fontSize: 12, color: '#e0b34d', fontWeight: 'bold' },

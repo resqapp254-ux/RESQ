@@ -12,8 +12,10 @@ import * as ImagePicker from 'expo-image-picker'
 import * as FileSystem from 'expo-file-system/legacy'
 import { decode } from 'base64-arraybuffer'
 import { useAudioPlayer } from 'expo-audio'
+import { MotiView } from 'moti'
 import { supabase } from '../lib/supabase'
 import { API_BASE_URL } from '../lib/config'
+import LiveTrackingMap from '../components/LiveTrackingMap'
 
 const EMERGENCY_TYPE_LABELS = {
   medical: '🏥 Medical',
@@ -433,12 +435,28 @@ export default function EmergencyDetailScreen({ route, navigation }) {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.header}>
         <Text style={styles.title}>Emergency</Text>
-        <Text style={styles.status}>{emergency.status.toUpperCase().replace('_', ' ')}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {emergency.status !== 'resolved' && (
+            <MotiView
+              from={{ opacity: 0.4 }}
+              animate={{ opacity: 1 }}
+              transition={{ type: 'timing', duration: 900, loop: true, repeatReverse: true }}
+              style={styles.liveDot}
+            />
+          )}
+          <Text style={styles.status}>{emergency.status.toUpperCase().replace('_', ' ')}</Text>
+        </View>
       </View>
 
       <View style={styles.typeBadge}>
         <Text style={styles.typeBadgeText}>{typeLabel}</Text>
       </View>
+
+      {emergency.lat != null && emergency.lng != null && (
+        <View style={{ marginBottom: 12 }}>
+          <LiveTrackingMap lat={emergency.lat} lng={emergency.lng} />
+        </View>
+      )}
 
       <Text style={styles.person}>
         Triggered by: {triggeredByProfile?.full_name || 'Unknown'}
@@ -606,6 +624,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { fontSize: 22, fontWeight: 'bold', color: '#f4f6fb' },
   status: { fontWeight: 'bold', color: '#ff2b2b' },
+  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#ff2b2b' },
   typeBadge: { alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.08)', paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, marginTop: 8 },
   chatNotice: { color: '#9aa4bf', fontSize: 13, textAlign: 'center', paddingVertical: 12 },
   typeBadgeText: { fontWeight: 'bold', fontSize: 13, color: '#f4f6fb' },

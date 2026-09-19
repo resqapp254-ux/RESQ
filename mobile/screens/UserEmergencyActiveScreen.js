@@ -14,8 +14,10 @@ import * as ImagePicker from 'expo-image-picker'
 import * as FileSystem from 'expo-file-system/legacy'
 import { decode } from 'base64-arraybuffer'
 import { useAudioRecorder, useAudioPlayer, AudioModule, RecordingPresets } from 'expo-audio'
+import { MotiView } from 'moti'
 import { supabase } from '../lib/supabase'
 import { API_BASE_URL } from '../lib/config'
+import LiveTrackingMap from '../components/LiveTrackingMap'
 
 const STATUS_LABELS = {
   triggered: 'Waiting for a responder...',
@@ -468,7 +470,23 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Text style={styles.statusHeader}>{STATUS_LABELS[emergency.status]}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        {!['resolved', 'cancelled'].includes(emergency.status) && (
+          <MotiView
+            from={{ opacity: 0.4 }}
+            animate={{ opacity: 1 }}
+            transition={{ type: 'timing', duration: 900, loop: true, repeatReverse: true }}
+            style={styles.liveDot}
+          />
+        )}
+        <Text style={styles.statusHeader}>{STATUS_LABELS[emergency.status]}</Text>
+      </View>
+
+      {emergency.lat != null && emergency.lng != null && (
+        <View style={{ marginBottom: 12 }}>
+          <LiveTrackingMap lat={emergency.lat} lng={emergency.lng} />
+        </View>
+      )}
 
       {!['resolved', 'cancelled'].includes(emergency.status) && (
         <TouchableOpacity style={styles.cancelButton} onPress={confirmCancel} disabled={cancelling}>
@@ -588,6 +606,7 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: '#05070d' },
   statusHeader: { fontSize: 20, fontWeight: 'bold', marginBottom: 12, color: '#ff2b2b' },
+  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#ff2b2b', marginBottom: 12 },
   cancelButton: { alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,128,128,0.4)', marginBottom: 12 },
   cancelButtonText: { color: '#ff8080', fontSize: 12, fontWeight: '600' },
   routedBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.06)', padding: 10, borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
