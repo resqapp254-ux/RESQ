@@ -6,10 +6,10 @@
 // a different `defaultMode`, so old links/bookmarks keep working.
 
 import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabaseClient'
-import GlobeBackground from './GlobeBackground'
-import RadarSweepBackground from './RadarSweepBackground'
+import AmbientGlowBackground from './AmbientGlowBackground'
 import LanguageSwitcher from './LanguageSwitcher'
 import PasswordInput from './PasswordInput'
 import { useTranslation } from '../lib/i18n/LanguageContext'
@@ -148,8 +148,7 @@ export default function AuthPage({ defaultMode = 'signin' }) {
 
   return (
     <div className="resq-shell">
-      <GlobeBackground />
-      <RadarSweepBackground />
+      <AmbientGlowBackground />
       <LanguageSwitcher />
       <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <div style={{ width: '100%', maxWidth: 440 }}>
@@ -192,7 +191,12 @@ export default function AuthPage({ defaultMode = 'signin' }) {
               <span className="resq-subtle" style={{ fontSize: 12 }}>Sign in, create an account, or reset your password</span>
             </button>
           ) : (
-          <div className="glass-card resq-tilt-card resq-fade-in" style={{ background: 'rgba(11,16,32,0.42)' }}>
+          <motion.div
+            initial={{ opacity: 0, y: 24, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: 'spring', mass: 1, stiffness: 220, damping: 26 }}
+            className="rounded-2xl border border-zinc-800/80 bg-zinc-900/60 p-6 shadow-2xl backdrop-blur-xl"
+          >
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
             <div style={{ width: 100, height: 100 }}>
               <img src="/icon.svg" alt="RESQ" width="100" height="100" />
@@ -226,8 +230,15 @@ export default function AuthPage({ defaultMode = 'signin' }) {
             ))}
           </div>
 
+          <AnimatePresence mode="wait">
           {mode === 'signin' && (
-            <div key="signin" className="resq-fade-in">
+            <motion.div
+              key="signin"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+            >
               <h1 className="resq-h1" style={{ fontSize: 26, marginBottom: 16 }}>{t('signIn')}</h1>
               <form onSubmit={handleSignIn}>
                 <div style={{ marginBottom: 12 }}>
@@ -254,11 +265,17 @@ export default function AuthPage({ defaultMode = 'signin' }) {
                   {loading ? t('signingIn') : t('signInButton')}
                 </button>
               </form>
-            </div>
+            </motion.div>
           )}
 
           {mode === 'signup' && (
-            <div key="signup" className="resq-fade-in">
+            <motion.div
+              key="signup"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+            >
               <h1 className="resq-h1" style={{ fontSize: 26, marginBottom: 8 }}>{t('createAccountTitle')}</h1>
               <p className="resq-subtle" style={{ margin: '0 0 16px' }}>{t('createAccountSubtitle')}</p>
               <form onSubmit={handleSignUp}>
@@ -287,11 +304,17 @@ export default function AuthPage({ defaultMode = 'signin' }) {
                   {loading ? t('creatingAccount') : t('createAccountButton')}
                 </button>
               </form>
-            </div>
+            </motion.div>
           )}
 
           {mode === 'forgot' && (
-            <div key="forgot" className="resq-fade-in">
+            <motion.div
+              key="forgot"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+            >
               <h1 className="resq-h1" style={{ fontSize: 26, marginBottom: 8 }}>{t('resetPasswordTitle')}</h1>
               <p className="resq-subtle" style={{ margin: '0 0 16px' }}>{t('resetPasswordSubtitle')}</p>
               <form onSubmit={handleForgot}>
@@ -302,9 +325,10 @@ export default function AuthPage({ defaultMode = 'signin' }) {
                   {loading ? t('sending') : t('sendResetLink')}
                 </button>
               </form>
-            </div>
+            </motion.div>
           )}
-          </div>
+          </AnimatePresence>
+          </motion.div>
           )}
         </div>
       </div>
