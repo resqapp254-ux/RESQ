@@ -42,6 +42,33 @@ export default function InstitutionAdminPage() {
     checkAccessAndLoad()
   }, [])
 
+  // Live updates — this page previously only ever loaded emergencies
+  // once, on mount. A new SOS, a claim, or a resolution anywhere in
+  // the institution never appeared until the admin manually reloaded
+  // the page. Mirrors the same pattern already used on /user and
+  // /unit-admin: any change to this institution's emergencies re-runs
+  // the same fetch that populates the active/resolved lists.
+  useEffect(() => {
+    if (!institution?.id) return
+
+    const channel = supabase
+      .channel('institution-admin-emergencies-' + institution.id)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'emergencies', filter: `institution_id=eq.${institution.id}` },
+        () => {
+          loadEmergencies(institution)
+          loadUnitStats(institution, responders, services)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [institution?.id, responders, services])
+
   async function checkAccessAndLoad() {
     const { data: sessionData } = await supabase.auth.getSession()
     if (!sessionData.session) {

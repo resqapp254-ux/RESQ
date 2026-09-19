@@ -56,6 +56,30 @@ export default function UnitAdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Live updates so a new/claimed/resolved emergency shows up without
+  // needing a manual refresh — this is the unit's own "where the
+  // siren would wail" view of its own routed cases. Previously created
+  // inline inside load() with no cleanup, leaking a subscription (and
+  // risking state updates on an unmounted page) every time this page
+  // was visited.
+  useEffect(() => {
+    if (!institutionId || !serviceId) return
+
+    const channel = supabase
+      .channel('unit-admin-emergencies-' + serviceId)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'emergencies', filter: `institution_id=eq.${institutionId}` },
+        () => loadLiveEmergencies(institutionId, serviceId)
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [institutionId, serviceId])
+
   async function load() {
     const { data: sessionData } = await supabase.auth.getSession()
     if (!sessionData.session) {
@@ -95,18 +119,6 @@ export default function UnitAdminPage() {
       })
       setInstitutionId(service.institution_id)
       await loadLiveEmergencies(service.institution_id, profile.service_id)
-
-      // Live updates so a new/claimed/resolved emergency shows up
-      // without needing a manual refresh — this is the unit's own
-      // "where the siren would wail" view of its own routed cases.
-      supabase
-        .channel('unit-admin-emergencies-' + profile.service_id)
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'emergencies', filter: `institution_id=eq.${service.institution_id}` },
-          () => loadLiveEmergencies(service.institution_id, profile.service_id)
-        )
-        .subscribe()
     }
 
     await loadResponders(profile.service_id)

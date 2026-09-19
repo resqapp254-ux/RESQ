@@ -44,12 +44,38 @@ export default function SuperAdminPage() {
   const [showRouting, setShowRouting] = useState(false)
   const [loadingRouting, setLoadingRouting] = useState(false)
   const [liveRoutes, setLiveRoutes] = useState([])
+  const [openReportCount, setOpenReportCount] = useState(0)
   const routingRequestRef = useRef(0)
   const router = useRouter()
 
   useEffect(() => {
     checkAccessAndLoad()
   }, [])
+
+  // Live updates — this dashboard previously only ever loaded the
+  // active-emergency count and per-institution summary once, on
+  // mount, so a new SOS anywhere never moved the "🚨 LIVE" badge or
+  // the per-row counts until the page was manually reloaded.
+  useEffect(() => {
+    if (!authorized) return
+
+    const channel = supabase
+      .channel('super-admin-emergencies')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'emergencies' },
+        () => {
+          loadActiveEmergencyCount()
+          loadEmergencySummary()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authorized])
 
   async function checkAccessAndLoad() {
     const { data: sessionData } = await supabase.auth.getSession()
@@ -68,6 +94,15 @@ export default function SuperAdminPage() {
     await loadInstitutions()
     await loadActiveEmergencyCount()
     await loadEmergencySummary()
+    await loadOpenReportCount()
+  }
+
+  async function loadOpenReportCount() {
+    const { count } = await supabase
+      .from('responder_reports')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'open')
+    setOpenReportCount(count || 0)
   }
 
   async function loadInstitutions() {
@@ -510,6 +545,9 @@ th{text-align:left;padding:6px 12px 6px 0;color:#555;width:220px;vertical-align:
           </Link>
           <Link href="/super-admin/terminal" className="resq-btn-secondary" style={{ textDecoration: 'none' }}>
             🖥 Terminal
+          </Link>
+          <Link href="/super-admin/reports" className="resq-btn-secondary" style={{ textDecoration: 'none' }}>
+            🚩 Reports{openReportCount > 0 && <span className="resq-badge resq-badge-open" style={{ marginLeft: 6 }}>{openReportCount}</span>}
           </Link>
           <Link href="/super-admin/playground" className="resq-btn-secondary" style={{ textDecoration: 'none' }}>
             🧩 Playground

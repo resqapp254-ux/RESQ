@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { supabase } from '../../lib/supabaseClient'
 import EmergencyPulseBackground from '../../components/EmergencyPulseBackground'
 import RadarSweepBackground from '../../components/RadarSweepBackground'
@@ -16,6 +17,8 @@ import MediaAttach from '../../components/MediaAttach'
 import MyInstitutionsPanel from '../../components/MyInstitutionsPanel'
 import IdentityPrompt from '../../components/IdentityPrompt'
 import { EMERGENCY_TYPE_COLORS } from '../../lib/emergencyTypeColors'
+
+const LiveTrackingMapWeb = dynamic(() => import('../../components/LiveTrackingMapWeb'), { ssr: false })
 
 const EMERGENCY_TYPES = [
   { key: 'medical', translationKey: 'medical', emoji: '🏥', color: EMERGENCY_TYPE_COLORS.medical },
@@ -82,6 +85,7 @@ export default function UserPage() {
   const [askingAi, setAskingAi] = useState(false)
   const chatRecorderRef = useRef(null)
   const chatRecordingTimeoutRef = useRef(null)
+  const refreshRequestRef = useRef(0)
   const [locationBusy, setLocationBusy] = useState(false)
   const [triggerBusy, setTriggerBusy] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
@@ -105,7 +109,7 @@ export default function UserPage() {
   // Wails until someone claims it — once claimed_by is set (by any
   // responder on the institution), the alarm goes quiet for everyone.
   const hasActiveAlert = isResponderView && activeEmergencies.some((e) => !e.claimed_by && e.status !== 'resolved')
-  const { muted: sirenMuted, setMuted: setSirenMuted } = useEmergencySiren(hasActiveAlert)
+  const { muted: sirenMuted, setMuted: setSirenMuted, unlocked: sirenUnlocked } = useEmergencySiren(hasActiveAlert)
 
   useEffect(() => {
     async function load() {
@@ -254,10 +258,19 @@ export default function UserPage() {
     const institutionIdValue = institutionIdArg || institutionId
     const serviceIdValue = serviceIdArg || myServiceId
 
+    // Realtime events (and manual calls after sending a message,
+    // claiming, etc.) can overlap — several of these can be in flight
+    // at once, each with multiple sequential awaits. Without this
+    // guard, a slower/older call finishing last would overwrite the
+    // real current state with stale data, which is exactly what could
+    // make an active claimed emergency (and everything gated on it,
+    // like the chat/voice-note panel) flash away and reappear.
+    const requestId = ++refreshRequestRef.current
+
     if (roleName === 'user') {
       const { data: open } = await supabase
         .from('emergencies')
-        .select('id, emergency_type, status, created_at, claimed_by, ai_advice_to_user')
+        .select('id, emergency_type, status, created_at, claimed_by, ai_advice_to_user, institution_id')
         .eq('triggered_by', userId)
         .in('status', ['triggered', 'claimed', 'in_progress'])
         .order('created_at', { ascending: false })
@@ -271,12 +284,28 @@ export default function UserPage() {
         .order('resolved_at', { ascending: false })
         .limit(10)
 
+      if (requestId !== refreshRequestRef.current) return // a newer refresh has since started
+
       setActiveEmergencies(open || [])
       setResolvedEmergencies(resolved || [])
 
       if (open && open.length > 0 && open[0].ai_advice_to_user) {
         setCurrentEmergency(open[0])
         setCurrentAdvice(open[0].ai_advice_to_user)
+      }
+
+      // Where the emergency actually landed — the trigger response
+      // already returns this once, but it was never refetched, so
+      // reloading the page (or the realtime refresh loop picking up a
+      // claim/status change) silently lost "routed to <institution>"
+      // until the whole flow was restarted from scratch.
+      if (open && open.length > 0 && open[0].institution_id) {
+        const { data: inst } = await supabase
+          .from('institutions')
+          .select('name, logo_url, lat, lng, contact_phone')
+          .eq('id', open[0].institution_id)
+          .maybeSingle()
+        if (requestId === refreshRequestRef.current && inst) setRoutedInstitution(inst)
       }
       return
     }
@@ -358,6 +387,8 @@ export default function UserPage() {
       }
 
       const { data: resolved } = await resolvedQuery
+
+      if (requestId !== refreshRequestRef.current) return // a newer refresh has since started
 
       setActiveEmergencies(open || [])
       setResolvedEmergencies(resolved || [])
@@ -1034,14 +1065,27 @@ export default function UserPage() {
             <span>
               <strong>{activeEmergencies.length}</strong> {activeEmergencies.length === 1 ? t('activeEmergencyBanner') : t('activeEmergenciesBanner')}
             </span>
-            <button
-              type="button"
-              className="resq-btn-secondary resq-siren-mute"
-              onClick={() => setSirenMuted((m) => !m)}
-              aria-pressed={sirenMuted}
-            >
-              {sirenMuted ? '🔇 ' + t('unmuteSiren') : '🔊 ' + t('muteSiren')}
-            </button>
+            {!sirenUnlocked ? (
+              // Browsers block audio until the page has been clicked/
+              // tapped at least once — without this, the alert banner
+              // shows as if the siren should be sounding, but nothing
+              // actually plays, with no indication why. Any click
+              // anywhere unlocks it (see useEmergencySiren), but this
+              // button makes that obvious instead of relying on an
+              // invisible page-wide listener.
+              <button type="button" className="resq-btn-primary resq-siren-mute resq-siren-unlock-pulse">
+                🔈 Tap to enable siren sound
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="resq-btn-secondary resq-siren-mute"
+                onClick={() => setSirenMuted((m) => !m)}
+                aria-pressed={sirenMuted}
+              >
+                {sirenMuted ? '🔇 ' + t('unmuteSiren') : '🔊 ' + t('muteSiren')}
+              </button>
+            )}
           </div>
         )}
 
@@ -1186,12 +1230,24 @@ export default function UserPage() {
                     </p>
 
                     {routedInstitution?.name && (
-                      <div className="glass-card resq-fade-in" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 12, marginBottom: 12 }}>
-                        {routedInstitution.logo_url && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={routedInstitution.logo_url} alt={`${routedInstitution.name} logo`} width={28} height={28} style={{ borderRadius: 6, objectFit: 'cover' }} />
+                      <div className="glass-card resq-fade-in" style={{ padding: 12, marginBottom: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          {routedInstitution.logo_url && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={routedInstitution.logo_url} alt={`${routedInstitution.name} logo`} width={28} height={28} style={{ borderRadius: 6, objectFit: 'cover' }} />
+                          )}
+                          <span style={{ fontSize: 13 }}>Routed to <strong>{routedInstitution.name}</strong> — they will respond to you.</span>
+                        </div>
+                        {routedInstitution.contact_phone && (
+                          <a href={`tel:${routedInstitution.contact_phone}`} className="resq-subtle" style={{ display: 'inline-block', marginTop: 8, fontSize: 12 }}>
+                            📞 Call {routedInstitution.name} directly: {routedInstitution.contact_phone}
+                          </a>
                         )}
-                        <span style={{ fontSize: 13 }}>Routed to <strong>{routedInstitution.name}</strong> — they will respond to you.</span>
+                        {routedInstitution.lat != null && routedInstitution.lng != null && (
+                          <div style={{ marginTop: 10 }}>
+                            <LiveTrackingMapWeb routes={[{ id: 'routed', lat: routedInstitution.lat, lng: routedInstitution.lng }]} />
+                          </div>
+                        )}
                       </div>
                     )}
 
