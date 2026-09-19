@@ -191,8 +191,20 @@ export default function AuthPage({ defaultMode = 'signin' }) {
                   <animate attributeName="opacity" values="0.3;0;0.3" dur="2.4s" repeatCount="indefinite" />
                 </circle>
               </svg>
-              <span style={{ color: 'var(--resq-text-primary)', fontWeight: 700, fontSize: 15 }}>Tap to open RESQ Access Kit</span>
-              <span className="resq-subtle" style={{ fontSize: 12 }}>Sign in, create an account, or reset your password</span>
+              <span
+                style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                  background: 'rgba(5,7,13,0.72)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+                  borderRadius: 10, padding: '8px 18px'
+                }}
+              >
+                {/* Solid backdrop behind this text specifically — the radar
+                    sweep and globe skyline both pass directly behind this
+                    spot, and plain text here had no contrast guarantee
+                    against whatever animated element was mid-pass. */}
+                <span style={{ color: 'var(--resq-text-primary)', fontWeight: 700, fontSize: 15 }}>Tap to open RESQ Access Kit</span>
+                <span className="resq-subtle" style={{ fontSize: 12 }}>Sign in, create an account, or reset your password</span>
+              </span>
             </button>
           ) : (
           <motion.div
