@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RESQ — App Documentation</title>
+<style>
+  :root {
+    --bg: #05070d; --card: #10142090; --border: #ffffff22; --text: #f4f6fb; --subtle: #9aa4bf;
+    --red: #ff2b2b; --amber: #e0b34d; --green: #3fe08a; --cyan: #35d0e8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: linear-gradient(180deg, #05070d 0%, #0a0e1a 100%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0; padding: 0 0 80px;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 48px 24px; }
+  header { text-align: center; margin-bottom: 48px; }
+  header h1 { font-size: 36px; margin-bottom: 6px; }
+  header p { color: var(--subtle); font-size: 15px; }
+  h2 { font-size: 24px; margin-top: 56px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+  h3 { font-size: 18px; margin-top: 28px; color: #cfe0ff; }
+  h4 { font-size: 15px; margin-top: 20px; color: var(--cyan); }
+  p, li { color: #d7dbe8; font-size: 14.5px; }
+  .subtle { color: var(--subtle); }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13.5px; }
+  th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #ffffff10; color: #cfe0ff; }
+  .card { background: #ffffff08; border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin: 16px 0; }
+  code { background: #ffffff14; padding: 1px 6px; border-radius: 4px; font-size: 13px; }
+  .toc { columns: 2; column-gap: 32px; }
+  .toc a { color: #7fe3f2; text-decoration: none; display: block; padding: 3px 0; font-size: 14px; }
+  .toc a:hover { text-decoration: underline; }
+  .note { border-left: 3px solid var(--cyan); background: #ffffff08; padding: 10px 16px; border-radius: 0 8px 8px 0; margin: 14px 0; font-size: 13.5px; }
+  .note.warn { border-left-color: var(--amber); }
+  .badge-new { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #05070d; background: var(--green); border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: middle; }
+
+  /* ---- flow diagram ---- */
+  .flow { display: flex; flex-direction: column; align-items: center; gap: 0; margin: 24px 0; }
+  .box {
+    border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px;
+    background: #ffffff0a; font-size: 13.5px; max-width: 480px; text-align: left;
+  }
+  .box strong { display: block; margin-bottom: 4px; font-size: 14px; }
+  .box.red { border-color: #ff2b2b88; }
+  .box.amber { border-color: #e0b34d88; }
+  .box.green { border-color: #3fe08a88; }
+  .box.cyan { border-color: #35d0e888; }
+  .arrow-down { font-size: 20px; color: #ffffff55; margin: 2px 0; }
+  .arrow-right { font-size: 20px; color: #ffffff55; padding: 0 6px; align-self: center; }
+  .row { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; align-items: flex-start; }
+  .lane-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--subtle); margin-bottom: 6px; text-align: center; }
+  .lane { display: flex; flex-direction: column; align-items: center; }
+
+  footer { text-align: center; margin-top: 60px; color: var(--subtle); font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>🛡 RESQ — Emergency Response App</h1>
+  <p>Full system documentation · generated September 18, 2026 · updated September 19, 2026</p>
+</header>
+
+<div class="card toc">
+  <a href="#overview">1. Overview</a>
+  <a href="#roles">2. Roles &amp; Accounts</a>
+  <a href="#management-flow">3. Management Flow Diagram</a>
+  <a href="#institution-types">4. Institution Types</a>
+  <a href="#emergency-flow">5. Emergency Response Flow Diagram</a>
+  <a href="#dashboards">6. Dashboards, Screen by Screen</a>
+  <a href="#permissions">7. Permission Model</a>
+  <a href="#features">8. Key Features</a>
+  <a href="#thirdparty">9. Third-Party Services</a>
+  <a href="#security">10. Security &amp; Data</a>
+  <a href="#status">11. Current Status &amp; Known Gaps</a>
+</div>
+
+<h2 id="overview">1. Overview</h2>
+<p>
+  RESQ is an emergency-dispatch platform with a Next.js web admin dashboard and an Expo/React Native mobile app,
+  backed by Supabase (Postgres, Auth, Realtime, Storage) and deployed on Vercel. It routes an emergency report —
+  triggered from the app, SMS, USSD, or a phone call — to the responder(s) best placed to handle it, based on the
+  reporting person's institution (or, for the general public, the nearest institution that opted in), the emergency
+  type, and location.
+</p>
+<p>
+  RESQ is a <strong>routing and coordination tool</strong>. It is not a replacement for national emergency services
+  where those are directly reachable and appropriate.
+</p>
+
+<h2 id="roles">2. Roles &amp; Accounts</h2>
+<table>
+  <tr><th>Role</th><th>Set up by</th><th>What they do</th></tr>
+  <tr><td><strong>Super Admin</strong></td><td>The RESQ team, directly in the database</td>
+      <td>Creates institutions, sets subscription tier, issues the one-time verification code, suspends/deletes
+          institutions, sees every institution's contacts and case counts, sees any institution's responder
+          details.</td></tr>
+  <tr><td><strong>Institution Admin</strong></td><td>Super admin (creates the login)</td>
+      <td>Verifies the institution, signs the service agreement, chooses enabled emergency types and identity
+          requirements, sets the institution's own coordinates (if public), adds internal responders, registers
+          partner units and their dashboard logins.</td></tr>
+  <tr><td><strong>Unit Admin</strong> (partner primary responder)</td><td>Institution admin (creates the login for a
+      specific partner unit)</td>
+      <td>Logs into its own <code>/unit-admin</code> dashboard, sets <em>its own</em> coordinates and handled
+          emergency types, adds/removes its own responders (primary or secondary), sees its own live emergency
+          feed and case count.</td></tr>
+  <tr><td><strong>Responder — Primary (full)</strong></td><td>Institution admin or unit admin</td>
+      <td>Claims, responds to, and resolves emergencies routed to them. "Internal" primary responders (no partner
+          unit link) receive every emergency type the institution enables unless narrowed to specific types via
+          <code>responder_emergency_types</code>. "Partner" primary responders only receive what matches their
+          unit's type + distance.</td></tr>
+  <tr><td><strong>Responder — Secondary (view_only)</strong></td><td>Institution admin or unit admin</td>
+      <td>Sees the full live feed, every timestamp, and who claimed/should claim — cannot claim or resolve unless
+          switched to full. Can chat with and call any primary responder in the institution directly, e.g. to chase
+          up a delay.</td></tr>
+  <tr><td><strong>User — Private</strong></td><td>Self-registers, enters an institution code</td>
+      <td>Only sees the emergency types that institution enabled. Can belong to more than one institution and
+          switch between them.</td></tr>
+  <tr><td><strong>User — Public</strong></td><td>Self-registers, no code</td>
+      <td>Every trigger is routed to the nearest active public institution (or company/unit within one) that
+          handles that type, and the app tells them who it was routed to.</td></tr>
+</table>
+
+<h2 id="management-flow">3. Management Flow Diagram</h2>
+<p class="subtle">Who sets up whom, top to bottom.</p>
+<div class="flow">
+  <div class="box red"><strong>🛡 Super Admin</strong>Creates the institution + its admin login, issues the verification code.</div>
+  <div class="arrow-down">↓</div>
+  <div class="box amber"><strong>🏢 Institution Admin</strong>Enters the code, signs the contract, sets enabled types / identity rules / own coordinates.</div>
+  <div class="arrow-down">↓</div>
+  <div class="row">
+    <div class="lane">
+      <div class="lane-label">Internal team</div>
+      <div class="box"><strong>🧑‍⚕️ Internal Primary Responder(s)</strong>No coordinates. Receives every emergency for the whole institution, unless narrowed to specific types.</div>
+    </div>
+    <div class="lane">
+      <div class="lane-label">Partner units</div>
+      <div class="box green"><strong>🏥 Partner Unit</strong>Registered by the institution admin, who creates its dashboard login.</div>
+      <div class="arrow-down">↓</div>
+      <div class="box green"><strong>🔑 Unit Admin</strong>Logs in, sets <em>its own</em> coordinates + handled types — never set by the institution admin.</div>
+      <div class="arrow-down">↓</div>
+      <div class="box"><strong>Unit's own Primary / Secondary Responders</strong>Only receive emergencies matching this unit's type + distance.</div>
+    </div>
+    <div class="lane">
+      <div class="lane-label">Oversight only</div>
+      <div class="box"><strong>👁 Secondary Responder(s)</strong>Sees the feed + every timestamp, cannot claim unless given full permission. Chats/calls any primary responder directly.</div>
+    </div>
+  </div>
+  <div class="arrow-down">↓</div>
+  <div class="row">
+    <div class="box"><strong>🔒 Private Users</strong>Enter the institution's code, see only its enabled types.</div>
+    <div class="box"><strong>🌐 Public Users</strong>No code — routed to the nearest active public institution/company matching the type.</div>
+  </div>
+</div>
+
+<h2 id="institution-types">4. Institution Types</h2>
+<table>
+  <tr><th>Type</th><th>Set by</th><th>Behaviour</th></tr>
+  <tr><td><strong>Private</strong></td><td>Default (super admin can flip visibility)</td>
+      <td>Reachable only by users who enter its institution code. Not location-matched.</td></tr>
+  <tr><td><strong>Public — single service</strong></td><td>Institution admin, with only internal responders (no
+      partner units)</td>
+      <td>Serves the general public directly. Its own coordinates + enabled types decide who gets routed to it.</td></tr>
+  <tr><td><strong>Public — company</strong></td><td>Institution admin, with one or more partner units (each with
+      their own unit admin)</td>
+      <td>Same structure as above, plus its own partner units (hospitals, police posts, etc.), each independently
+          routable by their own coordinates and type once a public emergency lands on the parent institution.</td></tr>
+</table>
+<p class="subtle">
+  There is no separate database flag for "single service" vs "company" — it's simply whether the institution has
+  registered any partner units. Both are still governed by the same <code>visibility = 'public'</code> flag and
+  <code>enabled_emergency_types</code> the institution admin chose.
+</p>
+
+<h2 id="emergency-flow">5. Emergency Response Flow Diagram</h2>
+<p class="subtle">From the moment a user triggers an SOS to resolution, every branch.</p>
+<div class="note">
+  <strong>Responder-availability gate <span class="badge-new">hardened</span>:</strong> before any emergency record
+  is created — from the app, SMS, or USSD — RESQ checks whether an active, full-permission responder actually
+  exists for that specific emergency type (an institution-wide responder whose <code>responder_emergency_types</code>
+  covers it, or a partner unit matching by type + distance with at least one non-view-only responder). If nobody
+  qualifies, the report is rejected before it's ever written to the database — a public user is told no public
+  responder is currently available for that type; a private user is told their institution has no one available and
+  to contact them directly or call local emergency services. This is type-specific: an institution with only a
+  medical responder can no longer silently swallow a GBV or fire report. Every rejection is logged as
+  <code>trigger_blocked_no_responder</code>, visible live in the Super Admin Terminal.
+</div>
+<div class="flow">
+  <div class="box red"><strong>🆘 User triggers an emergency</strong>Picks a type (only ones their institution/network enabled), location captured automatically.</div>
+  <div class="arrow-down">↓</div>
+  <div class="box"><strong>🚧 Availability gate</strong>Is there an active, permitted responder for this exact type? If not, rejected here — nothing is created, nobody is notified into a void.</div>
+  <div class="arrow-down">↓</div>
+  <div class="box"><strong>📍 Routing</strong>Private → their institution. Public → nearest active public institution/company matching that type (50km radius, nearest wins).</div>
+  <div class="arrow-down">↓</div>
+  <div class="box"><strong>📣 Notify eligible responders</strong>Internal primary responders whose type list matches (always, unless shift-scheduled otherwise) + any partner unit whose type &amp; distance match. Secondary responders notified too, flagged view-only.</div>
+  <div class="arrow-down">↓</div>
+  <div class="box cyan"><strong>🩺 AI safety advice sent to the user</strong>Independent of claiming — guidance arrives immediately while they wait.</div>
+  <div class="arrow-down">↓</div>
+  <div class="row">
+    <div class="box amber"><strong>Status: triggered</strong>Unclaimed. Visible on every relevant dashboard, down to the responder app (siren), with a neon-crimson live pulse on the alert badge.</div>
+    <div class="arrow-right">→</div>
+    <div class="box"><strong>Secondary responder view</strong>Sees who's eligible to claim, tap-to-call. Chases the primary responder if slow.</div>
+  </div>
+  <div class="arrow-down">↓</div>
+  <div class="box green"><strong>✋ A primary responder claims</strong>Status → claimed. Timestamp recorded, single-claim lock prevents a second responder taking it.</div>
+  <div class="arrow-down">↓</div>
+  <div class="box"><strong>🚑 Status: in_progress</strong>Chat (text/photo/voice) between user and responder, live location every ~15s on an in-app tracking map, secondary responders keep watching.</div>
+  <div class="arrow-down">↓</div>
+  <div class="row">
+    <div class="box green"><strong>✅ Resolved</strong>Responder marks resolved. User can rate. Counted in weekly report + case history.</div>
+    <div class="box"><strong>✖ Cancelled</strong>User/responder cancels — e.g. false alarm.</div>
+  </div>
+</div>
+
+<h2 id="dashboards">6. Dashboards, Screen by Screen</h2>
+<h3>Super Admin (web, /super-admin)</h3>
+<ul>
+  <li>Institution table: name (inline edit), logo upload, status, visibility toggle (with public single-service vs.
+      company type and optional coordinates), subscription tier, active/resolved emergency counts with a live "🚨
+      LIVE" neon-pulse badge, institution code, verification code/QR, contract download, suspend/reactivate, delete
+      (with a pre-download JSON archive).</li>
+  <li>"👥 Responders" drill-down per institution row — shows every responder/admin grouped by partner unit.</li>
+  <li>"📊 System Flow" — the two diagrams in this document, live in the dashboard.</li>
+  <li>"🛰 Live Routing" <span class="badge-new">new</span> — every currently active emergency and which institution
+      it was routed to, anchored around a real Leaflet map with a pulsing marker per active case, not just a text
+      list.</li>
+  <li>"🖥 Terminal" <span class="badge-new">new</span> — <code>/super-admin/terminal</code>: a live Activity Log feed
+      (sign-ins, failed auth, new users, rate-limited requests, blocked triggers with no available responder,
+      institutions/responders created) plus a Users &amp; Sessions tab (every account, last sign-in, banned/deactivated
+      count).</li>
+  <li>"🧩 Playground" and "🎛 Animation Lab" — isolated component/motion audit pages, not part of the live product
+      surface.</li>
+  <li>"⬇ Download Backup" — a full JSON snapshot of all data.</li>
+  <li>"⬇ All Solved Emergencies" — every resolved case across every institution in one file: type, location
+      coordinates, every timestamp, full chat history with media, and the responder's rating.</li>
+  <li>Dashboard cards now use a glassmorphic, spring-physics stagger-in on load (Framer Motion) instead of a plain
+      fade, matching the rest of the modernized UI.</li>
+</ul>
+<h3>Institution Admin (web, /institution-admin)</h3>
+<ul>
+  <li>Active emergencies (all non-resolved statuses) and recently resolved, with claimant name/phone and every
+      timestamp, plus an incident-by-type chart.</li>
+  <li>"✅ Mark Resolved" on any active emergency, claimed or not — lets the admin close a stuck case even if the
+      responder who claimed it (or should have) is unresponsive. Unit admins have the same button for their own
+      unit's cases.</li>
+  <li>Responders grouped by team: institution-wide, then per partner unit — each unit shows live emergency count,
+      responders on duty, cases solved, cases delayed.</li>
+  <li><code>/institution-admin/services</code> — register partner units, create/revoke their dashboard login.</li>
+  <li><code>/institution-admin/add-responder</code> — add a primary or secondary responder, optionally linked to a
+      partner unit, optionally narrowed to specific emergency types.</li>
+  <li><code>/institution-admin/settings</code> — enabled emergency types, identity requirements, and the
+      institution's own location for public routing.</li>
+  <li><code>/institution-admin/reports</code>, <code>/case-reports</code> — responder conduct reports (including
+      user-submitted chat-message reports), downloadable case reports, and "⬇ All Solved Emergencies" (all-time,
+      this institution's internal responders plus every partner unit combined).</li>
+</ul>
+<h3>Unit Admin (web, /unit-admin)</h3>
+<ul>
+  <li>Live emergencies routed to this unit specifically (realtime).</li>
+  <li>Unit settings: name, type, own coordinates ("use my location"), handled emergency types, contact details.</li>
+  <li>Its own responders: add, remove, switch primary/secondary.</li>
+  <li>"⬇ Solved Emergencies" — every case this unit's own responders have resolved, all-time.</li>
+</ul>
+<h3>Responder (mobile app + web /user)</h3>
+<ul>
+  <li>Live feed of emergencies routed to them, claim/resolve, chat, "who can claim this" for unclaimed cases with
+      tap-to-call, a pulsing live indicator on any still-open case.</li>
+  <li>An in-app tracking map (react-native-maps on mobile, Leaflet on web) on the emergency detail screen — no more
+      "open in Google Maps" as the only option.</li>
+  <li>Team chat with every other responder/admin in the institution.</li>
+  <li>Hold-to-report a chat message to the institution admin if it's abusive or unsafe.</li>
+</ul>
+<h3>User (mobile app + web /user)</h3>
+<ul>
+  <li>Trigger an SOS, see AI guidance immediately, see who it was routed to (only if a responder is actually
+      available for that type — otherwise told so before anything is sent), chat with the responder, rate after
+      resolution.</li>
+  <li>An in-app live tracking map on the active-emergency screen, with a pulsing status indicator while the case is
+      still open.</li>
+  <li>Chat media works both directions, mobile and web: photo, video, and voice note, sent by either the user or the
+      responder, all visible to both. One-time scene evidence (a photo or video attached at trigger time, separate
+      from the chat) is also supported on both platforms.</li>
+  <li>"✕ Cancel this emergency" — available any time before it's resolved, with a warning that no responder will come
+      if they go through with it, in case they'd rather wait a little longer instead.</li>
+  <li>"🤖 Ask AI" — a quick-question box in the chat, usable by the reporting user or by any responder/admin watching
+      the case. The AI only answers when confident it can do so briefly and safely; otherwise it stays silent and
+      the question sits in the shared chat for the primary responder to answer once they're on the case.</li>
+  <li>Hold-to-report a chat message from a responder if it's abusive or unsafe.</li>
+  <li>"Delete My Account" <span class="badge-new">new</span> — self-service account deletion for user and responder
+      roles, from Settings on both web and mobile.</li>
+  <li>An emergency can no longer be created if nobody would actually receive and be able to claim it — checked, per
+      emergency type, before the report is filed, for every trigger channel (app, SMS, USSD), for both private
+      (institution-code) and public accounts.</li>
+</ul>
+
+<h2 id="permissions">7. Permission Model</h2>
+<p>Enforced at two independent layers, so a bypassed UI can never grant more access than intended:</p>
+<ol>
+  <li><strong>Row-Level Security (Postgres/Supabase)</strong> — every table's policies check the caller's role and
+      institution/unit via <code>auth_role()</code> / <code>auth_institution_id()</code> / <code>auth_service_id()</code>.</li>
+  <li><strong>API routes</strong> (service-role, server-side) — re-check role, institution, and (for claim/resolve)
+      <code>responder_permission</code> before writing, independent of RLS.</li>
+</ol>
+<p>Notable protections added during hardening:</p>
+<ul>
+  <li>A secondary (<code>view_only</code>) responder is blocked from claiming both in the claim API route and again
+      at the RLS/trigger level — a bypassed UI still can't claim.</li>
+  <li>Column-level protection on <code>profiles</code> and <code>institutions</code> (via triggers/grants) stops a
+      logged-in user from writing security-sensitive columns (role, institution, subscription tier, status, etc.)
+      even on a row they otherwise have UPDATE access to.</li>
+  <li><span class="badge-new">new</span> Institution join codes and institution-admin verification codes are now
+      throttled at the database layer (8 failed guesses per rolling 5-minute window, per account) — this holds no
+      matter which client calls the RPC (web, mobile, or a raw REST request), since it's enforced inside the
+      Postgres function itself, not just in application code.</li>
+  <li><span class="badge-new">new</span> Cron endpoints (<code>/api/cron/escalate</code>, <code>/api/cron/weekly-report</code>)
+      compare their shared secret using a constant-time comparison, closing a timing side-channel that a plain
+      string comparison leaves open.</li>
+</ul>
+
+<h2 id="features">8. Key Features</h2>
+<ul>
+  <li>AI-generated immediate safety guidance per emergency type (Groq).</li>
+  <li>SMS / USSD / voice-call triggering for users without the app (Africa's Talking) — now gated by the same
+      responder-availability check as the app.</li>
+  <li>Live chat (text, photo, voice note) between the reporting user and the responder, and a separate institution-
+      wide team chat, with in-chat abuse reporting.</li>
+  <li>Live location updates (~15s) while an emergency is active, shown on an in-app tracking map (Leaflet on web,
+      react-native-maps on mobile) rather than only a link to an external maps app.</li>
+  <li>Case rating after resolution.</li>
+  <li>Weekly case-summary emails to institution admins, plus on-demand case/report downloads.</li>
+  <li>Push notifications, offline SMS fallback for responders.</li>
+  <li>Distance + type based dispatch (<code>pickMatchingServices</code>) for every partner unit, always applied
+      regardless of how many units an institution has — and, as of this update, applied consistently to whether an
+      emergency can be created at all, not only to who gets notified afterward.</li>
+  <li>Self-service account deletion and in-app content reporting (Google Play pre-approval requirements).</li>
+  <li>Glassmorphic, spring-physics animated UI across the login page and both admin dashboards (Tailwind CSS +
+      Framer Motion on web, Moti + react-native-reanimated on mobile).</li>
+</ul>
+
+<h2 id="thirdparty">9. Third-Party Services</h2>
+<table>
+  <tr><th>Service</th><th>Purpose</th><th>Data shared</th></tr>
+  <tr><td>Supabase</td><td>Database, auth, realtime, storage</td><td>Everything — the system of record.</td></tr>
+  <tr><td>Groq</td><td>AI safety guidance, chat safety review, and the "Ask AI" chat assistant</td><td>Emergency type + the specific question/message being checked or asked. No name, phone, or location.</td></tr>
+  <tr><td>Resend</td><td>Transactional email (confirmations, resets, weekly reports)</td><td>Email address, name, case summaries.</td></tr>
+  <tr><td>Africa's Talking</td><td>SMS / USSD / voice channel</td><td>Phone number, message content, call metadata.</td></tr>
+  <tr><td>Vercel</td><td>Web hosting</td><td>Standard request logs.</td></tr>
+  <tr><td>Expo / EAS</td><td>Mobile app builds &amp; push notifications</td><td>Push tokens.</td></tr>
+  <tr><td>Upstash Redis <span class="badge-new">new</span></td><td>Rate limiting (login/trigger/cron endpoints)</td><td>Request counts keyed by IP address or account ID — no message content.</td></tr>
+  <tr><td>Sentry <span class="badge-new">new</span></td><td>Crash &amp; error reporting (web and mobile)</td><td>Stack traces and basic device/request context when something errors.</td></tr>
+  <tr><td>OpenStreetMap <span class="badge-new">new</span></td><td>Map tiles for the in-app live tracking view</td><td>Standard map-tile requests only; RESQ does not send emergency data to OpenStreetMap.</td></tr>
+</table>
+
+<h2 id="security">10. Security &amp; Data</h2>
+<ul>
+  <li>Chat text for a resolved case is deleted once its weekly report has been emailed (the report becomes the
+      institution's copy).</li>
+  <li>Core emergency records (type, who handled it, timestamps, rating) are retained indefinitely as case history.</li>
+  <li>If an institution is deleted, a full export is taken first for RESQ's own records before permanent removal.</li>
+  <li>An emergency can only ever be created for an institution/unit with an active, full-permission responder who
+      actually handles that specific type — enforced identically across the app, SMS, and USSD trigger paths.</li>
+  <li>Institution join codes (~1.29 billion possible combinations, generated with a cryptographically secure RNG)
+      and institution-admin verification codes are throttled at the database layer against repeated guessing.</li>
+  <li>No secret keys are ever exposed to a client bundle — only the public Supabase URL and anon key are shipped to
+      web/mobile clients; every service-role operation runs server-side only.</li>
+  <li>No raw SQL string-building anywhere user input reaches the database — all lookups (institution codes, chat
+      content, etc.) go through parameterized queries or Postgres RPC functions, not string concatenation.</li>
+  <li>Full Terms of Service and Privacy Policy: <code>/terms</code> and <code>/privacy</code> on the web app (the
+      mobile app links to the same two pages, so there is only one copy of each to keep current).</li>
+</ul>
+
+<h2 id="status">11. Current Status &amp; Known Gaps</h2>
+<ul>
+  <li><strong>Email delivery (Supabase Auth confirm/reset emails, weekly reports):</strong> the project's Resend
+      account has no verified sending domain, so mail still goes out from the shared
+      <code>onboarding@resend.dev</code> sandbox address — which only delivers to the Resend account owner's own
+      email. Institution admins are very likely not receiving weekly report emails today. The weekly-report sender
+      is now configurable via <code>RESEND_FROM_EMAIL</code>, so once a domain is purchased and verified with
+      Resend, this is a one-line env var fix rather than a code change. Supabase's own auth emails would still need
+      either Gmail SMTP configured in Supabase (quick, free, fixes only those emails) or the same verified domain.</li>
+  <li><strong>Mobile EAS builds:</strong> free-tier build quota exhausted, resets ~Oct 2026 unless the Expo plan is
+      upgraded. The in-app tracking map (react-native-maps) and other native modules added recently work fine in
+      Expo Go for development/testing, but shipping them to real users needs a new production build once quota
+      allows.</li>
+  <li><strong>Pending database migration:</strong> <code>day42-code-attempt-throttle.sql</code> (the join/verification
+      code brute-force guard) needs to be run once in the Supabase SQL Editor — DDL changes can't be applied
+      automatically from this environment as a safety measure. Everything through day41 is confirmed applied.</li>
+  <li><strong>Hosting:</strong> deployed on Vercel's free Hobby tier at a default <code>*.vercel.app</code> URL, with
+      no custom domain. Vercel's Hobby plan terms of service restrict commercial/for-profit use — a Pro plan and a
+      custom domain are worth doing before treating this as an official, public-facing service.</li>
+  <li><strong>No automated test suite or CI pipeline yet.</strong> Correctness currently relies on manual testing
+      and production builds compiling cleanly, not on unit/integration/e2e tests.</li>
+  <li><strong>Public pages show a contact email but no formal business/registration details</strong> (legal entity
+      name, address) — add once that information is decided; not fabricated here.</li>
+  <li><strong>Privacy policy doesn't yet address use by minors</strong> — worth adding explicit language if
+      institutions using RESQ include schools or otherwise serve users under 18.</li>
+</ul>
+
+<footer>
+  RESQ App 254 · Kisumu, Kenya · resqapp254@gmail.com<br>
+  This document was generated from the live codebase and reflects its state as of this date.
+</footer>
+
+</div>
+</body>
+</html>
