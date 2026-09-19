@@ -13,7 +13,7 @@ import * as Location from 'expo-location'
 import * as ImagePicker from 'expo-image-picker'
 import * as FileSystem from 'expo-file-system/legacy'
 import { decode } from 'base64-arraybuffer'
-import { useAudioRecorder, useAudioPlayer, AudioModule, RecordingPresets } from 'expo-audio'
+import { useAudioRecorder, useAudioPlayer, AudioModule, RecordingPresets, setAudioModeAsync } from 'expo-audio'
 import { MotiView } from 'moti'
 import { supabase } from '../lib/supabase'
 import { API_BASE_URL } from '../lib/config'
@@ -49,7 +49,13 @@ function VoiceMessageBubble({ uri, textStyle }) {
 }
 
 export default function UserEmergencyActiveScreen({ route, navigation }) {
-  const { emergencyId, routedInstitution } = route.params
+  const { emergencyId, routedInstitution: routedInstitutionParam } = route.params
+  // Nav params only ever reflect the trigger-time snapshot — never
+  // refetched, missing contact/location, and gone entirely if this
+  // screen remounts (app restart, deep link back into an active
+  // emergency). Refetched from the emergency's own institution_id
+  // below instead, with the param as an instant first paint.
+  const [routedInstitution, setRoutedInstitution] = useState(routedInstitutionParam || null)
   const [emergency, setEmergency] = useState(null)
   const [responderProfile, setResponderProfile] = useState(null)
   const [messages, setMessages] = useState([])
@@ -158,6 +164,14 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
           .eq('id', data.claimed_by)
           .single()
         setResponderProfile(resp)
+      }
+      if (data.institution_id) {
+        const { data: inst } = await supabase
+          .from('institutions')
+          .select('name, logo_url, lat, lng, contact_phone')
+          .eq('id', data.institution_id)
+          .maybeSingle()
+        if (inst) setRoutedInstitution(inst)
       }
     }
   }
@@ -404,6 +418,12 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
       Alert.alert('Microphone access needed', 'Enable microphone access in settings to send a voice note.')
       return
     }
+    // Without this, the native audio session is never actually put
+    // into a recording-capable mode — record() proceeds with no error,
+    // isRecording flips true, but the resulting file is silent because
+    // nothing ever engaged the microphone input. Easy to miss since
+    // expo-audio doesn't surface it as a thrown error.
+    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true })
     await audioRecorder.prepareToRecordAsync()
     audioRecorder.record()
     setIsRecording(true)
@@ -420,6 +440,7 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
     }
     setIsRecording(false)
     await audioRecorder.stop()
+    await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true })
     const uri = audioRecorder.uri
     if (!uri) return
 
@@ -496,10 +517,22 @@ export default function UserEmergencyActiveScreen({ route, navigation }) {
 
       {routedInstitution?.name && (
         <View style={styles.routedBox}>
-          {routedInstitution.logo_url && (
-            <Image source={{ uri: routedInstitution.logo_url }} style={styles.routedLogo} />
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {routedInstitution.logo_url && (
+              <Image source={{ uri: routedInstitution.logo_url }} style={styles.routedLogo} />
+            )}
+            <Text style={styles.routedText}>Routed to {routedInstitution.name} — they will respond to you.</Text>
+          </View>
+          {routedInstitution.contact_phone && (
+            <TouchableOpacity onPress={() => Linking.openURL(`tel:${routedInstitution.contact_phone}`)}>
+              <Text style={styles.routedCallLink}>📞 Call {routedInstitution.name}: {routedInstitution.contact_phone}</Text>
+            </TouchableOpacity>
           )}
-          <Text style={styles.routedText}>Routed to {routedInstitution.name} — they will respond to you.</Text>
+          {routedInstitution.lat != null && routedInstitution.lng != null && (
+            <View style={{ marginTop: 10 }}>
+              <LiveTrackingMap lat={routedInstitution.lat} lng={routedInstitution.lng} height={140} />
+            </View>
+          )}
         </View>
       )}
 
@@ -609,9 +642,10 @@ const styles = StyleSheet.create({
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#ff2b2b', marginBottom: 12 },
   cancelButton: { alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,128,128,0.4)', marginBottom: 12 },
   cancelButtonText: { color: '#ff8080', fontSize: 12, fontWeight: '600' },
-  routedBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.06)', padding: 10, borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
+  routedBox: { backgroundColor: 'rgba(255,255,255,0.06)', padding: 10, borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
   routedLogo: { width: 28, height: 28, borderRadius: 6, marginRight: 10 },
   routedText: { color: '#f4f6fb', fontSize: 13, flex: 1 },
+  routedCallLink: { color: '#7fe3f2', fontSize: 12, marginTop: 8 },
   aiBox: { backgroundColor: 'rgba(53,208,232,0.1)', padding: 14, borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(53,208,232,0.25)' },
   aiLabel: { fontWeight: 'bold', fontSize: 12, color: '#35d0e8', marginBottom: 4 },
   aiText: { fontSize: 15, lineHeight: 20, color: '#f4f6fb' },

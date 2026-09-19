@@ -12,7 +12,8 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, Alert, Linking, Platform, Image } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useAudioPlayer } from 'expo-audio'
+import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio'
+import * as Speech from 'expo-speech'
 import { MotiView } from 'moti'
 import { supabase } from '../lib/supabase'
 import { registerForPushNotifications } from '../lib/notifications'
@@ -52,6 +53,7 @@ export default function ResponderHomeScreen({ navigation }) {
   const [claimableResponders, setClaimableResponders] = useState([])
 
   const sirenPlayer = useAudioPlayer(require('../assets/siren.wav'))
+  const sirenStatus = useAudioPlayerStatus(sirenPlayer)
 
   const hasUnclaimed = useMemo(
     () => emergencies.some((e) => !e.claimed_by && e.status !== 'resolved' && e.status !== 'cancelled'),
@@ -59,7 +61,16 @@ export default function ResponderHomeScreen({ navigation }) {
   )
 
   useEffect(() => {
-    sirenPlayer.loop = true
+    // Looping natively would just wail continuously — disabled so the
+    // effect below can chain siren -> spoken alert -> siren again.
+    sirenPlayer.loop = false
+    // Without this, iOS silently drops all playback while the
+    // hardware ring/silent switch is set to silent — exactly the
+    // situation where a responder needs the siren most. This is very
+    // likely why the siren "shows as active but makes no sound": the
+    // UI has no idea the OS silenced it, since expo-audio doesn't
+    // surface that as an error either.
+    setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: true }).catch(() => {})
   }, [sirenPlayer])
 
   useEffect(() => {
@@ -71,9 +82,28 @@ export default function ResponderHomeScreen({ navigation }) {
         // Non-fatal — a rare native playback hiccup shouldn't crash the screen
       }
     } else {
+      Speech.stop()
       sirenPlayer.pause()
     }
   }, [hasUnclaimed, sirenMuted, sirenPlayer])
+
+  // Siren -> spoken alert -> siren again, on repeat, for as long as
+  // something is still unclaimed. didJustFinish only flips true once
+  // per natural end-of-file, so this can't re-trigger mid-playback.
+  useEffect(() => {
+    if (!sirenStatus.didJustFinish || !hasUnclaimed || sirenMuted) return
+
+    Speech.speak('Emergency. Please respond.', {
+      rate: 0.95,
+      onDone: () => {
+        if (hasUnclaimed && !sirenMuted) {
+          sirenPlayer.seekTo(0)
+          sirenPlayer.play()
+        }
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sirenStatus.didJustFinish])
 
   useEffect(() => {
     if (!hasUnclaimed) setSirenMuted(false)

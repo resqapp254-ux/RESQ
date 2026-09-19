@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import * as FileSystem from 'expo-file-system/legacy'
 import { decode } from 'base64-arraybuffer'
-import { useAudioPlayer } from 'expo-audio'
+import { useAudioPlayer, useAudioRecorder, AudioModule, RecordingPresets, setAudioModeAsync } from 'expo-audio'
 import { MotiView } from 'moti'
 import { supabase } from '../lib/supabase'
 import { API_BASE_URL } from '../lib/config'
@@ -63,7 +63,11 @@ export default function EmergencyDetailScreen({ route, navigation }) {
   const [askingAi, setAskingAi] = useState(false)
   const [ratingDraft, setRatingDraft] = useState(0)
   const [ratingSubmitting, setRatingSubmitting] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
+  const [uploadingVoice, setUploadingVoice] = useState(false)
   const listRef = useRef(null)
+  const voiceNoteTimeoutRef = useRef(null)
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
 
   useEffect(() => {
     let emergencyChannel, messageChannel
@@ -268,6 +272,71 @@ export default function EmergencyDetailScreen({ route, navigation }) {
       if (data.flagged) loadEmergency() // refresh to pick up the new ai_flag_to_responder
     } catch (err) {
       Alert.alert('Failed to send', err.message)
+    }
+  }
+
+  const MAX_VOICE_NOTE_MS = 120000 // 2 minutes, same cap as the user-side recorder
+
+  async function startVoiceNote() {
+    const permission = await AudioModule.requestRecordingPermissionsAsync()
+    if (!permission.granted) {
+      Alert.alert('Microphone access needed', 'Enable microphone access in settings to send a voice note.')
+      return
+    }
+    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true })
+    await audioRecorder.prepareToRecordAsync()
+    audioRecorder.record()
+    setIsRecording(true)
+    voiceNoteTimeoutRef.current = setTimeout(() => {
+      Alert.alert('Voice note limit reached', 'Recording stopped automatically at 2 minutes.')
+      stopVoiceNote()
+    }, MAX_VOICE_NOTE_MS)
+  }
+
+  async function stopVoiceNote() {
+    if (voiceNoteTimeoutRef.current) {
+      clearTimeout(voiceNoteTimeoutRef.current)
+      voiceNoteTimeoutRef.current = null
+    }
+    setIsRecording(false)
+    await audioRecorder.stop()
+    await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true })
+    const uri = audioRecorder.uri
+    if (!uri) return
+
+    const fileInfo = await FileSystem.getInfoAsync(uri)
+    const maxBytes = 15 * 1024 * 1024
+    if (fileInfo.exists && fileInfo.size > maxBytes) {
+      Alert.alert('Voice note too large', 'Please record a shorter message and try again.')
+      return
+    }
+
+    setUploadingVoice(true)
+    try {
+      const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 })
+      const arrayBuffer = decode(base64)
+      const path = `${emergencyId}-responder-voice-${Date.now()}.m4a`
+
+      const { error: uploadError } = await supabase.storage
+        .from('emergency-photos')
+        .upload(path, arrayBuffer, { contentType: 'audio/m4a', upsert: true })
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage.from('emergency-photos').getPublicUrl(path)
+
+      const { error: insertError } = await supabase.from('emergency_messages').insert({
+        emergency_id: emergencyId,
+        sender_id: myId,
+        sender_role: 'responder',
+        message: '🎙️ Voice note',
+        media_url: urlData.publicUrl,
+        media_type: 'voice'
+      })
+      if (insertError) throw insertError
+    } catch (err) {
+      Alert.alert('Could not send voice note', err.message)
+    } finally {
+      setUploadingVoice(false)
     }
   }
 
@@ -593,24 +662,34 @@ export default function EmergencyDetailScreen({ route, navigation }) {
       </View>
 
       {isMine ? (
-        <View style={styles.inputRow}>
-          <TouchableOpacity style={styles.photoButton} onPress={pickAndSendPhoto} disabled={uploadingPhoto}>
-            <Text style={{ fontSize: 16 }}>{uploadingPhoto ? '⏳' : '📷'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.photoButton} onPress={pickAndSendVideo} disabled={uploadingVideo}>
-            <Text style={{ fontSize: 16 }}>{uploadingVideo ? '⏳' : '🎥'}</Text>
-          </TouchableOpacity>
-          <TextInput
-            style={styles.input}
-            value={messageText}
-            onChangeText={setMessageText}
-            placeholder="Type a message..."
-            placeholderTextColor="#5c6480"
-          />
-          <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
-            <Text style={{ color: 'white' }}>Send</Text>
-          </TouchableOpacity>
-        </View>
+        <>
+          <View style={styles.inputRow}>
+            <TouchableOpacity style={styles.photoButton} onPress={pickAndSendPhoto} disabled={uploadingPhoto}>
+              <Text style={{ fontSize: 16 }}>{uploadingPhoto ? '⏳' : '📷'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.photoButton} onPress={pickAndSendVideo} disabled={uploadingVideo}>
+              <Text style={{ fontSize: 16 }}>{uploadingVideo ? '⏳' : '🎥'}</Text>
+            </TouchableOpacity>
+            <TextInput
+              style={styles.input}
+              value={messageText}
+              onChangeText={setMessageText}
+              placeholder="Type a message..."
+              placeholderTextColor="#5c6480"
+            />
+            <TouchableOpacity
+              style={[styles.photoButton, isRecording && styles.voiceButtonActive]}
+              onPress={isRecording ? stopVoiceNote : startVoiceNote}
+              disabled={uploadingVoice}
+            >
+              <Text style={{ fontSize: 16 }}>{uploadingVoice ? '⏳' : isRecording ? '⏹' : '🎙️'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
+              <Text style={{ color: 'white' }}>Send</Text>
+            </TouchableOpacity>
+          </View>
+          {isRecording && <Text style={styles.recordingNotice}>Recording voice note… tap ⏹ to send</Text>}
+        </>
       ) : (
         <Text style={styles.chatNotice}>Claim this emergency before sending messages.</Text>
       )}
@@ -668,5 +747,7 @@ const styles = StyleSheet.create({
   aiButton: { backgroundColor: '#35d0e8', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8, justifyContent: 'center' },
   input: { flex: 1, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 8, padding: 10, marginRight: 8, backgroundColor: 'rgba(255,255,255,0.05)', color: '#f4f6fb' },
   sendButton: { backgroundColor: '#cc0000', borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center' },
-  photoButton: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, justifyContent: 'center', marginRight: 8 }
+  photoButton: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, justifyContent: 'center', marginRight: 8 },
+  voiceButtonActive: { backgroundColor: 'rgba(255,43,43,0.25)' },
+  recordingNotice: { color: '#ff8080', fontSize: 12, textAlign: 'center', marginTop: 4 }
 })
