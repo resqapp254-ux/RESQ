@@ -16,16 +16,17 @@ import { MotiView } from 'moti'
 import { supabase } from '../lib/supabase'
 import { API_BASE_URL } from '../lib/config'
 import LiveTrackingMap from '../components/LiveTrackingMap'
+import EmergencyTypeIcon from '../components/EmergencyTypeIcon'
 
 const EMERGENCY_TYPE_LABELS = {
-  medical: '🏥 Medical',
-  fire: '🔥 Fire',
-  accident: '🚑 Accident',
-  security: '🛡️ Security',
-  gbv: '🤝 GBV',
-  mental_health: '🧠 Mental Health',
-  property_damage: '🏚️ Property Damage',
-  other: '⚠️ Other'
+  medical: 'Medical',
+  fire: 'Fire',
+  accident: 'Accident',
+  security: 'Security',
+  gbv: 'GBV',
+  mental_health: 'Mental Health',
+  property_damage: 'Property Damage',
+  other: 'Other'
 }
 
 // Each voice message gets its own player, so playing one never affects
@@ -518,6 +519,7 @@ export default function EmergencyDetailScreen({ route, navigation }) {
       </View>
 
       <View style={styles.typeBadge}>
+        <EmergencyTypeIcon type={emergency.emergency_type} size={18} />
         <Text style={styles.typeBadgeText}>{typeLabel}</Text>
       </View>
 
@@ -704,7 +706,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: 'bold', color: '#f4f6fb' },
   status: { fontWeight: 'bold', color: '#ff2b2b' },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#ff2b2b' },
-  typeBadge: { alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.08)', paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, marginTop: 8 },
+  typeBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.08)', paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, marginTop: 8 },
   chatNotice: { color: '#9aa4bf', fontSize: 13, textAlign: 'center', paddingVertical: 12 },
   typeBadgeText: { fontWeight: 'bold', fontSize: 13, color: '#f4f6fb' },
   person: { marginTop: 8, marginBottom: 8, color: '#9aa4bf' },
