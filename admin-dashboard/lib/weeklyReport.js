@@ -43,18 +43,30 @@ async function sendReportEmail(toEmail, institutionName, rangeLabel, html) {
     return false
   }
 
+  // Resend's shared onboarding@resend.dev address only delivers to the
+  // account owner's own verified email — every other recipient is
+  // silently rejected until a real domain is verified in the Resend
+  // dashboard and set here. Institution admins are almost certainly
+  // not receiving these reports right now if RESEND_FROM_EMAIL isn't set.
+  const fromAddress = process.env.RESEND_FROM_EMAIL || 'RESQ <onboarding@resend.dev>'
+
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + process.env.RESEND_API_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      from: 'RESQ <onboarding@resend.dev>',
+      from: fromAddress,
       to: [toEmail],
       subject: `RESQ Weekly Report: ${institutionName} (${rangeLabel})`,
       html:
         `<p>Attached is ${institutionName}'s RESQ case report for ${rangeLabel}.</p>` +
         `<p>Please save this for your own records. Per RESQ's data retention policy, the chat message ` +
         `history for these resolved cases is cleared from our servers once this report has been sent ` +
-        `(the case records themselves, including type, timestamps, and ratings, are kept).</p>`,
+        `(the case records themselves, including type, timestamps, and ratings, are kept).</p>` +
+        `<hr style="border:none;border-top:1px solid #e2e2e2;margin:20px 0" />` +
+        `<p style="font-size:12px;color:#888">You're receiving this because you're the registered admin ` +
+        `for ${institutionName} on RESQ. This is an operational report tied to your institution's case ` +
+        `history, not a marketing email — contact your RESQ super admin if you believe you're receiving ` +
+        `it in error.</p>`,
       attachments: [
         {
           filename: `resq-weekly-report-${new Date().toISOString().slice(0, 10)}.html`,

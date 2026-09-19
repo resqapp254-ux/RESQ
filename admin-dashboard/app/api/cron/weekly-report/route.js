@@ -13,6 +13,7 @@
 import { NextResponse } from 'next/server'
 import { sendWeeklyReportsToAllInstitutions } from '../../../../lib/weeklyReport'
 import { getClientIp, rateLimit } from '../../../../lib/rateLimit'
+import { safeEqual } from '../../../../lib/safeCompare'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,7 +26,7 @@ export async function GET(request) {
   const expected = process.env.CRON_SECRET
   if (expected) {
     const provided = (request.headers.get('authorization') || '').replace('Bearer ', '')
-    if (provided !== expected) {
+    if (!safeEqual(provided, expected)) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
   }

@@ -14,6 +14,7 @@
 import { NextResponse } from 'next/server'
 import { escalateStaleEmergencies } from '../../../../lib/escalateEmergency'
 import { getClientIp, rateLimit } from '../../../../lib/rateLimit'
+import { safeEqual } from '../../../../lib/safeCompare'
 
 // Must run live on every hit, not be cached as a static response —
 // without this, Next.js can prerender it at build time when
@@ -33,7 +34,7 @@ export async function GET(request) {
   const expected = process.env.CRON_SECRET
   if (expected) {
     const provided = (request.headers.get('authorization') || '').replace('Bearer ', '')
-    if (provided !== expected) {
+    if (!safeEqual(provided, expected)) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
   }
