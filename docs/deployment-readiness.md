@@ -60,6 +60,12 @@ An unclaimed emergency now escalates automatically: push immediately (unchanged)
 - Requires `RESEND_API_KEY` (same as the existing resolution-email feature) and the institution to have either an `institution_admin` profile with an email, or a `contact_email` on the institution row. Without either, that institution is skipped and logged in the response, not silently dropped.
 - An institution admin should still download the same detail on demand from `/institution-admin/case-reports` at any time; the weekly email is a push, not the only way to get it.
 
+## Activity log retention (Day 46)
+
+`GET /api/cron/prune-logs` deletes `activity_log` rows (the Super Admin Terminal's sign-in/failed-auth/blocked-trigger/account-deletion feed) older than 90 days. It's an audit trail, not a permanent record — unlike emergencies, which are kept forever.
+
+- Same external-pinger setup as the other cron routes, protected by the same `CRON_SECRET` — point this one at a **daily** schedule. Running it more often is harmless but pointless; less often just means the table grows a bit larger between runs.
+
 ## Chat safety rule
 
 Responder messages are now allowed only when `emergency_messages.sender_id = auth.uid()` and the responder is the emergency's `claimed_by` user. The mobile responder screen hides the composer until the responder claims the emergency. User chat remains allowed for the user who triggered the emergency.
