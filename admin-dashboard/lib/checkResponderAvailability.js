@@ -26,6 +26,25 @@ function canRespond(responder, emergencyType) {
 }
 
 export async function hasAvailableResponder(supabaseAdmin, institutionId, { emergencyType, lat, lng }) {
+  // The institution's own deliberate choice of which types it accepts
+  // at all (set in institution-admin/settings) — separate from, and
+  // checked before, any per-responder narrowing below. Without this,
+  // an institution that never opted into e.g. "gbv" could still
+  // silently accept one, as long as it had any unrestricted internal
+  // responder (responder_emergency_types null = "handles everything
+  // assigned to me", which said nothing about what the institution
+  // itself had actually signed up to handle).
+  const { data: inst } = await supabaseAdmin
+    .from('institutions')
+    .select('enabled_emergency_types')
+    .eq('id', institutionId)
+    .maybeSingle()
+
+  const enabledTypes = inst?.enabled_emergency_types
+  if (enabledTypes && enabledTypes.length > 0 && !enabledTypes.includes(emergencyType)) {
+    return false
+  }
+
   const { data: internalResponders } = await supabaseAdmin
     .from('profiles')
     .select('id, responder_emergency_types, responder_permission')

@@ -11,18 +11,30 @@ import { distanceKm } from './serviceDispatch'
 export const PUBLIC_INSTITUTION_RADIUS_KM = 50
 
 // Given every active, public institution and one emergency, return
-// the single best institution to route it to, or null if there are
-// none at all. Never returns null just because nothing is "close" or
-// "matching type", so a public emergency is never silently dropped.
+// the single best institution to route it to, or null if none of them
+// actually registered for this emergency type. Distance is only a
+// tiebreaker among type-matching institutions — never a reason to
+// route to one that never opted into handling this type at all.
+//
+// Previously fell back to "any active public institution" whenever
+// none matched the type, on the theory that a public emergency should
+// never be silently dropped. In practice this meant an institution
+// that deliberately never enabled e.g. "gbv" would still receive one
+// anyway, as long as it was the only (or nearest) public institution
+// around — exactly the "institution gets emergencies it never
+// registered for" bug. Returning null here is safe: the caller
+// (api/emergency/trigger) already rejects with a clear "no public
+// responder available for this type" message instead of creating the
+// emergency, rather than silently misrouting it.
 export function pickPublicInstitution(institutions, { emergencyType, lat, lng }) {
   const active = (institutions || []).filter((i) => i.status === 'active' && i.visibility === 'public')
   if (active.length === 0) return null
 
-  const typeMatches = active.filter((i) => {
+  const pool = active.filter((i) => {
     const types = i.enabled_emergency_types || []
     return types.length === 0 || types.includes(emergencyType)
   })
-  const pool = typeMatches.length > 0 ? typeMatches : active
+  if (pool.length === 0) return null
 
   if (lat == null || lng == null) return pool[0]
 
