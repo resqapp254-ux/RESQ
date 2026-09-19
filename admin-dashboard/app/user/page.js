@@ -17,6 +17,7 @@ import MediaAttach from '../../components/MediaAttach'
 import MyInstitutionsPanel from '../../components/MyInstitutionsPanel'
 import IdentityPrompt from '../../components/IdentityPrompt'
 import { EMERGENCY_TYPE_COLORS } from '../../lib/emergencyTypeColors'
+import EmergencyTypeIcon from '../../components/EmergencyTypeIcon'
 
 const LiveTrackingMapWeb = dynamic(() => import('../../components/LiveTrackingMapWeb'), { ssr: false })
 
@@ -62,6 +63,9 @@ export default function UserPage() {
   const [enabledTypes, setEnabledTypes] = useState(null)
   const [activeEmergencies, setActiveEmergencies] = useState([])
   const [resolvedEmergencies, setResolvedEmergencies] = useState([])
+  const [expandedHistoryId, setExpandedHistoryId] = useState(null)
+  const [historyMessages, setHistoryMessages] = useState({})
+  const [loadingHistoryId, setLoadingHistoryId] = useState(null)
   const [claimingId, setClaimingId] = useState('')
   const [resolvingId, setResolvingId] = useState('')
   const [ratingDraft, setRatingDraft] = useState({})
@@ -225,6 +229,28 @@ export default function UserPage() {
       .order('created_at', { ascending: true })
       .limit(200)
     setChatMessages(data || [])
+  }
+
+  // Tapping a past emergency in the resolved log — its chat is read-only
+  // (nothing to send to once it's resolved) and fetched once, on first
+  // expand, not kept live like the active-emergency chat above.
+  async function toggleHistoryChat(emergencyId) {
+    if (expandedHistoryId === emergencyId) {
+      setExpandedHistoryId(null)
+      return
+    }
+    setExpandedHistoryId(emergencyId)
+    if (historyMessages[emergencyId]) return
+
+    setLoadingHistoryId(emergencyId)
+    const { data } = await supabase
+      .from('emergency_messages')
+      .select('id, sender_id, sender_role, message, created_at, is_ai_generated, media_url, media_type')
+      .eq('emergency_id', emergencyId)
+      .order('created_at', { ascending: true })
+      .limit(200)
+    setHistoryMessages((prev) => ({ ...prev, [emergencyId]: data || [] }))
+    setLoadingHistoryId(null)
   }
 
   // Show the conversation, and keep it live for both sides while the
@@ -1201,8 +1227,10 @@ export default function UserPage() {
                           className={'resq-type-chip' + (selectedType === type.key ? ' resq-type-chip-selected' : '')}
                           onClick={() => setSelectedType(type.key)}
                         >
-                          <span className="resq-type-emoji" aria-hidden="true" style={{ background: `${type.color}26`, boxShadow: selectedType === type.key ? `0 0 0 2px ${type.color}` : 'none' }}>{type.emoji}</span>
-                          <span>{t(type.translationKey)}</span>
+                          <span className="resq-type-emoji" aria-hidden="true" style={{ background: `${type.color}26`, boxShadow: selectedType === type.key ? `0 0 0 2px ${type.color}` : 'none' }}>
+                            <EmergencyTypeIcon type={type.key} color={type.color} size={26} />
+                          </span>
+                          <span style={{ fontWeight: 700 }}>{t(type.translationKey)}</span>
                         </button>
                       ))}
                     </div>
@@ -1516,10 +1544,41 @@ export default function UserPage() {
               {resolvedEmergencies.length === 0 && <p className="resq-subtle">{t('noResolvedEmergencies')}</p>}
               {resolvedEmergencies.map((emergency) => (
                 <div key={emergency.id} style={{ padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                  <strong>{typeLabel(emergency.emergency_type, t)}</strong>
+                  <button
+                    type="button"
+                    onClick={() => toggleHistoryChat(emergency.id)}
+                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', width: '100%' }}
+                    aria-expanded={expandedHistoryId === emergency.id}
+                  >
+                    <strong>{typeLabel(emergency.emergency_type, t)}</strong>
+                    <span className="resq-subtle" style={{ marginLeft: 8, fontSize: 12 }}>
+                      {expandedHistoryId === emergency.id ? '▲ Hide chat' : '▼ View chat'}
+                    </span>
+                  </button>
                   <p className="resq-subtle" style={{ margin: '4px 0' }}>
                     Resolved {emergency.resolved_at ? new Date(emergency.resolved_at).toLocaleString() : 'recently'}
                   </p>
+                  {expandedHistoryId === emergency.id && (
+                    <div className="glass-card resq-fade-in" style={{ padding: 10, marginBottom: 8, maxHeight: 260, overflowY: 'auto' }}>
+                      {loadingHistoryId === emergency.id && <p className="resq-subtle" style={{ margin: 0 }}>Loading chat…</p>}
+                      {loadingHistoryId !== emergency.id && (historyMessages[emergency.id] || []).length === 0 && (
+                        <p className="resq-subtle" style={{ margin: 0 }}>No messages were exchanged for this emergency.</p>
+                      )}
+                      {(historyMessages[emergency.id] || []).map((m) => (
+                        <div key={m.id} style={{ marginBottom: 8, fontSize: 13 }}>
+                          <span className="resq-subtle" style={{ fontSize: 11 }}>
+                            {m.sender_role} · {new Date(m.created_at).toLocaleString()}
+                          </span>
+                          <p style={{ margin: '2px 0 0' }}>
+                            {m.media_type === 'photo' && m.media_url ? '📷 Photo' :
+                              m.media_type === 'video' && m.media_url ? '🎥 Video' :
+                              m.media_type === 'voice' && m.media_url ? '🎙️ Voice note' :
+                              m.message}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {isResponderView && emergency.claimed_by === myUserId && (
                     emergency.rating ? (
                       <p style={{ margin: '4px 0 0', color: '#ffd76a' }}>
