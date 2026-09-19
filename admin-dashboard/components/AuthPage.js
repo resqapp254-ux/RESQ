@@ -9,6 +9,8 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabaseClient'
+import GlobeBackground from './GlobeBackground'
+import RadarSweepBackground from './RadarSweepBackground'
 import AmbientGlowBackground from './AmbientGlowBackground'
 import LanguageSwitcher from './LanguageSwitcher'
 import PasswordInput from './PasswordInput'
@@ -148,6 +150,8 @@ export default function AuthPage({ defaultMode = 'signin' }) {
 
   return (
     <div className="resq-shell">
+      <GlobeBackground />
+      <RadarSweepBackground />
       <AmbientGlowBackground />
       <LanguageSwitcher />
       <div className="resq-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
