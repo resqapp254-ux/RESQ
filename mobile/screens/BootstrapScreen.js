@@ -47,6 +47,7 @@ export default function BootstrapScreen({ navigation }) {
         // Reopening the app mid-emergency should resume it, not offer
         // a fresh trigger screen that could file a duplicate report.
         const { data: userData } = await supabase.auth.getUser()
+        if (!userData.user) { if (!cancelled) navigation.replace('Auth'); return }
         const { data: openEmergency } = await supabase
           .from('emergencies')
           .select('id')

@@ -129,6 +129,7 @@ export default function ResponderHomeScreen({ navigation }) {
       }
 
       const { data: userData } = await supabase.auth.getUser()
+      if (!userData.user) { navigation.replace('Auth'); return }
       setMyUserId(userData.user.id)
 
       const { data: profile, error: profileError } = await supabase
